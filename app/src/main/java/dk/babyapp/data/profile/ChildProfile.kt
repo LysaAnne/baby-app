@@ -48,13 +48,49 @@ data class ChildProfile(
     val medicalNotes: String = "",
     val photoFileName: String? = null,
     val avatar: ProfileAvatar = ProfileAvatar.Bear,
-    val colorTheme: ChildColorTheme = ChildColorTheme.Sage,
+    val colorTheme: String = ChildColorTheme.NeutralLight.name,
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val updatedAtEpochMillis: Long = System.currentTimeMillis(),
 )
 
 enum class BirthStatus { Born, Expected }
-enum class ChildColorTheme { Sage, Rose, Sky, Lavender, Sunshine }
+enum class ChildThemeAppearance { Light, Dark }
+
+enum class ChildColorTheme(val appearance: ChildThemeAppearance) {
+    NeutralLight(ChildThemeAppearance.Light),
+    NeutralDark(ChildThemeAppearance.Dark),
+    BoyLight(ChildThemeAppearance.Light),
+    BoyDark(ChildThemeAppearance.Dark),
+    GirlLight(ChildThemeAppearance.Light),
+    GirlDark(ChildThemeAppearance.Dark),
+    PastelYellow(ChildThemeAppearance.Light),
+    NeonNight(ChildThemeAppearance.Dark),
+    ButtercupSky(ChildThemeAppearance.Light),
+    SunsetCoast(ChildThemeAppearance.Light),
+    NeonGrove(ChildThemeAppearance.Dark),
+    PlumMist(ChildThemeAppearance.Dark),
+    PeachTwilight(ChildThemeAppearance.Dark),
+    SunlitMeadow(ChildThemeAppearance.Light),
+    BerryPop(ChildThemeAppearance.Dark),
+    OliveStone(ChildThemeAppearance.Dark),
+    DesertBloom(ChildThemeAppearance.Light),
+    GlacierBlue(ChildThemeAppearance.Light),
+    NordicForest(ChildThemeAppearance.Light),
+    MintBlush(ChildThemeAppearance.Light),
+    BerryRose(ChildThemeAppearance.Dark),
+    PeachCream(ChildThemeAppearance.Light),
+
+    // Kept so profiles saved by earlier versions can still be opened.
+    Sage(ChildThemeAppearance.Light),
+    Rose(ChildThemeAppearance.Light),
+    Sky(ChildThemeAppearance.Light),
+    Lavender(ChildThemeAppearance.Light),
+    Sunshine(ChildThemeAppearance.Light);
+
+    companion object {
+        val selectableEntries = entries.take(22)
+    }
+}
 
 enum class BiologicalSex {
     Unselected,

@@ -575,6 +575,16 @@ Use this table whenever a requested feature changes the agreed plan.
 | 2026-08-17 | Applied each active child’s colour palette app-wide, added an overdue-due-date profile reminder after 14 days, and redesigned care providers around popup editors with compact edit/delete cards. | 2–3 | Complete |
 | 2026-08-17 | Kept Today as the empty-state start destination, replaced forced Family navigation with a one-time persisted getting-started dialog, and disabled tracking controls until a child exists. | 2–3 | Complete |
 | 2026-08-17 | Fixed top-level back-stack restoration so selecting Today cannot restore Family after a child or developer test family is created. | 2–3 | Complete |
+| 2026-08-17 | Replaced the original child themes with 15 inspiration-based palettes, added multi-colour previews and Danish names, and retained compatibility with profiles saved using the former themes. | 2–3 | Complete |
+| 2026-08-17 | Made each colour profile inherently light or dark, strengthened its app-wide colour identity, grouped the profile picker by appearance, removed the separate appearance control, and added developer-generated palette children. | 2–3 | Complete |
+| 2026-08-17 | Added neutral light and dark defaults as the first choices in their profile groups and included both in developer palette testing. | 2–3 | Complete |
+| 2026-08-17 | Reduced the initial palette selection to Salvie plus matching yellow, pink, and light-blue variants; Salvie is the app default while the developer editor remains available. | 2–3 | Complete |
+| 2026-08-17 | Increased the neutral profiles’ green contrast and added light/dark baby-blue and baby-pink profiles plus a pastel-yellow profile. | 2–3 | Complete |
+| 2026-08-17 | Centralized all editable palette HEX codes in one documented file and added an in-app developer preview showing every colour role for every profile. | 2–3 | Complete |
+| 2026-08-17 | Replaced manual palette editing with a debug-only visual colour-profile manager supporting HSV/HEX editing, live previews, dynamic create/rename/duplicate/delete, local persistence, stable child links, and JSON import/export for bundled defaults. | 2–3 | Complete |
+| 2026-08-17 | Added an in-editor full-screen Today preview so unsaved palette changes can be evaluated against representative dashboard components before saving. | 2–3 | Complete |
+| 2026-08-17 | Simplified editable colour profiles to one background plus four colours; supporting Material card shades are now derived automatically. | 2–3 | Complete |
+| 2026-08-17 | Corrected the five-colour model so every design role reuses only the selected background and four exact colours, with no generated shades; added persisted light/dark-group ordering shared by the child picker. | 2–3 | Complete |
 
 ## Implementation request examples
 

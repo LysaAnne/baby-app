@@ -54,9 +54,9 @@ import dk.babyapp.data.profile.ChildParentLink
 import dk.babyapp.data.profile.FamilyMemberRole
 import dk.babyapp.data.profile.CareProvider
 import dk.babyapp.data.profile.CareProviderType
+import dk.babyapp.data.color.ColorProfile
 import dk.babyapp.data.preferences.AppPreferences
 import dk.babyapp.data.preferences.MeasurementUnits
-import dk.babyapp.data.preferences.ThemePreference
 import dk.babyapp.data.preferences.DanishRegion
 import dk.babyapp.ui.OnboardingSettings
 import androidx.appcompat.app.AppCompatDelegate
@@ -91,6 +91,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import android.app.ActivityManager
 import dk.babyapp.BuildConfig
+import dk.babyapp.ui.theme.ColorProfileManagerDialog
 
 @Composable
 fun FamilyScreen(
@@ -109,6 +110,7 @@ fun FamilyScreen(
     onSaveParent: (ParentProfile, Set<String>) -> Unit,
     onDeleteParent: (ParentProfile) -> Unit,
     careProviders: List<CareProvider>,
+    colorProfiles: List<ColorProfile>,
     requestedEditChildId: String? = null,
     onEditRequestHandled: () -> Unit = {},
 ) {
@@ -202,6 +204,7 @@ fun FamilyScreen(
             children = profiles,
             familyLinks = parentLinks,
             careProviders = editing?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
+            colorProfiles = colorProfiles,
             onDismiss = { adding = false; editing = null },
         )
     }
@@ -230,11 +233,27 @@ fun FamilyScreen(
 }
 
 @Composable
-fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -> Unit, onCreateDeveloperTestFamily: (() -> Unit) -> Unit, onDismiss: () -> Unit) {
+fun SettingsDialog(
+    preferences: AppPreferences,
+    onUpdate: (OnboardingSettings) -> Unit,
+    onCreateDeveloperTestFamily: (() -> Unit) -> Unit,
+    onCreateDeveloperPaletteChildren: (() -> Unit) -> Unit,
+    colorProfiles: List<ColorProfile>,
+    usedColorProfileIds: Set<String>,
+    onSaveColorProfile: (ColorProfile) -> Unit,
+    onDeleteColorProfile: (String, (Boolean) -> Unit) -> Unit,
+    onMoveColorProfile: (String, Int) -> Unit,
+    exportColorProfiles: () -> String,
+    importColorProfiles: (String, (Boolean) -> Unit) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
     var confirmClearData by remember { mutableStateOf(false) }
     var testFamilyCreated by remember { mutableStateOf(false) }
     var creatingTestFamily by remember { mutableStateOf(false) }
+    var paletteChildrenCreated by remember { mutableStateOf(false) }
+    var creatingPaletteChildren by remember { mutableStateOf(false) }
+    var palettePreviewOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     fun update(value: OnboardingSettings) { settings = value; onUpdate(value) }
     AlertDialog(
@@ -246,18 +265,19 @@ fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -
                 MeasurementUnits.entries.forEach { units ->
                     FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
                 }
-                Text(stringResource(R.string.theme))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ThemePreference.entries.forEach { theme ->
-                        FilterChip(settings.theme == theme, onClick = { update(settings.copy(theme = theme)) }, label = { Text(theme.name) })
-                    }
-                }
                 if (BuildConfig.DEBUG) {
                     Text(stringResource(R.string.developer_tools), style = MaterialTheme.typography.titleMedium)
                     Button(enabled = !creatingTestFamily, onClick = {
                         creatingTestFamily = true
                         onCreateDeveloperTestFamily { creatingTestFamily = false; testFamilyCreated = true }
                     }) { Text(stringResource(if (creatingTestFamily) R.string.creating_test_family else R.string.create_test_family)) }
+                    Button(enabled = !creatingPaletteChildren, onClick = {
+                        creatingPaletteChildren = true
+                        onCreateDeveloperPaletteChildren { creatingPaletteChildren = false; paletteChildrenCreated = true }
+                    }) { Text(stringResource(if (creatingPaletteChildren) R.string.creating_palette_children else R.string.create_palette_children)) }
+                    Button(onClick = { palettePreviewOpen = true }) {
+                        Text(stringResource(R.string.preview_color_profiles))
+                    }
                     Button(onClick = { confirmClearData = true }) {
                         Text(stringResource(R.string.clear_app_data))
                     }
@@ -284,6 +304,22 @@ fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -
         title = { Text(stringResource(R.string.test_family_created_title)) },
         text = { Text(stringResource(R.string.test_family_created_message)) },
         confirmButton = { Button(onClick = { testFamilyCreated = false }) { Text(stringResource(R.string.ok)) } },
+    )
+    if (paletteChildrenCreated) AlertDialog(
+        onDismissRequest = { paletteChildrenCreated = false },
+        title = { Text(stringResource(R.string.palette_children_created_title)) },
+        text = { Text(stringResource(R.string.palette_children_created_message)) },
+        confirmButton = { Button(onClick = { paletteChildrenCreated = false }) { Text(stringResource(R.string.ok)) } },
+    )
+    if (palettePreviewOpen) ColorProfileManagerDialog(
+        profiles = colorProfiles,
+        usedProfileIds = usedColorProfileIds,
+        onSave = onSaveColorProfile,
+        onDelete = onDeleteColorProfile,
+        onMove = onMoveColorProfile,
+        exportJson = exportColorProfiles,
+        onImport = importColorProfiles,
+        onDismiss = { palettePreviewOpen = false },
     )
 }
 
@@ -364,20 +400,8 @@ private fun ProfileViewDialog(
 ) {
     val draft = profile.toDraft(units)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val accent = when(profile.colorTheme) {
-            dk.babyapp.data.profile.ChildColorTheme.Sage -> Color(0xFFCFE5D5)
-            dk.babyapp.data.profile.ChildColorTheme.Rose -> Color(0xFFF5CAD2)
-            dk.babyapp.data.profile.ChildColorTheme.Sky -> Color(0xFFC9E3F5)
-            dk.babyapp.data.profile.ChildColorTheme.Lavender -> Color(0xFFDED0F2)
-            dk.babyapp.data.profile.ChildColorTheme.Sunshine -> Color(0xFFF5E4A8)
-        }
-        Surface(modifier = Modifier.fillMaxSize(), contentColor = Color(0xFF202420), color = when(profile.colorTheme) {
-            dk.babyapp.data.profile.ChildColorTheme.Sage -> Color(0xFFF2F7F3)
-            dk.babyapp.data.profile.ChildColorTheme.Rose -> Color(0xFFFFF3F5)
-            dk.babyapp.data.profile.ChildColorTheme.Sky -> Color(0xFFF1F7FC)
-            dk.babyapp.data.profile.ChildColorTheme.Lavender -> Color(0xFFF7F3FC)
-            dk.babyapp.data.profile.ChildColorTheme.Sunshine -> Color(0xFFFFFAE8)
-        }) {
+        val accent = MaterialTheme.colorScheme.primaryContainer
+        Surface(modifier = Modifier.fillMaxSize(), contentColor = MaterialTheme.colorScheme.onSurface, color = MaterialTheme.colorScheme.surface) {
           CompositionLocalProvider(LocalChildAccent provides accent) {
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -525,6 +549,7 @@ private fun ProfileEditorDialog(
     children: List<ChildProfile>,
     familyLinks: List<ChildParentLink>,
     careProviders: List<CareProvider>,
+    colorProfiles: List<ColorProfile>,
 ) {
     var draft by remember(existing?.id, units) { mutableStateOf(existing?.toDraft(units, linkedParentIds, careProviders) ?: ProfileDraft()) }
     var error by remember { mutableStateOf<ProfileValidationError?>(null) }
@@ -541,6 +566,7 @@ private fun ProfileEditorDialog(
                     photoFile = photoFile(draft.photoFileName),
                     onPhotoSelected = onPhotoSelected,
                     units = units,
+                    colorProfiles = colorProfiles,
                     modifier = Modifier.weight(1f),
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

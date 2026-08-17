@@ -9,6 +9,9 @@ import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.preferences.DanishRegion
 import dk.babyapp.data.preferences.MeasurementUnits
 import dk.babyapp.data.preferences.ThemePreference
+import dk.babyapp.data.color.ColorProfile
+import dk.babyapp.data.color.ColorProfileRepository
+import dk.babyapp.data.color.normalizedHex
 import dk.babyapp.data.profile.ChildProfile
 import dk.babyapp.data.profile.ChildProfileRepository
 import dk.babyapp.data.profile.ProfileImageStorage
@@ -41,9 +44,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 data class AppUiState(
     val preferences: AppPreferences = AppPreferences(),
@@ -53,6 +60,7 @@ data class AppUiState(
     val parentLinks: List<ChildParentLink> = emptyList(),
     val careProviders: List<CareProvider> = emptyList(),
     val careEvents: List<CareEventEntity> = emptyList(),
+    val colorProfiles: List<ColorProfile> = emptyList(),
 ) {
     val activeChild: ChildProfile?
         get() = profiles.firstOrNull { it.id == preferences.activeChildId } ?: profiles.firstOrNull()
@@ -73,10 +81,13 @@ class AppViewModel @Inject constructor(
     private val parentRepository: ParentProfileRepository,
     private val careEventRepository: CareEventRepository,
     private val timerNotifications: TimerNotificationController,
+    private val colorProfileRepository: ColorProfileRepository,
 ) : ViewModel() {
+    private val colorProfileJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
     val state: StateFlow<AppUiState> = combine(
         preferencesRepository.preferences, profilesRepository.profiles, parentRepository.parents,
         parentRepository.links, profilesRepository.careProviders, careEventRepository.events,
+        colorProfileRepository.profiles,
     ) { values ->
         @Suppress("UNCHECKED_CAST")
         AppUiState(
@@ -87,6 +98,7 @@ class AppViewModel @Inject constructor(
             parentLinks = values[3] as List<ChildParentLink>,
             careProviders = values[4] as List<CareProvider>,
             careEvents = values[5] as List<CareEventEntity>,
+            colorProfiles = values[6] as List<ColorProfile>,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
 
@@ -211,6 +223,44 @@ class AppViewModel @Inject constructor(
     fun restoreTimerNotification(event: CareEventEntity?) { if (event != null && event.endedAt == null) timerNotifications.show(event.id) }
     fun dismissGettingStarted() = viewModelScope.launch { preferencesRepository.markGettingStartedSeen() }
 
+    fun saveColorProfile(profile: ColorProfile, onComplete: () -> Unit = {}) = viewModelScope.launch {
+        colorProfileRepository.save(profile)
+        onComplete()
+    }
+
+    fun deleteColorProfile(id: String, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
+        if (state.value.profiles.any { it.colorTheme == id }) {
+            onResult(false)
+        } else {
+            colorProfileRepository.delete(id)
+            onResult(true)
+        }
+    }
+
+    fun moveColorProfile(id: String, direction: Int) = viewModelScope.launch {
+        colorProfileRepository.move(id, direction)
+    }
+
+    fun exportColorProfiles(): String = colorProfileJson.encodeToString(state.value.colorProfiles)
+
+    fun importColorProfiles(value: String, onResult: (Boolean) -> Unit) = viewModelScope.launch {
+        val imported = runCatching {
+            colorProfileJson.decodeFromString<List<ColorProfile>>(value)
+        }.getOrNull()
+        val valid = imported?.takeIf { profiles ->
+            val usedIds = state.value.profiles.map { it.colorTheme }.toSet()
+            profiles.isNotEmpty() && profiles.map { it.id }.toSet().containsAll(usedIds) && profiles.map { it.id }.distinct().size == profiles.size && profiles.all { profile ->
+                profile.id.isNotBlank() && profile.name.isNotBlank() && listOf(
+                    profile.background, profile.primary, profile.primaryContainer, profile.secondary, profile.tertiary,
+                ).all { it.normalizedHex() != null }
+            }
+        }
+        if (valid == null) onResult(false) else {
+            colorProfileRepository.replaceAll(valid)
+            onResult(true)
+        }
+    }
+
     fun createDeveloperTestFamily(onComplete: () -> Unit = {}) = viewModelScope.launch {
         val childId = "developer-test-child-freja"
         val child = ChildProfile(
@@ -234,7 +284,7 @@ class AppViewModel @Inject constructor(
             allergies = "Ingen kendte allergier",
             medicalNotes = "Dette er en testprofil og indeholder ikke rigtige helbredsoplysninger.",
             avatar = ProfileAvatar.Bunny,
-            colorTheme = ChildColorTheme.Lavender,
+            colorTheme = ChildColorTheme.NeutralLight.name,
         )
         profilesRepository.save(child)
         profilesRepository.setCareProviders(
@@ -262,6 +312,23 @@ class AppViewModel @Inject constructor(
             CareEventEntity(id = "developer-event-pump", childId = childId, type = CareEventType.Pumping, startedAt = now - 5 * 60 * 60 * 1_000, endedAt = now - 5 * 60 * 60 * 1_000 + 15 * 60 * 1_000, leftSeconds = 900, pumpedAmountMl = 85),
         ).forEach { careEventRepository.save(it) }
         preferencesRepository.setActiveChild(childId)
+        onComplete()
+    }
+
+    fun createDeveloperPaletteChildren(onComplete: () -> Unit = {}) = viewModelScope.launch {
+        val colorProfiles = colorProfileRepository.profiles.first()
+        colorProfiles.forEach { profile ->
+            profilesRepository.save(
+                ChildProfile(
+                    id = "developer-palette-${profile.id}",
+                    name = profile.name,
+                    birthDate = LocalDate.now().minusMonths(1),
+                    sex = BiologicalSex.PreferNotToSay,
+                    colorTheme = profile.id,
+                ),
+            )
+        }
+        colorProfiles.firstOrNull()?.let { preferencesRepository.setActiveChild("developer-palette-${it.id}") }
         onComplete()
     }
 

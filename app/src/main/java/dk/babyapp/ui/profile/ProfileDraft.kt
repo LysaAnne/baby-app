@@ -46,7 +46,7 @@ data class ProfileDraft(
     val medicalNotes: String = "",
     val photoFileName: String? = null,
     val avatar: ProfileAvatar = ProfileAvatar.Bear,
-    val colorTheme: ChildColorTheme = ChildColorTheme.Sage,
+    val colorTheme: String = ChildColorTheme.NeutralLight.name,
     val parentIds: Set<String> = emptySet(),
     val careProviders: List<CareProvider> = emptyList(),
 )

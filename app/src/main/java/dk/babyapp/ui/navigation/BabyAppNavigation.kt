@@ -43,6 +43,7 @@ import dk.babyapp.ui.OnboardingSettings
 import dk.babyapp.data.profile.ParentProfile
 import dk.babyapp.data.profile.ChildParentLink
 import dk.babyapp.data.profile.CareProvider
+import dk.babyapp.data.color.ColorProfile
 import android.net.Uri
 import java.io.File
 import dk.babyapp.ui.screen.PlaceholderScreen
@@ -79,6 +80,7 @@ fun BabyAppNavigation(
     onDeleteParent: (ParentProfile) -> Unit = {},
     careProviders: List<CareProvider> = emptyList(),
     careEvents: List<CareEventEntity> = emptyList(),
+    colorProfiles: List<ColorProfile> = emptyList(),
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
     onStartPumping: (String) -> Unit = {},
     onToggleTimer: (CareEventEntity) -> Unit = {},
@@ -91,6 +93,12 @@ fun BabyAppNavigation(
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
     onCreateDeveloperTestFamily: (() -> Unit) -> Unit = { it() },
+    onCreateDeveloperPaletteChildren: (() -> Unit) -> Unit = { it() },
+    onSaveColorProfile: (ColorProfile) -> Unit = {},
+    onDeleteColorProfile: (String, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
+    onMoveColorProfile: (String, Int) -> Unit = { _, _ -> },
+    exportColorProfiles: () -> String = { "[]" },
+    importColorProfiles: (String, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
     onDismissGettingStarted: () -> Unit = {},
 ) {
     val navController = rememberNavController()
@@ -242,11 +250,25 @@ fun BabyAppNavigation(
                     onSaveParent = onSaveParent,
                     onDeleteParent = onDeleteParent,
                     careProviders = careProviders,
+                    colorProfiles = colorProfiles,
                     requestedEditChildId = requestedEditChildId,
                     onEditRequestHandled = { requestedEditChildId = null },
                 )
             }
         }
     }
-    if (settingsOpen) SettingsDialog(preferences, onUpdateSettings, onCreateDeveloperTestFamily) { settingsOpen = false }
+    if (settingsOpen) SettingsDialog(
+        preferences = preferences,
+        onUpdate = onUpdateSettings,
+        onCreateDeveloperTestFamily = onCreateDeveloperTestFamily,
+        onCreateDeveloperPaletteChildren = onCreateDeveloperPaletteChildren,
+        colorProfiles = colorProfiles,
+        usedColorProfileIds = profiles.map { it.colorTheme }.toSet(),
+        onSaveColorProfile = onSaveColorProfile,
+        onDeleteColorProfile = onDeleteColorProfile,
+        onMoveColorProfile = onMoveColorProfile,
+        exportColorProfiles = exportColorProfiles,
+        importColorProfiles = importColorProfiles,
+        onDismiss = { settingsOpen = false },
+    )
 }

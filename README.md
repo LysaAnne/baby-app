@@ -116,7 +116,7 @@ A persistent add action provides access to all record types. The selected child 
 - Optional blood type
 - Child-specific color and theme
 - Safe child switching that prevents recording for the wrong profile
-- In-app settings for Danish/English, metric/imperial measurements, region, and theme
+- In-app settings for measurement units and developer testing tools
 
 ### Feeding
 
@@ -359,15 +359,23 @@ Cloud collaboration is planned after the offline app is stable.
 
 ### Customization
 
-- Curated color themes
-- Light, dark, and automatic mode
+- Twenty-two child-specific color profiles: improved neutral defaults, light/dark baby blue and baby pink profiles, pastel yellow, and fifteen inspiration-based palettes
+- A fixed light or dark appearance chosen as part of each child’s color profile
 - Extra-dim night-feeding mode
-- Child-specific accent colors
+- App-wide colors that follow the currently selected child, with accessible light and dark variants
 - Profile photos and illustrated avatars
 - Reorderable quick actions
 - Configurable dashboard cards
 - Compact and comfortable display density
 - Danish and English
+
+#### Editing child colour profiles
+
+Debug builds include a visual editor at **Settings → Developer tools → Edit colour profiles**. A developer can create, rename, duplicate, recolour, reorder, switch between light/dark appearance, and delete unused profiles without editing Kotlin. Each profile contains one background and exactly four design colours with a visual HSV picker, optional HEX input, and live component preview. Material roles reuse those exact colours; no additional palette shades are calculated. A full-screen **Preview** action renders a representative Today dashboard with the unsaved draft palette. Changes and ordering are stored locally and reflected in the child-profile picker. Profiles currently assigned to a child cannot be deleted.
+
+The initial app ships with four closely related light profiles: **Salvie** (the default), **Solgul**, **Lyserød**, and **Lyseblå**. The developer editor remains available for experimentation and later additions.
+
+The complete profile collection can be exported and imported as `child_color_profiles.json`. To ship edited profiles as defaults, place the exported file at `app/src/main/assets/child_color_profiles.json`; clean installations load that bundled file, while installations with local edits retain their local copy. The original Kotlin definitions remain a safe fallback when no bundled JSON exists.
 
 The design should use a soft Scandinavian visual style, rounded surfaces, calm colors, accessible contrast, large tap targets, and limited friendly illustration. Important health information must remain clear and serious.
 

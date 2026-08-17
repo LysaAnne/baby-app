@@ -13,6 +13,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dk.babyapp.core.logging.AndroidAppLogger
 import dk.babyapp.core.logging.AppLogger
 import dk.babyapp.data.AppDatabase
+import dk.babyapp.data.color.ColorProfileRepository
+import dk.babyapp.data.color.DataStoreColorProfileRepository
 import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import dk.babyapp.data.profile.ChildProfileDao
@@ -43,6 +45,12 @@ abstract class CoreModule {
     abstract fun bindPreferencesRepository(
         implementation: DataStoreAppPreferencesRepository,
     ): AppPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindColorProfileRepository(
+        implementation: DataStoreColorProfileRepository,
+    ): ColorProfileRepository
 
     @Binds
     @Singleton

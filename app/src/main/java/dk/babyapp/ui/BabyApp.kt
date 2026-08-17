@@ -13,10 +13,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dk.babyapp.data.preferences.ThemePreference
 import dk.babyapp.ui.navigation.BabyAppNavigation
 import dk.babyapp.ui.onboarding.OnboardingScreen
-import dk.babyapp.ui.theme.AppThemeMode
 import dk.babyapp.ui.theme.BabyAppTheme
 
 @Composable
@@ -29,12 +27,9 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("da"))
         }
     }
-    val themeMode = when (state.preferences.theme) {
-        ThemePreference.System -> AppThemeMode.System
-        ThemePreference.Light -> AppThemeMode.Light
-        ThemePreference.Dark -> AppThemeMode.Dark
-    }
-    BabyAppTheme(themeMode = themeMode, childColorTheme = state.activeChild?.colorTheme) {
+    val activeColorProfile = state.activeChild?.colorTheme?.let { id -> state.colorProfiles.firstOrNull { it.id == id } }
+        ?: state.colorProfiles.firstOrNull()
+    BabyAppTheme(childColorTheme = activeColorProfile) {
         Surface(modifier = Modifier.fillMaxSize()) {
             when {
                 !state.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -57,6 +52,7 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onDeleteParent = viewModel::deleteParent,
                     careProviders = state.careProviders,
                     careEvents = state.careEvents,
+                    colorProfiles = state.colorProfiles,
                     onStartBreastfeeding = viewModel::startBreastfeeding,
                     onStartPumping = viewModel::startPumping,
                     onToggleTimer = viewModel::toggleTimer,
@@ -69,6 +65,12 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onDeleteCareEvent = viewModel::deleteCareEvent,
                     onUpdateQuickActions = viewModel::updateQuickActions,
                     onCreateDeveloperTestFamily = viewModel::createDeveloperTestFamily,
+                    onCreateDeveloperPaletteChildren = viewModel::createDeveloperPaletteChildren,
+                    onSaveColorProfile = { viewModel.saveColorProfile(it) },
+                    onDeleteColorProfile = viewModel::deleteColorProfile,
+                    onMoveColorProfile = viewModel::moveColorProfile,
+                    exportColorProfiles = viewModel::exportColorProfiles,
+                    importColorProfiles = viewModel::importColorProfiles,
                     onDismissGettingStarted = viewModel::dismissGettingStarted,
                 )
             }

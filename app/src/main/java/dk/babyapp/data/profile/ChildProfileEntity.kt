@@ -89,7 +89,7 @@ fun ChildProfile.toEntity() = ChildProfileEntity(
     medicalNotes = medicalNotes,
     photoFileName = photoFileName,
     avatar = avatar.name,
-    colorTheme = colorTheme.name,
+    colorTheme = colorTheme,
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
 )
@@ -128,7 +128,7 @@ fun ChildProfileEntity.toModel() = ChildProfile(
     medicalNotes = medicalNotes,
     photoFileName = photoFileName,
     avatar = enumValueOrDefault(avatar, ProfileAvatar.Bear),
-    colorTheme = enumValueOrDefault(colorTheme, ChildColorTheme.Sage),
+    colorTheme = colorTheme,
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
 )

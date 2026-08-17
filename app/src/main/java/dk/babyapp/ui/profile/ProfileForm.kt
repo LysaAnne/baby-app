@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
@@ -62,9 +65,10 @@ import dk.babyapp.data.profile.BiologicalSex
 import dk.babyapp.data.profile.BirthStatus
 import dk.babyapp.data.preferences.MeasurementUnits
 import dk.babyapp.data.profile.ProfileAvatar
-import dk.babyapp.data.profile.ChildColorTheme
+import dk.babyapp.data.color.ColorProfile
 import dk.babyapp.data.profile.CareProvider
 import dk.babyapp.data.profile.CareProviderType
+import dk.babyapp.ui.theme.childThemeSwatches
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -80,6 +84,7 @@ fun ProfileForm(
     photoFile: File?,
     onPhotoSelected: suspend (Uri) -> String,
     units: MeasurementUnits = MeasurementUnits.Metric,
+    colorProfiles: List<ColorProfile>,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -148,7 +153,7 @@ fun ProfileForm(
                 }
             }
         }
-        item { ChildThemePicker(draft.colorTheme) { onDraftChange(draft.copy(colorTheme = it)) } }
+        item { ChildThemePicker(draft.colorTheme, colorProfiles) { onDraftChange(draft.copy(colorTheme = it)) } }
         item { Text(stringResource(R.string.basic_information), style = MaterialTheme.typography.titleLarge) }
         item { FormField(draft.name, { onDraftChange(draft.copy(name = it)) }, R.string.child_name, true) }
         item { FormField(draft.nickname, { onDraftChange(draft.copy(nickname = it)) }, R.string.nickname) }
@@ -288,38 +293,35 @@ private fun BirthStatusDropdown(value: BirthStatus, onChange: (BirthStatus) -> U
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChildThemeDropdown(value: ChildColorTheme, onChange: (ChildColorTheme) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    @Composable fun label(theme: ChildColorTheme) = stringResource(when(theme) { ChildColorTheme.Sage -> R.string.color_sage; ChildColorTheme.Rose -> R.string.color_rose; ChildColorTheme.Sky -> R.string.color_sky; ChildColorTheme.Lavender -> R.string.color_lavender; ChildColorTheme.Sunshine -> R.string.color_sunshine })
-    ExposedDropdownMenuBox(expanded, { expanded = it }) {
-        OutlinedTextField(value = label(value), onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable), label = { Text(stringResource(R.string.child_color_theme)) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) })
-        ExposedDropdownMenu(expanded, { expanded = false }) { ChildColorTheme.entries.forEach { theme -> DropdownMenuItem(text = { Text(label(theme)) }, onClick = { onChange(theme); expanded = false }) } }
-    }
-}
-
-@Composable
-private fun ChildThemePicker(value: ChildColorTheme, onChange: (ChildColorTheme) -> Unit) {
-    fun color(theme: ChildColorTheme) = when (theme) {
-        ChildColorTheme.Sage -> Color(0xFF91B99B)
-        ChildColorTheme.Rose -> Color(0xFFE7A2AE)
-        ChildColorTheme.Sky -> Color(0xFF8FC3E5)
-        ChildColorTheme.Lavender -> Color(0xFFB59DDB)
-        ChildColorTheme.Sunshine -> Color(0xFFE7C85F)
-    }
+private fun ChildThemePicker(value: String, profiles: List<ColorProfile>, onChange: (String) -> Unit) {
     Text(stringResource(R.string.child_color_theme), style = MaterialTheme.typography.labelLarge)
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ChildColorTheme.entries.forEach { theme ->
-            Surface(
-                onClick = { onChange(theme) },
-                modifier = Modifier.size(42.dp),
-                shape = CircleShape,
-                color = color(theme),
-                border = BorderStroke(if (theme == value) 3.dp else 1.dp, if (theme == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
-            ) {}
+    listOf(false, true).forEach { dark ->
+        Text(
+            stringResource(if (!dark) R.string.light_color_profiles else R.string.dark_color_profiles),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(profiles.filter { it.isDark == dark }) { theme ->
+                val label = theme.name
+                Surface(
+                    onClick = { onChange(theme.id) },
+                    modifier = Modifier.size(50.dp).semantics { contentDescription = label },
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(if (theme.id == value) 3.dp else 1.dp, if (theme.id == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
+                ) {
+                    Row(Modifier.clip(CircleShape)) {
+                        childThemeSwatches(theme).forEach { swatch ->
+                            Surface(Modifier.size(width = 13.dp, height = 50.dp), color = swatch) {}
+                        }
+                    }
+                }
+            }
         }
     }
+    Text(stringResource(R.string.selected_color_theme, profiles.firstOrNull { it.id == value }?.name ?: stringResource(R.string.color_neutral_light)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
