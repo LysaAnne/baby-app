@@ -644,3 +644,7 @@ The project owner should run these commands only after reviewing and testing the
 - Current roadmap stage: Stage 4 implemented; awaiting instruction for Stage 5
 
 Stage 4 follow-up behavior: paused timers remain visible and retain every active time interval. Today shows five collapsed recent records with a direct route to Timeline. Timeline is scoped to the globally selected child; records and previous days are collapsed by default, while today stays open. Completing a quick diaper or timed record opens its editor immediately for optional details.
+
+An initial Stage 7 health module is available under **Manual entry**. Parents can record preventive examinations, GP and hospital visits, health-visitor or midwife visits, specialist and dental visits, other care, and vaccinations. Existing child care providers can be reused. Danish preventive examinations and national childhood vaccinations are optional templates inside the individual registration form; choosing one fills its title and dose but never creates future appointments. Every item remains an editable local parent record and the UI explicitly states that there is no connection to sundhed.dk, MinSundhed, a GP, or a hospital. Schedule content was reviewed against Sundhedsstyrelsen, Statens Serum Institut, and sundhed.dk on 17 August 2026.
+
+The highlighted **Manuel registrering** card is the common entry point for past and detailed events. Health visits and vaccinations use date-only input, while their standard programme, visit type, provider, and status choices use compact dropdown menus.

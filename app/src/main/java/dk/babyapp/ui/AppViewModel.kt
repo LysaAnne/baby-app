@@ -276,6 +276,10 @@ class AppViewModel @Inject constructor(
         if (overlaps) onResult(false) else { careEventRepository.save(event); onResult(true) }
     }
     fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.softDelete(event) }
+    fun saveHealthRecord(event: CareEventEntity, onComplete: () -> Unit = {}) = viewModelScope.launch {
+        careEventRepository.save(event)
+        onComplete()
+    }
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
     }

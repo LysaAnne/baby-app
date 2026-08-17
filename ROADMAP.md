@@ -260,7 +260,7 @@ A stage is complete only when:
 
 ## Stage 7 — Health records and Danish healthcare schedule
 
-**Status:** `[ ] Not started`
+**Status:** `[~] Partially implemented`
 
 **Outcome:** The app can organize symptoms, medicine, supplements, appointments, and the Danish preventive-care schedule without acting as a diagnostic tool.
 
@@ -288,6 +288,8 @@ A stage is complete only when:
 - [ ] The UI never implies connection to sundhed.dk, MinSundhed, a GP, or a hospital.
 - [ ] Relevant health data appears in timeline and export.
 - [ ] Health-domain tests pass.
+
+Implemented ahead of the full stage: reusable-provider health visits, vaccination records, the seven Danish preventive child examinations, the national childhood vaccination schedule, editable status and appointment dates, timeline integration, official-source metadata, and a clear local-record disclaimer. Symptoms, medication, supplements, reminders, and export remain for the full Stage 7 implementation.
 
 ---
 
@@ -583,6 +585,9 @@ Use this table whenever a requested feature changes the agreed plan.
 | 2026-08-17 | Added persisted drag ordering for children and family members, simplified the Family headings, and reserved active-child selection for the global selector. | 2–3 | Complete |
 | 2026-08-17 | Implemented sleep timers, sleep details and overlap protection, persistent sleep controls, and a unified lazy timeline with child, event-type, and date filters. | 4 | Complete |
 | 2026-08-17 | Kept paused timers visible, persisted timer intervals, limited Today to five collapsible records, scoped Timeline to the active child, collapsed older days, and opened completed quick records for immediate editing. | 4 | Complete |
+| 2026-08-17 | Implemented the health-visit and Danish preventive-care subset of Stage 7 early, including reusable providers, vaccination details, official schedule templates, source links, disclaimers, and timeline records. | 7 | Partial |
+| 2026-08-17 | Moved health records into Manual entry and changed Danish schedules from generated future appointments to opt-in templates for one user-created record at a time. | 7 | Partial |
+| 2026-08-17 | Renamed and highlighted Manual registration, simplified health forms with dropdown menus, and made health visits and vaccinations date-only records. | 7 | Partial |
 | 2026-08-17 | Increased the neutral profiles’ green contrast and added light/dark baby-blue and baby-pink profiles plus a pastel-yellow profile. | 2–3 | Complete |
 | 2026-08-17 | Centralized all editable palette HEX codes in one documented file and added an in-app developer preview showing every colour role for every profile. | 2–3 | Complete |
 | 2026-08-17 | Replaced manual palette editing with a debug-only visual colour-profile manager supporting HSV/HEX editing, live previews, dynamic create/rename/duplicate/delete, local persistence, stable child links, and JSON import/export for bundled defaults. | 2–3 | Complete |

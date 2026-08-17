@@ -5,12 +5,14 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep }
+enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep, HealthVisit, Vaccination }
 enum class BreastSide { Left, Right }
 enum class BottleContent { BreastMilk, Formula, Water, Other }
 enum class DiaperType { Wet, Dirty, Both, Dry }
 enum class SleepType { Nap, Night }
 enum class SleepQuality { Restful, Mixed, Restless }
+enum class HealthVisitType { PreventiveExam, GpVisit, HealthVisitor, Midwife, Hospital, Specialist, Dental, Other }
+enum class HealthRecordStatus { Scheduled, Completed, Postponed, Cancelled, Declined }
 
 @Entity(
     tableName = "care_events",
@@ -37,6 +39,22 @@ data class CareEventEntity(
     val awakenings: Int? = null,
     val sleepQuality: SleepQuality? = null,
     val timerSegments: String = "",
+    val healthVisitType: HealthVisitType? = null,
+    val healthStatus: HealthRecordStatus? = null,
+    val providerId: String? = null,
+    val providerDisplayName: String = "",
+    val healthTitle: String = "",
+    val healthReason: String = "",
+    val healthObservations: String = "",
+    val healthAdvice: String = "",
+    val healthQuestions: String = "",
+    val followUp: String = "",
+    val vaccineName: String = "",
+    val vaccineDose: String = "",
+    val vaccineBatchNumber: String = "",
+    val injectionSite: String = "",
+    val reactionNotes: String = "",
+    val officialScheduleKey: String? = null,
     val observation: String = "",
     val notes: String = "",
     val deletedAt: Long? = null,

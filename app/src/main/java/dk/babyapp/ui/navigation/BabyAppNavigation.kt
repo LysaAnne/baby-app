@@ -96,6 +96,7 @@ fun BabyAppNavigation(
     onAddDiaper: (String, Long, DiaperType, String, String, (CareEventEntity) -> Unit) -> Unit = { _, _, _, _, _, _ -> },
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
+    onSaveHealthRecord: (CareEventEntity) -> Unit = {},
     onUpdateCareEvent: (CareEventEntity, (Boolean) -> Unit) -> Unit = { _, result -> result(true) },
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
@@ -186,6 +187,7 @@ fun BabyAppNavigation(
             composable<AppDestination.Today> {
                 TodayScreen(
                     childId = activeChild?.id, events = careEvents, contentPadding = contentPadding, preferences = preferences,
+                    careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
@@ -194,6 +196,7 @@ fun BabyAppNavigation(
                     onUpdate = onUpdateCareEvent, onDelete = onDeleteCareEvent,
                     onUpdateQuickActions = onUpdateQuickActions,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
+                    onSaveHealthRecord = onSaveHealthRecord,
                 )
                 if (activeChild == null && !preferences.hasSeenGettingStarted) {
                     androidx.compose.material3.AlertDialog(
@@ -213,6 +216,7 @@ fun BabyAppNavigation(
                 TimelineScreen(
                     activeChildId = activeChild?.id,
                     events = careEvents,
+                    careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     contentPadding = contentPadding,
                     onAddSleep = onAddSleep,
                     onAddBottle = onAddBottle,

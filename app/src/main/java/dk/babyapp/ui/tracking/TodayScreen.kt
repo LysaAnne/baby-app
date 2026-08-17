@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -62,6 +63,7 @@ import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.tracking.segmentIntervals
 import dk.babyapp.data.preferences.AppPreferences
+import dk.babyapp.data.profile.CareProvider
 import java.text.DateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -76,6 +78,7 @@ fun TodayScreen(
     contentPadding: PaddingValues,
     preferences: AppPreferences,
     overdueDueDate: LocalDate? = null,
+    careProviders: List<CareProvider> = emptyList(),
     onOpenFamily: () -> Unit = {},
     onStartBreastfeeding: (String, BreastSide) -> Unit,
     onStartPumping: (String) -> Unit,
@@ -86,6 +89,7 @@ fun TodayScreen(
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit,
     onAddDiaper: (String, Long, DiaperType, String, String, (CareEventEntity) -> Unit) -> Unit,
     onOpenTimeline: () -> Unit,
+    onSaveHealthRecord: (CareEventEntity) -> Unit,
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit,
     onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
@@ -198,16 +202,20 @@ fun TodayScreen(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 ) {
+                    Icon(Icons.Outlined.EditNote, null, Modifier.padding(end = 12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Manuel indtastning", style = MaterialTheme.typography.titleLarge)
-                        Text("Tilføj en tidligere registrering", style = MaterialTheme.typography.bodyMedium)
+                        Text("Manuel registrering", style = MaterialTheme.typography.titleLarge)
+                        Text("Registrér hændelser med dato, detaljer og egne noter", style = MaterialTheme.typography.bodyMedium)
                     }
                     Box {
                         IconButton(enabled = childId != null, onClick = { manualMenuOpen = true }) { Icon(Icons.Outlined.Add, "Vælg manuel registrering") }
@@ -217,6 +225,8 @@ fun TodayScreen(
                             DropdownMenuItem(text = { Text("Pumpning") }, onClick = { manualMenuOpen = false; dialog = EditorKind.ManualPumping })
                             DropdownMenuItem(text = { Text("Ble") }, onClick = { manualMenuOpen = false; dialog = EditorKind.Diaper })
                             DropdownMenuItem(text = { Text("Søvn") }, onClick = { manualMenuOpen = false; dialog = EditorKind.Sleep })
+                            DropdownMenuItem(text = { Text("Sundhedsbesøg") }, onClick = { manualMenuOpen = false; dialog = EditorKind.HealthVisit })
+                            DropdownMenuItem(text = { Text("Vaccination") }, onClick = { manualMenuOpen = false; dialog = EditorKind.Vaccination })
                         }
                     }
                 }
@@ -244,6 +254,8 @@ fun TodayScreen(
             childId?.let { onAddSleep(it, start, end, type, location, settling, awakenings, quality, notes) { success -> sleepError = !success } }
             dialog = null
         }
+        EditorKind.HealthVisit -> childId?.let { id -> HealthRecordDialog(id, false, careProviders, onDismiss = { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
+        EditorKind.Vaccination -> childId?.let { id -> HealthRecordDialog(id, true, careProviders, onDismiss = { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
     editing?.let { event -> EditEventDialog(event, onDismiss = { editing = null }) { updated ->
@@ -265,7 +277,7 @@ fun TodayScreen(
     )
 }
 
-private enum class EditorKind { Bottle, Diaper, ManualBreastfeeding, ManualPumping, StopPump, Sleep }
+private enum class EditorKind { Bottle, Diaper, ManualBreastfeeding, ManualPumping, StopPump, Sleep, HealthVisit, Vaccination }
 
 @Composable private fun QuickButton(text: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) = FilledTonalButton(modifier = modifier, enabled = enabled, onClick = onClick) { Text(text) }
 
@@ -302,7 +314,12 @@ internal fun EventCard(event: CareEventEntity, onEdit: () -> Unit, onDelete: () 
     Card(Modifier.fillMaxWidth()) { Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Column(Modifier.weight(1f)) {
             Text(eventTitle(event), style = MaterialTheme.typography.titleSmall)
-            Text(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(event.startedAt)))
+            val recordedAt = if (event.type == CareEventType.HealthVisit || event.type == CareEventType.Vaccination) {
+                DateFormat.getDateInstance(DateFormat.SHORT).format(Date(event.startedAt))
+            } else {
+                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(event.startedAt))
+            }
+            Text(recordedAt)
             if (event.isRunning) Text("Kører nu", color = MaterialTheme.colorScheme.primary)
             if (expanded) {
                 Text(eventDetails(event), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -323,13 +340,15 @@ internal fun EventCard(event: CareEventEntity, onEdit: () -> Unit, onDelete: () 
 
 private fun formatClock(value: Long) = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))
 
-internal fun eventTitle(event: CareEventEntity) = when (event.type) { CareEventType.Breastfeeding -> "Amning"; CareEventType.Bottle -> "Flaske"; CareEventType.Pumping -> "Pumpning"; CareEventType.Diaper -> "Ble – ${diaperLabel(event.diaperType)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur" }
+internal fun eventTitle(event: CareEventEntity) = when (event.type) { CareEventType.Breastfeeding -> "Amning"; CareEventType.Bottle -> "Flaske"; CareEventType.Pumping -> "Pumpning"; CareEventType.Diaper -> "Ble – ${diaperLabel(event.diaperType)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.HealthVisit -> event.healthTitle.ifBlank { "Sundhedsbesøg" }; CareEventType.Vaccination -> event.vaccineName.ifBlank { "Vaccination" } }
 private fun eventDetails(event: CareEventEntity) = when (event.type) {
     CareEventType.Breastfeeding -> "${formatDuration(event.elapsedSeconds())} · V ${formatDuration(event.leftSeconds)} · H ${formatDuration(event.rightSeconds)}"
     CareEventType.Bottle -> "${event.amountConsumedMl ?: 0} af ${event.amountOfferedMl ?: 0} ml · ${bottleLabel(event.bottleContent)}"
     CareEventType.Pumping -> "${formatDuration(event.elapsedSeconds())}${event.pumpedAmountMl?.let { " · $it ml" } ?: ""}"
     CareEventType.Diaper -> listOf(event.observation, event.notes).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Registreret" }
     CareEventType.Sleep -> listOf(formatDuration(event.elapsedSeconds()), event.sleepLocation, event.sleepQuality?.let(::sleepQualityLabel), event.notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.HealthVisit -> listOf(event.healthStatus?.let(::statusLabel), event.providerDisplayName, event.healthReason, event.healthObservations, event.healthAdvice, event.followUp, event.notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Vaccination -> listOf(event.healthStatus?.let(::statusLabel), event.vaccineDose, event.vaccineBatchNumber, event.injectionSite, event.reactionNotes, event.notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
 }
 private fun formatDuration(seconds: Long) = "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60)
 private fun sideLabel(side: BreastSide?) = if (side == BreastSide.Right) "højre" else "venstre"
@@ -338,7 +357,7 @@ private fun bottleLabel(content: BottleContent?) = when (content) { BottleConten
 internal fun sleepQualityLabel(quality: SleepQuality) = when (quality) { SleepQuality.Restful -> "Rolig"; SleepQuality.Mixed -> "Blandet"; SleepQuality.Restless -> "Urolig" }
 
 @Composable
-private fun DateTimeButton(value: Long, onChange: (Long) -> Unit) {
+internal fun DateTimeButton(value: Long, onChange: (Long) -> Unit) {
     val context = LocalContext.current
     OutlinedButton(onClick = {
         val calendar = java.util.Calendar.getInstance().apply { timeInMillis = value }

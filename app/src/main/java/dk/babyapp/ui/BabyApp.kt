@@ -65,6 +65,7 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onAddDiaper = viewModel::addDiaper,
                     onAddManualTimer = viewModel::addManualTimer,
                     onAddSleep = viewModel::addSleep,
+                    onSaveHealthRecord = { viewModel.saveHealthRecord(it) },
                     onUpdateCareEvent = viewModel::updateCareEvent,
                     onDeleteCareEvent = viewModel::deleteCareEvent,
                     onUpdateQuickActions = viewModel::updateQuickActions,

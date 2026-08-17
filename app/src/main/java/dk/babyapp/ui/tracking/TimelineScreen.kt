@@ -39,6 +39,7 @@ import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.DiaperType
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
+import dk.babyapp.data.profile.CareProvider
 import java.text.DateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -53,6 +54,7 @@ private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep }
 fun TimelineScreen(
     activeChildId: String?,
     events: List<CareEventEntity>,
+    careProviders: List<CareProvider>,
     contentPadding: PaddingValues,
     onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit,
@@ -143,9 +145,15 @@ fun TimelineScreen(
     if (addKind == AddKind.Diaper) DiaperDialog({ addKind = null }) { time, type, observation, notes -> activeChildId?.let { onAddDiaper(it, time, type, observation, notes) {} }; addKind = null }
     if (addKind == AddKind.Breastfeeding) ManualTimerDialog(CareEventType.Breastfeeding, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
     if (addKind == AddKind.Pumping) ManualTimerDialog(CareEventType.Pumping, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
-    editing?.let { event -> EditEventDialog(event, { editing = null }) { updated ->
-        onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
-    } }
+    editing?.let { event ->
+        if (event.type == CareEventType.HealthVisit || event.type == CareEventType.Vaccination) {
+            HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, { editing = null }) { updated ->
+                onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
+            }
+        } else EditEventDialog(event, { editing = null }) { updated ->
+            onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
+        }
+    }
     deleting?.let { event -> AlertDialog(
         onDismissRequest = { deleting = null }, title = { Text("Slet registrering?") },
         text = { Text("Registreringen fjernes fra tidslinjen, men bevares internt.") },
@@ -170,4 +178,6 @@ private fun typeLabel(type: CareEventType) = when (type) {
     CareEventType.Pumping -> "Pumpning"
     CareEventType.Diaper -> "Ble"
     CareEventType.Sleep -> "Søvn"
+    CareEventType.HealthVisit -> "Sundhedsbesøg"
+    CareEventType.Vaccination -> "Vaccination"
 }
