@@ -3,11 +3,14 @@ package dk.babyapp.ui.navigation
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Settings
@@ -43,6 +46,20 @@ import dk.babyapp.data.profile.CareProvider
 import android.net.Uri
 import java.io.File
 import dk.babyapp.ui.screen.PlaceholderScreen
+import dk.babyapp.data.tracking.BottleContent
+import dk.babyapp.data.tracking.BreastSide
+import dk.babyapp.data.tracking.CareEventEntity
+import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.ui.tracking.TodayScreen
+import java.time.LocalDate
+import dk.babyapp.domain.shouldShowDueDateReminder
+
+internal fun shouldReturnToTodayAfterProfileSave(
+    profilesWereEmpty: Boolean,
+    draftId: String?,
+    error: ProfileValidationError?,
+): Boolean = profilesWereEmpty && draftId == null && error == null
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,11 +78,26 @@ fun BabyAppNavigation(
     onSaveParent: (ParentProfile, Set<String>) -> Unit = { _, _ -> },
     onDeleteParent: (ParentProfile) -> Unit = {},
     careProviders: List<CareProvider> = emptyList(),
+    careEvents: List<CareEventEntity> = emptyList(),
+    onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
+    onStartPumping: (String) -> Unit = {},
+    onToggleTimer: (CareEventEntity) -> Unit = {},
+    onSwitchSide: (CareEventEntity) -> Unit = {},
+    onStopTimer: (CareEventEntity, Int?) -> Unit = { _, _ -> },
+    onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit = { _, _, _, _, _, _ -> },
+    onAddDiaper: (String, Long, DiaperType, String, String) -> Unit = { _, _, _, _, _ -> },
+    onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
+    onUpdateCareEvent: (CareEventEntity) -> Unit = {},
+    onDeleteCareEvent: (CareEventEntity) -> Unit = {},
+    onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
+    onCreateDeveloperTestFamily: (() -> Unit) -> Unit = { it() },
+    onDismissGettingStarted: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     var settingsOpen by remember { mutableStateOf(false) }
+    var requestedEditChildId by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -73,24 +105,32 @@ fun BabyAppNavigation(
             var childMenuOpen by remember { mutableStateOf(false) }
             TopAppBar(
                 title = {
-                    androidx.compose.foundation.layout.Column {
-                        Text(text = stringResource(R.string.app_name), style = androidx.compose.material3.MaterialTheme.typography.titleSmall)
-                        Text(text = activeChild?.name ?: stringResource(R.string.no_active_child), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                    Box {
+                        TextButton(
+                            onClick = { childMenuOpen = true },
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        ) {
+                            Text(
+                                text = activeChild?.let { "${it.avatar.symbol} ${it.name}" } ?: stringResource(R.string.no_active_child),
+                                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                            )
+                            Icon(Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.switch_child))
+                        }
+                        DropdownMenu(expanded = childMenuOpen, onDismissRequest = { childMenuOpen = false }) {
+                            profiles.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = { Text("${profile.avatar.symbol} ${profile.name}") },
+                                    onClick = { onSelectChild(profile.id); childMenuOpen = false },
+                                )
+                            }
+                        }
                     }
                 },
                 actions = {
                     IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings)) }
-                    IconButton(onClick = { childMenuOpen = true }) {
-                        Icon(Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.switch_child))
-                    }
-                    DropdownMenu(expanded = childMenuOpen, onDismissRequest = { childMenuOpen = false }) {
-                        profiles.forEach { profile ->
-                            DropdownMenuItem(
-                                text = { Text("${profile.avatar.symbol} ${profile.name}") },
-                                onClick = { onSelectChild(profile.id); childMenuOpen = false },
-                            )
-                        }
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
@@ -106,10 +146,10 @@ fun BabyAppNavigation(
                         onClick = {
                             navController.navigate(destination) {
                                 popUpTo(AppDestination.Today) {
-                                    saveState = true
+                                    saveState = false
                                 }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = false
                             }
                         },
                         icon = {
@@ -129,17 +169,29 @@ fun BabyAppNavigation(
             startDestination = AppDestination.Today,
         ) {
             composable<AppDestination.Today> {
-                if (activeChild == null) {
-                    androidx.compose.foundation.layout.Column(
-                        modifier = androidx.compose.ui.Modifier.padding(contentPadding).padding(24.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
-                    ) {
-                        Text(stringResource(R.string.no_child_registered), style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
-                        androidx.compose.material3.Button(onClick = { navController.navigate(AppDestination.Family) }) { Text(stringResource(R.string.go_to_family)) }
-                    }
-                } else PlaceholderScreen(
-                    title = stringResource(R.string.today_title), description = stringResource(R.string.today_description), contentPadding = contentPadding,
+                TodayScreen(
+                    childId = activeChild?.id, events = careEvents, contentPadding = contentPadding, preferences = preferences,
+                    overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
+                    onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
+                    onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping,
+                    onToggleTimer = onToggleTimer, onSwitchSide = onSwitchSide, onStopTimer = onStopTimer,
+                    onAddBottle = onAddBottle, onAddDiaper = onAddDiaper, onAddManualTimer = onAddManualTimer,
+                    onUpdate = onUpdateCareEvent, onDelete = onDeleteCareEvent,
+                    onUpdateQuickActions = onUpdateQuickActions,
                 )
+                if (activeChild == null && !preferences.hasSeenGettingStarted) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = onDismissGettingStarted,
+                        title = { Text(stringResource(R.string.getting_started_title)) },
+                        text = { Text(stringResource(R.string.getting_started_message)) },
+                        confirmButton = {
+                            androidx.compose.material3.Button(onClick = { onDismissGettingStarted(); navController.navigate(AppDestination.Family) }) {
+                                Text(stringResource(R.string.create_first_child))
+                            }
+                        },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismissGettingStarted) { Text(stringResource(R.string.close)) } },
+                    )
+                }
             }
             composable<AppDestination.Timeline> {
                 PlaceholderScreen(
@@ -168,7 +220,18 @@ fun BabyAppNavigation(
                     activeChildId = activeChild?.id,
                     contentPadding = contentPadding,
                     onSelectChild = onSelectChild,
-                    onSaveProfile = onSaveProfile,
+                    onSaveProfile = { draft, onResult ->
+                        val profilesWereEmpty = profiles.isEmpty()
+                        onSaveProfile(draft) { error ->
+                            onResult(error)
+                            if (shouldReturnToTodayAfterProfileSave(profilesWereEmpty, draft.id, error)) {
+                                navController.navigate(AppDestination.Today) {
+                                    popUpTo(AppDestination.Today) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    },
                     onDeleteProfile = onDeleteProfile,
                     photoFile = photoFile,
                     onPhotoSelected = onPhotoSelected,
@@ -179,9 +242,11 @@ fun BabyAppNavigation(
                     onSaveParent = onSaveParent,
                     onDeleteParent = onDeleteParent,
                     careProviders = careProviders,
+                    requestedEditChildId = requestedEditChildId,
+                    onEditRequestHandled = { requestedEditChildId = null },
                 )
             }
         }
     }
-    if (settingsOpen) SettingsDialog(preferences, onUpdateSettings) { settingsOpen = false }
+    if (settingsOpen) SettingsDialog(preferences, onUpdateSettings, onCreateDeveloperTestFamily) { settingsOpen = false }
 }

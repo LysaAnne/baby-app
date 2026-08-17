@@ -123,5 +123,7 @@ tasks.matching { it.name == "lintAnalyzeDebugUnitTest" }.configureEach {
     mustRunAfter("kaptDebugUnitTestKotlin")
 }
 tasks.matching { it.name == "lintAnalyzeDebugAndroidTest" }.configureEach {
-    mustRunAfter("kaptDebugAndroidTestKotlin")
+    // AGP 9.2 still schedules this task even though checkTestSources is false,
+    // and its FIR analyzer crashes while Room/KAPT Android-test sources compile.
+    enabled = false
 }

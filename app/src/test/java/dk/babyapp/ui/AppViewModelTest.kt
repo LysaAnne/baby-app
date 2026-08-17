@@ -13,6 +13,9 @@ import dk.babyapp.data.profile.ParentProfile
 import dk.babyapp.data.profile.ParentProfileRepository
 import dk.babyapp.data.profile.ChildParentLink
 import dk.babyapp.data.profile.CareProvider
+import dk.babyapp.data.tracking.CareEventEntity
+import dk.babyapp.data.tracking.CareEventRepository
+import dk.babyapp.tracking.TimerNotificationController
 import dk.babyapp.ui.profile.ProfileDraft
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +48,7 @@ class AppViewModelTest {
     fun `completing onboarding saves profile and active selection`() = runTest(dispatcher) {
         val profiles = FakeProfilesRepository()
         val preferences = FakePreferencesRepository()
-        val viewModel = AppViewModel(profiles, preferences, FakePhotoStorage(), FakeParentRepository())
+        val viewModel = AppViewModel(profiles, preferences, FakePhotoStorage(), FakeParentRepository(), FakeCareEventRepository(), FakeTimerNotifications())
         var result: Any? = Unit
 
         viewModel.completeOnboarding(settings = OnboardingSettings(languageTag = "da")) { result = null }
@@ -63,7 +66,7 @@ class AppViewModelTest {
         val second = ChildProfile(name = "Noah", birthDate = java.time.LocalDate.of(2025, 1, 1))
         val profiles = FakeProfilesRepository(listOf(first, second))
         val preferences = FakePreferencesRepository(AppPreferences(true, first.id))
-        val viewModel = AppViewModel(profiles, preferences, FakePhotoStorage(), FakeParentRepository())
+        val viewModel = AppViewModel(profiles, preferences, FakePhotoStorage(), FakeParentRepository(), FakeCareEventRepository(), FakeTimerNotifications())
         val collector = launch { viewModel.state.collect {} }
         advanceUntilIdle()
 
@@ -73,6 +76,35 @@ class AppViewModelTest {
         assertEquals(listOf(second), profiles.items.value)
         assertEquals(second.id, preferences.items.value.activeChildId)
         collector.cancel()
+    }
+
+    @Test
+    fun `developer test family creates linked profiles and sample records`() = runTest(dispatcher) {
+        val profiles = FakeProfilesRepository()
+        val preferences = FakePreferencesRepository(AppPreferences(onboardingCompleted = true))
+        val parents = FakeParentRepository()
+        val events = FakeCareEventRepository()
+        val viewModel = AppViewModel(profiles, preferences, FakePhotoStorage(), parents, events, FakeTimerNotifications())
+
+        viewModel.createDeveloperTestFamily()
+        advanceUntilIdle()
+
+        assertEquals("Freja", profiles.items.value.single().name)
+        assertEquals(4, parents.parents.value.size)
+        assertEquals(4, parents.links.value.size)
+        assertEquals(4, events.items.value.size)
+        assertEquals("developer-test-child-freja", preferences.items.value.activeChildId)
+    }
+
+    @Test
+    fun `dismissing getting started persists the choice`() = runTest(dispatcher) {
+        val preferences = FakePreferencesRepository(AppPreferences(onboardingCompleted = true))
+        val viewModel = AppViewModel(FakeProfilesRepository(), preferences, FakePhotoStorage(), FakeParentRepository(), FakeCareEventRepository(), FakeTimerNotifications())
+
+        viewModel.dismissGettingStarted()
+        advanceUntilIdle()
+
+        assertEquals(true, preferences.items.value.hasSeenGettingStarted)
     }
 }
 
@@ -110,6 +142,10 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
         units: MeasurementUnits,
         theme: ThemePreference,
     ) { items.value = items.value.copy(languageTag = languageTag, region = region, units = units, theme = theme) }
+    override suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) {
+        items.value = items.value.copy(showBreastfeedingQuickAction = showBreastfeeding, showBottleQuickAction = showBottle, showPumpingQuickAction = showPumping, showDiaperQuickAction = showDiaper)
+    }
+    override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }
 }
 
 private class FakePhotoStorage : ProfileImageStorage {
@@ -126,3 +162,13 @@ private class FakeParentRepository : ParentProfileRepository {
     override suspend fun setParents(childId: String, parentIds: Set<String>) { links.value = parentIds.map { ChildParentLink(childId, it) } }
     override suspend fun setChildren(memberId: String, childIds: Set<String>) { links.value = childIds.map { ChildParentLink(it, memberId) } }
 }
+
+private class FakeCareEventRepository : CareEventRepository {
+    val items = MutableStateFlow<List<CareEventEntity>>(emptyList())
+    override val events: Flow<List<CareEventEntity>> = items
+    override suspend fun save(event: CareEventEntity) { items.value = items.value.filterNot { it.id == event.id } + event }
+    override suspend fun get(id: String) = items.value.firstOrNull { it.id == id }
+    override suspend fun activeForChild(childId: String) = items.value.firstOrNull { it.childId == childId && it.isRunning }
+    override suspend fun softDelete(event: CareEventEntity) { items.value = items.value.filterNot { it.id == event.id } }
+}
+private class FakeTimerNotifications : TimerNotificationController { override fun show(eventId: String) = Unit; override fun hide() = Unit }

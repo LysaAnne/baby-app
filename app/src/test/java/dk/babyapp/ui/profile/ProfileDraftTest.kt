@@ -60,4 +60,22 @@ class ProfileDraftTest {
         assertEquals(3402, profile.birthWeightGrams)
         assertEquals(50.8, profile.birthLengthCm!!, 0.001)
     }
+
+    @Test
+    fun `due date and registry information remain when a born child is saved`() {
+        val profile = ProfileDraft(
+            name = "Alma",
+            birthDate = "2026-01-20",
+            dueDate = "2026-01-25",
+            sex = BiologicalSex.Female,
+            fullName = "Alma Test Jensen",
+            registeredAddress = "Testvej 1",
+            nationality = "Dansk",
+        ).toProfile()
+
+        assertEquals(LocalDate.of(2026, 1, 25), profile.dueDate)
+        assertEquals("Alma Test Jensen", profile.fullName)
+        assertEquals("Testvej 1", profile.registeredAddress)
+        assertEquals("Dansk", profile.nationality)
+    }
 }

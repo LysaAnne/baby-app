@@ -24,6 +24,11 @@ import dk.babyapp.data.profile.ParentProfileDao
 import dk.babyapp.data.profile.ParentProfileRepository
 import dk.babyapp.data.profile.DefaultParentProfileRepository
 import dk.babyapp.data.profile.CareProviderDao
+import dk.babyapp.data.tracking.CareEventDao
+import dk.babyapp.data.tracking.CareEventRepository
+import dk.babyapp.data.tracking.DefaultCareEventRepository
+import dk.babyapp.tracking.AndroidTimerNotificationController
+import dk.babyapp.tracking.TimerNotificationController
 import javax.inject.Singleton
 
 @Module
@@ -43,12 +48,16 @@ abstract class CoreModule {
     @Singleton
     abstract fun bindProfileImageStorage(implementation: ProfilePhotoStore): ProfileImageStorage
 
+    @Binds
+    @Singleton
+    abstract fun bindTimerNotificationController(implementation: AndroidTimerNotificationController): TimerNotificationController
+
     companion object {
         @Provides
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "baby_app.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .build()
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -113,11 +122,27 @@ abstract class CoreModule {
                 ).forEach { values -> db.execSQL("INSERT INTO care_providers SELECT id || '-${values[0]}', id, '${values[0]}', ${values[6]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, ${values[5]} FROM child_profiles WHERE ${values[1]} != '' OR ${values[2]} != '' OR ${values[6]} != ''") }
             }
         }
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS care_events (id TEXT NOT NULL, childId TEXT NOT NULL, type TEXT NOT NULL, startedAt INTEGER NOT NULL, endedAt INTEGER, runningSince INTEGER, activeSide TEXT, leftSeconds INTEGER NOT NULL, rightSeconds INTEGER NOT NULL, amountOfferedMl INTEGER, amountConsumedMl INTEGER, pumpedAmountMl INTEGER, bottleContent TEXT, diaperType TEXT, observation TEXT NOT NULL, notes TEXT NOT NULL, deletedAt INTEGER, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_care_events_childId ON care_events(childId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_care_events_startedAt ON care_events(startedAt)")
+            }
+        }
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE child_profiles ADD COLUMN fullName TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE child_profiles ADD COLUMN registeredAddress TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE child_profiles ADD COLUMN nationality TEXT NOT NULL DEFAULT ''")
+            }
+        }
 
         @Provides
         fun provideChildProfileDao(database: AppDatabase): ChildProfileDao = database.childProfileDao()
         @Provides fun provideParentProfileDao(database: AppDatabase): ParentProfileDao = database.parentProfileDao()
         @Provides fun provideCareProviderDao(database: AppDatabase): CareProviderDao = database.careProviderDao()
+        @Provides fun provideCareEventDao(database: AppDatabase): CareEventDao = database.careEventDao()
+        @Provides @Singleton fun provideCareEventRepository(dao: CareEventDao): CareEventRepository = DefaultCareEventRepository(dao)
         @Provides @Singleton fun provideParentProfileRepository(dao: ParentProfileDao, photoStore: ProfileImageStorage): ParentProfileRepository = DefaultParentProfileRepository(dao, photoStore)
 
         @Provides

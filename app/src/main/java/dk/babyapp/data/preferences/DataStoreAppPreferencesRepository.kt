@@ -23,6 +23,11 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             region = enumValueOrDefault(values[REGION], DanishRegion.Hovedstaden),
             units = enumValueOrDefault(values[UNITS], MeasurementUnits.Metric),
             theme = enumValueOrDefault(values[THEME], ThemePreference.System),
+            showBreastfeedingQuickAction = values[SHOW_BREASTFEEDING] ?: true,
+            showBottleQuickAction = values[SHOW_BOTTLE] ?: true,
+            showPumpingQuickAction = values[SHOW_PUMPING] ?: true,
+            showDiaperQuickAction = values[SHOW_DIAPER] ?: true,
+            hasSeenGettingStarted = values[GETTING_STARTED_SEEN] ?: false,
         )
     }
 
@@ -67,6 +72,19 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         }
     }
 
+    override suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) {
+        context.appPreferencesDataStore.edit { values ->
+            values[SHOW_BREASTFEEDING] = showBreastfeeding
+            values[SHOW_BOTTLE] = showBottle
+            values[SHOW_PUMPING] = showPumping
+            values[SHOW_DIAPER] = showDiaper
+        }
+    }
+
+    override suspend fun markGettingStartedSeen() {
+        context.appPreferencesDataStore.edit { values -> values[GETTING_STARTED_SEEN] = true }
+    }
+
     private companion object {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val ACTIVE_CHILD_ID = stringPreferencesKey("active_child_id")
@@ -74,6 +92,11 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val REGION = stringPreferencesKey("region")
         val UNITS = stringPreferencesKey("units")
         val THEME = stringPreferencesKey("theme")
+        val SHOW_BREASTFEEDING = booleanPreferencesKey("show_breastfeeding")
+        val SHOW_BOTTLE = booleanPreferencesKey("show_bottle")
+        val SHOW_PUMPING = booleanPreferencesKey("show_pumping")
+        val SHOW_DIAPER = booleanPreferencesKey("show_diaper")
+        val GETTING_STARTED_SEEN = booleanPreferencesKey("getting_started_seen")
     }
 }
 

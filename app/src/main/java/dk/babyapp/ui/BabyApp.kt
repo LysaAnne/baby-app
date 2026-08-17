@@ -22,6 +22,8 @@ import dk.babyapp.ui.theme.BabyAppTheme
 @Composable
 fun BabyApp(viewModel: AppViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
+    val activeTimer = state.activeChild?.let { child -> state.careEvents.firstOrNull { it.childId == child.id && it.endedAt == null } }
+    LaunchedEffect(activeTimer?.id) { viewModel.restoreTimerNotification(activeTimer) }
     LaunchedEffect(state.loaded, state.preferences.languageTag) {
         if (state.loaded && AppCompatDelegate.getApplicationLocales().toLanguageTags() != "da") {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("da"))
@@ -32,7 +34,7 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
         ThemePreference.Light -> AppThemeMode.Light
         ThemePreference.Dark -> AppThemeMode.Dark
     }
-    BabyAppTheme(themeMode = themeMode) {
+    BabyAppTheme(themeMode = themeMode, childColorTheme = state.activeChild?.colorTheme) {
         Surface(modifier = Modifier.fillMaxSize()) {
             when {
                 !state.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -54,6 +56,20 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onSaveParent = viewModel::saveFamilyMember,
                     onDeleteParent = viewModel::deleteParent,
                     careProviders = state.careProviders,
+                    careEvents = state.careEvents,
+                    onStartBreastfeeding = viewModel::startBreastfeeding,
+                    onStartPumping = viewModel::startPumping,
+                    onToggleTimer = viewModel::toggleTimer,
+                    onSwitchSide = viewModel::switchBreastSide,
+                    onStopTimer = viewModel::stopTimer,
+                    onAddBottle = viewModel::addBottle,
+                    onAddDiaper = viewModel::addDiaper,
+                    onAddManualTimer = viewModel::addManualTimer,
+                    onUpdateCareEvent = viewModel::updateCareEvent,
+                    onDeleteCareEvent = viewModel::deleteCareEvent,
+                    onUpdateQuickActions = viewModel::updateQuickActions,
+                    onCreateDeveloperTestFamily = viewModel::createDeveloperTestFamily,
+                    onDismissGettingStarted = viewModel::dismissGettingStarted,
                 )
             }
         }

@@ -11,13 +11,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -47,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -79,7 +86,10 @@ fun ProfileForm(
     var birthExpanded by remember { mutableStateOf(true) }
     var careExpanded by remember { mutableStateOf(false) }
     var healthExpanded by remember { mutableStateOf(false) }
+    var registryExpanded by remember { mutableStateOf(false) }
     var providerMenuOpen by remember { mutableStateOf(false) }
+    var editingProvider by remember { mutableStateOf<CareProvider?>(null) }
+    var providerToDelete by remember { mutableStateOf<CareProvider?>(null) }
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             scope.launch {
@@ -138,18 +148,32 @@ fun ProfileForm(
                 }
             }
         }
+        item { ChildThemePicker(draft.colorTheme) { onDraftChange(draft.copy(colorTheme = it)) } }
+        item { Text(stringResource(R.string.basic_information), style = MaterialTheme.typography.titleLarge) }
         item { FormField(draft.name, { onDraftChange(draft.copy(name = it)) }, R.string.child_name, true) }
         item { FormField(draft.nickname, { onDraftChange(draft.copy(nickname = it)) }, R.string.nickname) }
-        item { ChildThemeDropdown(draft.colorTheme) { onDraftChange(draft.copy(colorTheme = it)) } }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = draft.birthStatus == BirthStatus.Expected,
+                    onCheckedChange = { expected -> onDraftChange(draft.copy(birthStatus = if (expected) BirthStatus.Expected else BirthStatus.Born)) },
+                )
+                Text(stringResource(R.string.child_not_born_yet))
+            }
+        }
+        if (draft.birthStatus == BirthStatus.Born) {
+            item { DateSelector(draft.birthDate, { onDraftChange(draft.copy(birthDate = it)) }, R.string.birth_date, true) }
+        } else {
+            item { DateSelector(draft.dueDate, { onDraftChange(draft.copy(dueDate = it)) }, R.string.due_date, true) }
+        }
+        item { SexDropdown(draft.sex) { onDraftChange(draft.copy(sex = it)) } }
         item { CollapsibleHeader(R.string.birth_details, birthExpanded) { birthExpanded = !birthExpanded } }
         if (birthExpanded) {
-            item { BirthStatusDropdown(draft.birthStatus) { status -> onDraftChange(draft.copy(birthStatus = status, birthDate = if (status == BirthStatus.Expected) "" else draft.birthDate, birthTime = if (status == BirthStatus.Expected) "" else draft.birthTime)) } }
             if (draft.birthStatus == BirthStatus.Born) {
-                item { DateSelector(draft.birthDate, { onDraftChange(draft.copy(birthDate = it)) }, R.string.birth_date, true) }
                 item { TimeSelector(draft.birthTime, { onDraftChange(draft.copy(birthTime = it)) }, R.string.birth_time) }
+                item { DateSelector(draft.dueDate, { onDraftChange(draft.copy(dueDate = it)) }, R.string.due_date, false) }
             }
-            item { DateSelector(draft.dueDate, { onDraftChange(draft.copy(dueDate = it)) }, R.string.due_date, draft.birthStatus == BirthStatus.Expected) }
-            item { SexDropdown(draft.sex) { onDraftChange(draft.copy(sex = it)) } }
+            item { FormField(draft.hospital, { onDraftChange(draft.copy(hospital = it)) }, R.string.birth_place) }
             item { NumericField(draft.birthWeightGrams, { onDraftChange(draft.copy(birthWeightGrams = it)) }, if (units == MeasurementUnits.Metric) R.string.birth_weight else R.string.birth_weight_imperial, decimal = units == MeasurementUnits.Imperial) }
             item { NumericField(draft.birthLengthCm, { onDraftChange(draft.copy(birthLengthCm = it)) }, if (units == MeasurementUnits.Metric) R.string.birth_length else R.string.birth_length_imperial, decimal = true) }
             item { NumericField(draft.birthHeadCircumferenceCm, { onDraftChange(draft.copy(birthHeadCircumferenceCm = it)) }, if (units == MeasurementUnits.Metric) R.string.head_circumference else R.string.head_circumference_imperial, decimal = true) }
@@ -158,25 +182,84 @@ fun ProfileForm(
         if (careExpanded) {
             item {
                 Box { Button(onClick = { providerMenuOpen = true }) { Text(stringResource(R.string.add_care_provider)) }
-                    DropdownMenu(expanded = providerMenuOpen, onDismissRequest = { providerMenuOpen = false }) { CareProviderType.entries.forEach { type -> DropdownMenuItem(text = { Text(stringResource(type.labelRes())) }, onClick = { onDraftChange(draft.copy(careProviders = draft.careProviders + CareProvider(type = type))); providerMenuOpen = false }) } }
+                    DropdownMenu(expanded = providerMenuOpen, onDismissRequest = { providerMenuOpen = false }) { CareProviderType.entries.forEach { type -> DropdownMenuItem(text = { Text(stringResource(type.labelRes())) }, onClick = { editingProvider = CareProvider(type = type); providerMenuOpen = false }) } }
                 }
             }
             items(draft.careProviders, key = { it.id }) { provider ->
-                ProviderFields(
-                    title = provider.type.labelRes(), name = provider.name, phone = provider.phone, email = provider.email,
-                    address = provider.address, notes = provider.notes, customTitle = provider.customTitle,
-                    onCustomTitleChange = { value -> onDraftChange(draft.copy(careProviders = draft.careProviders.map { if (it.id == provider.id) it.copy(customTitle = value) else it })) },
-                    onRemove = { onDraftChange(draft.copy(careProviders = draft.careProviders.filterNot { it.id == provider.id })) },
-                ) { n,p,e,a,no -> onDraftChange(draft.copy(careProviders = draft.careProviders.map { if (it.id == provider.id) it.copy(name=n,phone=p,email=e,address=a,notes=no) else it })) }
+                ProviderCard(provider, onEdit = { editingProvider = provider }, onDelete = { providerToDelete = provider })
             }
         }
         item { CollapsibleHeader(R.string.health_information, healthExpanded) { healthExpanded = !healthExpanded } }
         if (healthExpanded) {
-            item { FormField(draft.cprNumber, { onDraftChange(draft.copy(cprNumber = it)) }, R.string.cpr_number) }
             item { FormField(draft.allergies, { onDraftChange(draft.copy(allergies = it)) }, R.string.allergies) }
             item { FormField(draft.medicalNotes, { onDraftChange(draft.copy(medicalNotes = it)) }, R.string.medical_notes) }
         }
+        item { CollapsibleHeader(R.string.registry_information, registryExpanded) { registryExpanded = !registryExpanded } }
+        if (registryExpanded) {
+            item { FormField(draft.fullName, { onDraftChange(draft.copy(fullName = it)) }, R.string.full_name) }
+            item { FormField(draft.cprNumber, { onDraftChange(draft.copy(cprNumber = it)) }, R.string.cpr_number) }
+            item { FormField(draft.registeredAddress, { onDraftChange(draft.copy(registeredAddress = it)) }, R.string.registered_address) }
+            item { FormField(draft.nationality, { onDraftChange(draft.copy(nationality = it)) }, R.string.nationality) }
+        }
     }
+    editingProvider?.let { provider ->
+        ProviderEditorDialog(
+            provider = provider,
+            onDismiss = { editingProvider = null },
+            onSave = { saved ->
+                val exists = draft.careProviders.any { it.id == saved.id }
+                onDraftChange(draft.copy(careProviders = if (exists) draft.careProviders.map { if (it.id == saved.id) saved else it } else draft.careProviders + saved))
+                editingProvider = null
+            },
+        )
+    }
+    providerToDelete?.let { provider ->
+        AlertDialog(
+            onDismissRequest = { providerToDelete = null },
+            title = { Text(stringResource(R.string.delete_provider_title)) },
+            text = { Text(stringResource(R.string.delete_provider_message)) },
+            confirmButton = { Button(onClick = { onDraftChange(draft.copy(careProviders = draft.careProviders.filterNot { it.id == provider.id })); providerToDelete = null }) { Text(stringResource(R.string.delete)) } },
+            dismissButton = { TextButton(onClick = { providerToDelete = null }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+}
+
+@Composable
+private fun ProviderCard(provider: CareProvider, onEdit: () -> Unit, onDelete: () -> Unit) {
+    androidx.compose.material3.Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(provider.customTitle.ifBlank { stringResource(provider.type.labelRes()) }, style = MaterialTheme.typography.titleMedium)
+                if (provider.name.isNotBlank()) Text(provider.name)
+                if (provider.phone.isNotBlank()) Text(provider.phone, style = MaterialTheme.typography.bodySmall)
+                if (provider.email.isNotBlank()) Text(provider.email, style = MaterialTheme.typography.bodySmall)
+            }
+            androidx.compose.material3.IconButton(onClick = onEdit) { androidx.compose.material3.Icon(Icons.Outlined.Edit, stringResource(R.string.edit_provider)) }
+            androidx.compose.material3.IconButton(onClick = onDelete) { androidx.compose.material3.Icon(Icons.Outlined.Delete, stringResource(R.string.delete_provider)) }
+        }
+    }
+}
+
+@Composable
+private fun ProviderEditorDialog(provider: CareProvider, onDismiss: () -> Unit, onSave: (CareProvider) -> Unit) {
+    var value by remember(provider.id) { mutableStateOf(provider) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(if (provider.name.isBlank() && provider.phone.isBlank()) R.string.add_care_provider else R.string.edit_provider)) },
+        text = {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(provider.type.labelRes()), style = MaterialTheme.typography.labelLarge)
+                if (provider.type == CareProviderType.Other) FormField(value.customTitle, { value = value.copy(customTitle = it) }, R.string.custom_provider_title)
+                FormField(value.name, { value = value.copy(name = it) }, R.string.provider_name)
+                FormField(value.phone, { value = value.copy(phone = it) }, R.string.phone_number)
+                FormField(value.email, { value = value.copy(email = it) }, R.string.email)
+                FormField(value.address, { value = value.copy(address = it) }, R.string.address)
+                FormField(value.notes, { value = value.copy(notes = it) }, R.string.notes)
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(value) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable
@@ -216,6 +299,29 @@ private fun ChildThemeDropdown(value: ChildColorTheme, onChange: (ChildColorThem
     }
 }
 
+@Composable
+private fun ChildThemePicker(value: ChildColorTheme, onChange: (ChildColorTheme) -> Unit) {
+    fun color(theme: ChildColorTheme) = when (theme) {
+        ChildColorTheme.Sage -> Color(0xFF91B99B)
+        ChildColorTheme.Rose -> Color(0xFFE7A2AE)
+        ChildColorTheme.Sky -> Color(0xFF8FC3E5)
+        ChildColorTheme.Lavender -> Color(0xFFB59DDB)
+        ChildColorTheme.Sunshine -> Color(0xFFE7C85F)
+    }
+    Text(stringResource(R.string.child_color_theme), style = MaterialTheme.typography.labelLarge)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ChildColorTheme.entries.forEach { theme ->
+            Surface(
+                onClick = { onChange(theme) },
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = color(theme),
+                border = BorderStroke(if (theme == value) 3.dp else 1.dp, if (theme == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
+            ) {}
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SexDropdown(value: BiologicalSex, onChange: (BiologicalSex) -> Unit) {
@@ -223,7 +329,7 @@ private fun SexDropdown(value: BiologicalSex, onChange: (BiologicalSex) -> Unit)
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
             value = stringResource(value.labelRes()), onValueChange = {}, readOnly = true,
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(), label = { Text(stringResource(R.string.biological_sex)) },
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(), label = { Text(stringResource(R.string.biological_sex) + " *") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

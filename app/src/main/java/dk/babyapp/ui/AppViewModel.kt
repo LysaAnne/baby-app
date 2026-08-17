@@ -16,11 +16,26 @@ import dk.babyapp.data.profile.ParentProfile
 import dk.babyapp.data.profile.ParentProfileRepository
 import dk.babyapp.data.profile.ChildParentLink
 import dk.babyapp.data.profile.CareProvider
+import dk.babyapp.data.profile.CareProviderType
+import dk.babyapp.data.profile.BiologicalSex
+import dk.babyapp.data.profile.BirthStatus
+import dk.babyapp.data.profile.ChildColorTheme
+import dk.babyapp.data.profile.FamilyMemberRole
+import dk.babyapp.data.profile.ProfileAvatar
+import dk.babyapp.data.tracking.BottleContent
+import dk.babyapp.data.tracking.BreastSide
+import dk.babyapp.data.tracking.CareEventEntity
+import dk.babyapp.data.tracking.CareEventRepository
+import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.tracking.TimerNotificationController
 import dk.babyapp.ui.profile.ProfileDraft
 import dk.babyapp.ui.profile.ProfileValidationError
 import dk.babyapp.ui.profile.toProfile
 import dk.babyapp.ui.profile.validate
 import java.io.File
+import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,6 +52,7 @@ data class AppUiState(
     val parents: List<ParentProfile> = emptyList(),
     val parentLinks: List<ChildParentLink> = emptyList(),
     val careProviders: List<CareProvider> = emptyList(),
+    val careEvents: List<CareEventEntity> = emptyList(),
 ) {
     val activeChild: ChildProfile?
         get() = profiles.firstOrNull { it.id == preferences.activeChildId } ?: profiles.firstOrNull()
@@ -55,12 +71,23 @@ class AppViewModel @Inject constructor(
     private val preferencesRepository: AppPreferencesRepository,
     private val photoStore: ProfileImageStorage,
     private val parentRepository: ParentProfileRepository,
+    private val careEventRepository: CareEventRepository,
+    private val timerNotifications: TimerNotificationController,
 ) : ViewModel() {
     val state: StateFlow<AppUiState> = combine(
-        preferencesRepository.preferences,
-        profilesRepository.profiles, parentRepository.parents, parentRepository.links, profilesRepository.careProviders,
-    ) { preferences, profiles, parents, links, providers ->
-        AppUiState(preferences = preferences, profiles = profiles, loaded = true, parents = parents, parentLinks = links, careProviders = providers)
+        preferencesRepository.preferences, profilesRepository.profiles, parentRepository.parents,
+        parentRepository.links, profilesRepository.careProviders, careEventRepository.events,
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        AppUiState(
+            preferences = values[0] as AppPreferences,
+            profiles = values[1] as List<ChildProfile>,
+            loaded = true,
+            parents = values[2] as List<ParentProfile>,
+            parentLinks = values[3] as List<ChildParentLink>,
+            careProviders = values[4] as List<CareProvider>,
+            careEvents = values[5] as List<CareEventEntity>,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
 
     fun completeOnboarding(
@@ -129,4 +156,128 @@ class AppViewModel @Inject constructor(
     suspend fun importPhoto(uri: Uri): String = withContext(Dispatchers.IO) { photoStore.import(uri) }
 
     fun photoFile(fileName: String?): File? = fileName?.let(photoStore::file)?.takeIf(File::exists)
+
+    fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch {
+        stopExistingTimer(childId)
+        val now = System.currentTimeMillis()
+        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side)
+        careEventRepository.save(event); timerNotifications.show(event.id)
+    }
+
+    fun startPumping(childId: String) = viewModelScope.launch {
+        stopExistingTimer(childId)
+        val now = System.currentTimeMillis()
+        val event = CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = now, runningSince = now)
+        careEventRepository.save(event); timerNotifications.show(event.id)
+    }
+
+    fun toggleTimer(event: CareEventEntity) = viewModelScope.launch {
+        val now = System.currentTimeMillis()
+        if (event.runningSince == null) {
+            careEventRepository.save(event.copy(runningSince = now))
+        } else {
+            careEventRepository.save(accrue(event, now).copy(runningSince = null))
+        }
+    }
+
+    fun switchBreastSide(event: CareEventEntity) = viewModelScope.launch {
+        val now = System.currentTimeMillis()
+        val accrued = accrue(event, now)
+        careEventRepository.save(accrued.copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = if (event.runningSince != null) now else null))
+    }
+
+    fun stopTimer(event: CareEventEntity, amountMl: Int? = null) = viewModelScope.launch {
+        val now = System.currentTimeMillis()
+        careEventRepository.save(accrue(event, now).copy(endedAt = now, runningSince = null, pumpedAmountMl = amountMl ?: event.pumpedAmountMl))
+        timerNotifications.hide()
+    }
+
+    fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String) =
+        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = offered, amountConsumedMl = consumed, notes = notes)) }
+
+    fun addDiaper(childId: String, time: Long, type: DiaperType, observation: String, notes: String) =
+        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Diaper, startedAt = time, endedAt = time, diaperType = type, observation = observation, notes = notes)) }
+
+    fun addManualTimer(childId: String, type: CareEventType, start: Long, end: Long, side: BreastSide?, amountMl: Int?, notes: String) = viewModelScope.launch {
+        val seconds = ((end - start).coerceAtLeast(0) / 1_000)
+        careEventRepository.save(CareEventEntity(childId = childId, type = type, startedAt = start, endedAt = end, activeSide = side, leftSeconds = if (side == BreastSide.Left) seconds else 0, rightSeconds = if (side == BreastSide.Right) seconds else 0, pumpedAmountMl = amountMl, notes = notes))
+    }
+
+    fun updateCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.save(event) }
+    fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.softDelete(event) }
+    fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
+        preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
+    }
+    fun restoreTimerNotification(event: CareEventEntity?) { if (event != null && event.endedAt == null) timerNotifications.show(event.id) }
+    fun dismissGettingStarted() = viewModelScope.launch { preferencesRepository.markGettingStartedSeen() }
+
+    fun createDeveloperTestFamily(onComplete: () -> Unit = {}) = viewModelScope.launch {
+        val childId = "developer-test-child-freja"
+        val child = ChildProfile(
+            id = childId,
+            name = "Freja",
+            nickname = "Fre",
+            birthStatus = BirthStatus.Born,
+            birthDate = LocalDate.now().minusMonths(4),
+            birthTime = LocalTime.of(9, 42),
+            dueDate = LocalDate.now().minusMonths(4).plusDays(5),
+            sex = BiologicalSex.Female,
+            birthWeightGrams = 3_480,
+            birthLengthCm = 52.0,
+            birthHeadCircumferenceCm = 35.0,
+            gestationalWeeks = 39,
+            gestationalDays = 2,
+            cprNumber = "TEST-FREJA",
+            fullName = "Freja Testfamilie Jensen",
+            registeredAddress = "Testvej 12, 2100 København Ø",
+            nationality = "Dansk",
+            allergies = "Ingen kendte allergier",
+            medicalNotes = "Dette er en testprofil og indeholder ikke rigtige helbredsoplysninger.",
+            avatar = ProfileAvatar.Bunny,
+            colorTheme = ChildColorTheme.Lavender,
+        )
+        profilesRepository.save(child)
+        profilesRepository.setCareProviders(
+            childId,
+            listOf(
+                CareProvider(id = "developer-provider-hospital", childId = childId, type = CareProviderType.Hospital, name = "Rigshospitalet – test", phone = "+45 35 45 35 45", address = "Blegdamsvej 9, 2100 København Ø", notes = "Testfødested"),
+                CareProvider(id = "developer-provider-gp", childId = childId, type = CareProviderType.Gp, name = "Lægehuset Solsikken", phone = "+45 12 34 56 78", email = "test@laegehuset.example", notes = "Fiktiv testkontakt"),
+                CareProvider(id = "developer-provider-health", childId = childId, type = CareProviderType.HealthVisitor, name = "Mette Testsen", phone = "+45 22 33 44 55"),
+                CareProvider(id = "developer-provider-midwife", childId = childId, type = CareProviderType.Midwife, name = "Anne Jordemoder", phone = "+45 33 44 55 66"),
+            ),
+        )
+        val members = listOf(
+            ParentProfile(id = "developer-parent-sofie", name = "Sofie", phone = "+45 20 11 22 33", email = "sofie@example.test", cprNumber = "TEST-SOFIE", avatar = ProfileAvatar.Butterfly, role = FamilyMemberRole.Mother, notes = "Frejas mor · testprofil"),
+            ParentProfile(id = "developer-parent-jonas", name = "Jonas", phone = "+45 21 44 55 66", email = "jonas@example.test", cprNumber = "TEST-JONAS", avatar = ProfileAvatar.Fox, role = FamilyMemberRole.Father, notes = "Frejas far · testprofil"),
+            ParentProfile(id = "developer-grandparent-karen", name = "Karen", phone = "+45 24 55 66 77", email = "karen@example.test", avatar = ProfileAvatar.Panda, role = FamilyMemberRole.Grandmother, notes = "Mormor · testprofil"),
+            ParentProfile(id = "developer-grandparent-poul", name = "Poul", phone = "+45 26 77 88 99", email = "poul@example.test", avatar = ProfileAvatar.Lion, role = FamilyMemberRole.Grandfather, notes = "Morfar · testprofil"),
+        )
+        members.forEach { parentRepository.save(it) }
+        parentRepository.setParents(childId, members.map { it.id }.toSet())
+        val now = System.currentTimeMillis()
+        listOf(
+            CareEventEntity(id = "developer-event-breast", childId = childId, type = CareEventType.Breastfeeding, startedAt = now - 3 * 60 * 60 * 1_000, endedAt = now - 2 * 60 * 60 * 1_000 - 42 * 60 * 1_000, activeSide = BreastSide.Right, leftSeconds = 480, rightSeconds = 600, notes = "Rolig amning"),
+            CareEventEntity(id = "developer-event-bottle", childId = childId, type = CareEventType.Bottle, startedAt = now - 90 * 60 * 1_000, endedAt = now - 90 * 60 * 1_000, bottleContent = BottleContent.BreastMilk, amountOfferedMl = 120, amountConsumedMl = 105, notes = "Testregistrering"),
+            CareEventEntity(id = "developer-event-diaper", childId = childId, type = CareEventType.Diaper, startedAt = now - 35 * 60 * 1_000, endedAt = now - 35 * 60 * 1_000, diaperType = DiaperType.Both, observation = "Normal", notes = "Testregistrering"),
+            CareEventEntity(id = "developer-event-pump", childId = childId, type = CareEventType.Pumping, startedAt = now - 5 * 60 * 60 * 1_000, endedAt = now - 5 * 60 * 60 * 1_000 + 15 * 60 * 1_000, leftSeconds = 900, pumpedAmountMl = 85),
+        ).forEach { careEventRepository.save(it) }
+        preferencesRepository.setActiveChild(childId)
+        onComplete()
+    }
+
+    private suspend fun stopExistingTimer(childId: String) {
+        careEventRepository.activeForChild(childId)?.let { current ->
+            val now = System.currentTimeMillis()
+            careEventRepository.save(accrue(current, now).copy(endedAt = now, runningSince = null))
+        }
+    }
+
+    private fun accrue(event: CareEventEntity, now: Long): CareEventEntity {
+        val seconds = event.runningSince?.let { ((now - it).coerceAtLeast(0) / 1_000) } ?: 0
+        return when {
+            event.type != CareEventType.Breastfeeding -> event.copy(leftSeconds = event.leftSeconds + seconds)
+            event.activeSide == BreastSide.Right -> event.copy(rightSeconds = event.rightSeconds + seconds)
+            else -> event.copy(leftSeconds = event.leftSeconds + seconds)
+        }
+    }
 }

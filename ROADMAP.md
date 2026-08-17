@@ -128,7 +128,7 @@ A stage is complete only when:
 
 ## Stage 3 — Core tracking: feeding and diapers
 
-**Status:** `[ ] Not started`
+**Status:** `[x] Implemented`
 
 **Outcome:** The most frequent newborn activities can be recorded quickly and corrected later.
 
@@ -150,15 +150,15 @@ A stage is complete only when:
 
 ### Acceptance criteria
 
-- [ ] Common feeding and diaper events can be recorded in approximately two taps.
-- [ ] A running session remains correct after screen rotation and process recreation.
-- [ ] Left/right switching produces accurate segment and total durations.
-- [ ] Manual records support past dates and times.
-- [ ] Editing recalculates totals correctly.
-- [ ] Deleted records no longer appear but remain recoverable internally.
-- [ ] Events never silently move between children.
-- [ ] Notification controls operate the active timer correctly.
-- [ ] Timer, Room, and core interaction tests pass.
+- [x] Common feeding and diaper events can be recorded in approximately two taps.
+- [x] A running session remains correct after screen rotation and process recreation.
+- [x] Left/right switching produces accurate segment and total durations.
+- [x] Manual records support past dates and times.
+- [x] Editing recalculates totals correctly.
+- [x] Deleted records no longer appear but remain recoverable internally.
+- [x] Events never silently move between children.
+- [x] Notification controls operate the active timer correctly.
+- [x] Timer, Room, and core interaction tests pass.
 
 ---
 
@@ -567,6 +567,14 @@ Use this table whenever a requested feature changes the agreed plan.
 | 2026-08-17 | Simplified onboarding to Danish welcome only, globalized Settings, restored two-way family linking, added family photos and child color themes, and made care providers add-driven. | 2 | Complete |
 | 2026-08-17 | Replaced fixed care-provider slots with repeatable records, moved custom provider titles inside colored cards, applied child colors to headings, and removed family linking from child editing. | 2 | Complete |
 | 2026-08-17 | Required every family profile to link to a child, added co-parent roles, and made child gender an explicit required choice with opt-out and Other options. | 2 | Complete |
+| 2026-08-17 | Added a debug-only test-family generator with a fully populated child, two parents, two grandparents, care providers, and Stage 3 sample records. | 2–3 | Complete |
+| 2026-08-17 | Fixed first-child navigation so a successful profile save returns from Family to the Today dashboard. | 2–3 | Complete |
+| 2026-08-17 | Simplified the Today screen, made feeding and diaper quick sections independently configurable, added a shared extensible manual-entry menu, and removed the app name from the top bar. | 3 | Complete |
+| 2026-08-17 | Refined Today hierarchy with a highlighted summary card, consistent section headings, distinct settings/tuning controls, and a more prominent active-child dropdown. | 3 | Complete |
+| 2026-08-17 | Reorganized child profiles into Basic, Birth, Health, and Official information; retained due dates after birth; changed themes to colour swatches; and separated manual entry visually with friendly quick-action icons. | 2–3 | Complete |
+| 2026-08-17 | Applied each active child’s colour palette app-wide, added an overdue-due-date profile reminder after 14 days, and redesigned care providers around popup editors with compact edit/delete cards. | 2–3 | Complete |
+| 2026-08-17 | Kept Today as the empty-state start destination, replaced forced Family navigation with a one-time persisted getting-started dialog, and disabled tracking controls until a child exists. | 2–3 | Complete |
+| 2026-08-17 | Fixed top-level back-stack restoration so selecting Today cannot restore Family after a child or developer test family is created. | 2–3 | Complete |
 
 ## Implementation request examples
 

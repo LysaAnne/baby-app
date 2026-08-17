@@ -14,4 +14,6 @@ interface AppPreferencesRepository {
     suspend fun setActiveChild(id: String?)
     suspend fun setTheme(theme: ThemePreference)
     suspend fun updateSettings(languageTag: String, region: DanishRegion, units: MeasurementUnits, theme: ThemePreference)
+    suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean)
+    suspend fun markGettingStartedSeen()
 }

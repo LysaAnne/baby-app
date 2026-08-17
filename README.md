@@ -85,6 +85,15 @@ A persistent add action provides access to all record types. The selected child 
 - Separate health information for CPR number, allergies, and medical notes
 - Language selection before the welcome screen, with the remainder of onboarding immediately localized
 - Debug-build developer tool for clearing all local app data and restarting first-time setup
+- Debug-build test-family generator with one child, two parents, two grandparents, care providers, and sample tracking records
+- First-child creation returns directly to the Today dashboard after a successful save
+- Simplified Today dashboard with a configurable quick-registration header, separate feeding and diaper sections, and a shared manual-entry menu
+- Strengthened the Today visual hierarchy with a highlighted daily summary, consistent section headings, a distinct quick-action tuning icon, and a prominent child selector
+- Reorganized child editing around avatar and colour, required Basic information, retained birth details, and a separate Official information section
+- Presented manual entry as an independent Today card and added friendly feeding and diaper icons
+- Applies the active child’s colour palette throughout the app, shows a 14-day overdue due-date reminder, and manages care providers through dedicated add/edit dialogs and compact cards
+- Keeps Today as the true empty-state start screen, shows a one-time dismissible getting-started dialog, and disables tracking until a child exists
+- Prevents saved Family navigation state from being restored when the Today tab is selected after creating a child or developer test family
 - Reusable parent profiles with name, phone, email, CPR number, and avatar that can be linked to multiple children
 - Reusable parent and other-family-member profiles that can be linked from either the child or family-member editor
 - Automatic sibling relationships when children share at least one linked parent
@@ -620,4 +629,4 @@ The project owner should run these commands only after reviewing and testing the
 - Android project: created and verified
 - Implementation: Stages 1–2 complete
 - Android baseline: minimum API 26, compile and target API 37
-- Current roadmap stage: awaiting instruction for Stage 3
+- Current roadmap stage: Stage 3 implemented; awaiting instruction for Stage 4

@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -108,6 +109,8 @@ fun FamilyScreen(
     onSaveParent: (ParentProfile, Set<String>) -> Unit,
     onDeleteParent: (ParentProfile) -> Unit,
     careProviders: List<CareProvider>,
+    requestedEditChildId: String? = null,
+    onEditRequestHandled: () -> Unit = {},
 ) {
     var editing by remember { mutableStateOf<ChildProfile?>(null) }
     var viewing by remember { mutableStateOf<ChildProfile?>(null) }
@@ -116,6 +119,15 @@ fun FamilyScreen(
     var addingMemberRole by remember { mutableStateOf<FamilyMemberRole?>(null) }
     var editingMember by remember { mutableStateOf<ParentProfile?>(null) }
     var deleting by remember { mutableStateOf<ChildProfile?>(null) }
+
+    LaunchedEffect(requestedEditChildId, profiles) {
+        requestedEditChildId?.let { id ->
+            profiles.firstOrNull { it.id == id }?.let { profile ->
+                editing = profile
+                onEditRequestHandled()
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
         LazyColumn(
@@ -218,9 +230,11 @@ fun FamilyScreen(
 }
 
 @Composable
-fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -> Unit, onDismiss: () -> Unit) {
+fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -> Unit, onCreateDeveloperTestFamily: (() -> Unit) -> Unit, onDismiss: () -> Unit) {
     var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
     var confirmClearData by remember { mutableStateOf(false) }
+    var testFamilyCreated by remember { mutableStateOf(false) }
+    var creatingTestFamily by remember { mutableStateOf(false) }
     val context = LocalContext.current
     fun update(value: OnboardingSettings) { settings = value; onUpdate(value) }
     AlertDialog(
@@ -240,6 +254,10 @@ fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -
                 }
                 if (BuildConfig.DEBUG) {
                     Text(stringResource(R.string.developer_tools), style = MaterialTheme.typography.titleMedium)
+                    Button(enabled = !creatingTestFamily, onClick = {
+                        creatingTestFamily = true
+                        onCreateDeveloperTestFamily { creatingTestFamily = false; testFamilyCreated = true }
+                    }) { Text(stringResource(if (creatingTestFamily) R.string.creating_test_family else R.string.create_test_family)) }
                     Button(onClick = { confirmClearData = true }) {
                         Text(stringResource(R.string.clear_app_data))
                     }
@@ -261,6 +279,12 @@ fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -
             dismissButton = { TextButton(onClick = { confirmClearData = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+    if (testFamilyCreated) AlertDialog(
+        onDismissRequest = { testFamilyCreated = false },
+        title = { Text(stringResource(R.string.test_family_created_title)) },
+        text = { Text(stringResource(R.string.test_family_created_message)) },
+        confirmButton = { Button(onClick = { testFamilyCreated = false }) { Text(stringResource(R.string.ok)) } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -366,12 +390,12 @@ private fun ProfileViewDialog(
                         if (bitmap != null) Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(96.dp).clip(CircleShape), contentScale = ContentScale.Crop)
                         else Text(profile.avatar.symbol, style = MaterialTheme.typography.displayLarge)
                     }
-                    item { ViewSection(R.string.profile_identity) }
+                    item { ViewSection(R.string.basic_information) }
                     if (profile.nickname.isNotBlank()) item { ViewValue(R.string.nickname, profile.nickname) }
                     item { ViewValue(R.string.birth_status, stringResource(if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) R.string.already_born else R.string.not_born_yet)) }
                     profile.birthDate?.let { item { ViewValue(R.string.birth_date, it.toString()) } }
                     profile.birthTime?.let { item { ViewValue(R.string.birth_time, it.toString()) } }
-                    profile.dueDate?.let { item { ViewValue(R.string.due_date, it.toString()) } }
+                    if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Expected) profile.dueDate?.let { item { ViewValue(R.string.due_date, it.toString()) } }
                     item { ViewValue(R.string.biological_sex, stringResource(when (profile.sex) {
                         dk.babyapp.data.profile.BiologicalSex.Unselected -> R.string.select_sex
                         dk.babyapp.data.profile.BiologicalSex.PreferNotToSay -> R.string.sex_not_specified
@@ -380,6 +404,8 @@ private fun ProfileViewDialog(
                         dk.babyapp.data.profile.BiologicalSex.Other -> R.string.sex_other
                     })) }
                     item { ViewSection(R.string.birth_details) }
+                    if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) profile.dueDate?.let { item { ViewValue(R.string.due_date, it.toString()) } }
+                    if (profile.hospital.isNotBlank()) item { ViewValue(R.string.birth_place, profile.hospital) }
                     if (draft.birthWeightGrams.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_weight else R.string.birth_weight_imperial, draft.birthWeightGrams) }
                     if (draft.birthLengthCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_length else R.string.birth_length_imperial, draft.birthLengthCm) }
                     if (draft.birthHeadCircumferenceCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.head_circumference else R.string.head_circumference_imperial, draft.birthHeadCircumferenceCm) }
@@ -387,7 +413,6 @@ private fun ProfileViewDialog(
                     items(providers, key = { it.id }) { provider ->
                         ViewValue(provider.type.viewLabelRes(), listOf(provider.customTitle, provider.name, provider.phone, provider.email, provider.address, provider.notes).filter(String::isNotBlank).joinToString("\n"))
                     }
-                    if (profile.hospital.isNotBlank()) item { ViewValue(R.string.birth_hospital, profile.hospital) }
                     if (profile.hospitalContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.hospitalContact) }
                     if (profile.hospitalEmail.isNotBlank()) item { ViewValue(R.string.email, profile.hospitalEmail) }
                     if (profile.hospitalAddress.isNotBlank()) item { ViewValue(R.string.address, profile.hospitalAddress) }
@@ -411,9 +436,13 @@ private fun ProfileViewDialog(
                     if (profile.specialistContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.specialistContact) }
                     if (profile.otherProvider.isNotBlank()) item { ViewValue(R.string.other_health_professional, listOf(profile.otherProviderTitle, profile.otherProvider, profile.otherProviderContact).filter(String::isNotBlank).joinToString("\n")) }
                     item { ViewSection(R.string.health_information) }
-                    if (profile.cprNumber.isNotBlank()) item { ViewValue(R.string.cpr_number, profile.cprNumber) }
                     if (profile.allergies.isNotBlank()) item { ViewValue(R.string.allergies, profile.allergies) }
                     if (profile.medicalNotes.isNotBlank()) item { ViewValue(R.string.medical_notes, profile.medicalNotes) }
+                    item { ViewSection(R.string.registry_information) }
+                    if (profile.fullName.isNotBlank()) item { ViewValue(R.string.full_name, profile.fullName) }
+                    if (profile.cprNumber.isNotBlank()) item { ViewValue(R.string.cpr_number, profile.cprNumber) }
+                    if (profile.registeredAddress.isNotBlank()) item { ViewValue(R.string.registered_address, profile.registeredAddress) }
+                    if (profile.nationality.isNotBlank()) item { ViewValue(R.string.nationality, profile.nationality) }
                     val linkedParents = parents.filter { it.role.isParent }
                     val otherMembers = parents.filterNot { it.role.isParent }
                     item { ViewSection(R.string.parents) }

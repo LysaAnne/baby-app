@@ -7,6 +7,11 @@ data class AppPreferences(
     val region: DanishRegion = DanishRegion.Hovedstaden,
     val units: MeasurementUnits = MeasurementUnits.Metric,
     val theme: ThemePreference = ThemePreference.System,
+    val showBreastfeedingQuickAction: Boolean = true,
+    val showBottleQuickAction: Boolean = true,
+    val showPumpingQuickAction: Boolean = true,
+    val showDiaperQuickAction: Boolean = true,
+    val hasSeenGettingStarted: Boolean = false,
 )
 
 enum class DanishRegion {
