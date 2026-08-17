@@ -133,7 +133,7 @@ fun TimelineScreen(
             CareEventType.entries.forEach { type ->
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     androidx.compose.material3.Checkbox(type in typeFilters, { selected -> typeFilters = if (selected) typeFilters + type else typeFilters - type })
-                    Text(typeLabel(type))
+                    Text(type.displayLabel())
                 }
             }
             TextButton(onClick = { typeFilters = emptySet(); range = TimelineRange.Week }) { Text("Nulstil filtre") }
@@ -193,14 +193,4 @@ fun TimelineScreen(
         text = { Text("Vælg først det barn, registreringen skal tilføjes til.") },
         confirmButton = { Button(onClick = { selectChildError = false }) { Text("OK") } },
     )
-}
-
-private fun typeLabel(type: CareEventType) = when (type) {
-    CareEventType.Breastfeeding -> "Amning"
-    CareEventType.Bottle -> "Flaske"
-    CareEventType.Pumping -> "Pumpning"
-    CareEventType.Diaper -> "Ble"
-    CareEventType.Sleep -> "Søvn"
-    CareEventType.HealthVisit -> "Sundhedsbesøg"
-    CareEventType.Vaccination -> "Vaccination"
 }

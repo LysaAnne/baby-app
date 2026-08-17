@@ -81,7 +81,7 @@ fun HealthRecordDialog(
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Dette er dine egne noter og ikke en officiel sundhedsjournal.")
             DateOnlyButton(time) { time = it }
-            SelectionDropdown("Status", statusLabel(status), HealthRecordStatus.entries.map { it to statusLabel(it) }) { status = it }
+            SelectionDropdown("Status", status.displayLabel(), HealthRecordStatus.entries.map { it to it.displayLabel() }) { status = it }
             if (vaccination) {
                 val selectedTemplate = danishVaccinationTemplates.firstOrNull { it.key == officialKey }
                 SelectionDropdown(
@@ -107,7 +107,7 @@ fun HealthRecordDialog(
                     officialKey = key
                     danishPreventiveExaminationTemplates.firstOrNull { it.key == key }?.let { template -> title = template.title; visitType = HealthVisitType.PreventiveExam }
                 }
-                SelectionDropdown("Besøgstype", visitTypeLabel(visitType), HealthVisitType.entries.map { it to visitTypeLabel(it) }) { visitType = it }
+                SelectionDropdown("Besøgstype", visitType.displayLabel(), HealthVisitType.entries.map { it to it.displayLabel() }) { visitType = it }
                 if (providers.isNotEmpty()) {
                     SelectionDropdown(
                         "Registreret behandler (valgfrit)",
@@ -170,23 +170,4 @@ private fun DateOnlyButton(value: Long, onChange: (Long) -> Unit) {
             onChange(LocalDate.of(year, month + 1, day).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli())
         }, date.year, date.monthValue - 1, date.dayOfMonth).show()
     }) { Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(value))) }
-}
-
-internal fun statusLabel(status: HealthRecordStatus) = when (status) {
-    HealthRecordStatus.Scheduled -> "Planlagt"
-    HealthRecordStatus.Completed -> "Gennemført"
-    HealthRecordStatus.Postponed -> "Udsat"
-    HealthRecordStatus.Cancelled -> "Aflyst"
-    HealthRecordStatus.Declined -> "Fravalgt"
-}
-
-private fun visitTypeLabel(type: HealthVisitType) = when (type) {
-    HealthVisitType.PreventiveExam -> "Forebyggende børneundersøgelse"
-    HealthVisitType.GpVisit -> "Egen læge"
-    HealthVisitType.HealthVisitor -> "Sundhedsplejerske"
-    HealthVisitType.Midwife -> "Jordemoder"
-    HealthVisitType.Hospital -> "Hospital eller ambulatorium"
-    HealthVisitType.Specialist -> "Speciallæge"
-    HealthVisitType.Dental -> "Tandpleje"
-    HealthVisitType.Other -> "Andet"
 }

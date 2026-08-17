@@ -14,7 +14,7 @@ import dk.babyapp.data.tracking.CareEventEntity
 
 @Database(
     entities = [ChildProfileEntity::class, ParentProfileEntity::class, ChildParentLink::class, CareProviderEntity::class, CareEventEntity::class],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

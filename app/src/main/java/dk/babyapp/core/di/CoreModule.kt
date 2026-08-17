@@ -65,7 +65,7 @@ abstract class CoreModule {
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "baby_app.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                 .build()
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -173,6 +173,15 @@ abstract class CoreModule {
                     db.execSQL("ALTER TABLE care_events ADD COLUMN $column TEXT NOT NULL DEFAULT ''")
                 }
                 db.execSQL("ALTER TABLE care_events ADD COLUMN officialScheduleKey TEXT DEFAULT NULL")
+            }
+        }
+        internal val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("PRAGMA defer_foreign_keys = ON")
+                db.execSQL("CREATE TABLE child_profiles_new (id TEXT NOT NULL, name TEXT NOT NULL, nickname TEXT NOT NULL, birthStatus TEXT NOT NULL, birthDate TEXT NOT NULL, birthTime TEXT, dueDate TEXT, sex TEXT NOT NULL, birthWeightGrams INTEGER, birthLengthCm REAL, birthHeadCircumferenceCm REAL, gestationalWeeks INTEGER, gestationalDays INTEGER, hospital TEXT NOT NULL, cprNumber TEXT NOT NULL, fullName TEXT NOT NULL, registeredAddress TEXT NOT NULL, nationality TEXT NOT NULL, allergies TEXT NOT NULL, medicalNotes TEXT NOT NULL, photoFileName TEXT, avatar TEXT NOT NULL, colorTheme TEXT NOT NULL, createdAtEpochMillis INTEGER NOT NULL, updatedAtEpochMillis INTEGER NOT NULL, sortOrder INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("INSERT INTO child_profiles_new (id, name, nickname, birthStatus, birthDate, birthTime, dueDate, sex, birthWeightGrams, birthLengthCm, birthHeadCircumferenceCm, gestationalWeeks, gestationalDays, hospital, cprNumber, fullName, registeredAddress, nationality, allergies, medicalNotes, photoFileName, avatar, colorTheme, createdAtEpochMillis, updatedAtEpochMillis, sortOrder) SELECT id, name, nickname, birthStatus, birthDate, birthTime, dueDate, sex, birthWeightGrams, birthLengthCm, birthHeadCircumferenceCm, gestationalWeeks, gestationalDays, hospital, cprNumber, fullName, registeredAddress, nationality, allergies, medicalNotes, photoFileName, avatar, colorTheme, createdAtEpochMillis, updatedAtEpochMillis, sortOrder FROM child_profiles")
+                db.execSQL("DROP TABLE child_profiles")
+                db.execSQL("ALTER TABLE child_profiles_new RENAME TO child_profiles")
             }
         }
 

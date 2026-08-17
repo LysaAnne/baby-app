@@ -190,7 +190,7 @@ fun TodayScreen(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     DiaperType.entries.forEach { type ->
                         OutlinedButton(modifier = Modifier.weight(1f), enabled = childId != null, contentPadding = PaddingValues(horizontal = 2.dp), onClick = { childId?.let { onAddDiaper(it, System.currentTimeMillis(), type, "", "") { created -> editing = created } } }) {
-                            Text(diaperLabel(type), style = MaterialTheme.typography.labelMedium)
+                            Text(type.displayLabel(), style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -342,73 +342,12 @@ private fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) 
     } }
 }
 
-@Composable
-internal fun EventCard(event: CareEventEntity, onEdit: () -> Unit, onDelete: () -> Unit) {
-    var expanded by remember(event.id) { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(eventIcon(event), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(end = 10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(eventTitle(event), style = MaterialTheme.typography.titleSmall)
-            val recordedAt = if (event.type == CareEventType.HealthVisit || event.type == CareEventType.Vaccination) {
-                DateFormat.getDateInstance(DateFormat.SHORT).format(Date(event.startedAt))
-            } else {
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(event.startedAt))
-            }
-                    Text("$recordedAt  ·  ${eventSummary(event)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (event.isRunning) Text("Kører nu", color = MaterialTheme.colorScheme.primary)
-                }
-                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (expanded) "Fold sammen" else "Vis detaljer")
-            }
-            if (expanded) {
-                Text(eventDetails(event), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val intervals = event.segmentIntervals()
-                if (intervals.isNotEmpty()) {
-                    Text("Tidsintervaller", style = MaterialTheme.typography.labelLarge)
-                    intervals.forEach { (start, end) ->
-                        Text("${formatClock(start)} – ${end?.let(::formatClock) ?: "kører"}", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Rediger") }
-                    TextButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null); Text("Slet", color = MaterialTheme.colorScheme.error) }
-                }
-            }
-        }
-    }
-}
-
-private fun formatClock(value: Long) = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))
-
-internal fun eventTitle(event: CareEventEntity) = when (event.type) { CareEventType.Breastfeeding -> "Amning"; CareEventType.Bottle -> "Flaske"; CareEventType.Pumping -> "Pumpning"; CareEventType.Diaper -> "Ble – ${diaperLabel(event.diaperType)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.HealthVisit -> event.healthTitle.ifBlank { "Sundhedsbesøg" }; CareEventType.Vaccination -> event.vaccineName.ifBlank { "Vaccination" } }
-private fun eventDetails(event: CareEventEntity) = when (event.type) {
-    CareEventType.Breastfeeding -> "${formatDuration(event.elapsedSeconds())} · V ${formatDuration(event.leftSeconds)} · H ${formatDuration(event.rightSeconds)}"
-    CareEventType.Bottle -> "${event.amountConsumedMl ?: 0} af ${event.amountOfferedMl ?: 0} ml · ${bottleLabel(event.bottleContent)}"
-    CareEventType.Pumping -> "${formatDuration(event.elapsedSeconds())}${event.pumpedAmountMl?.let { " · $it ml" } ?: ""}"
-    CareEventType.Diaper -> listOf(event.observation, event.notes).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Registreret" }
-    CareEventType.Sleep -> listOf(formatDuration(event.elapsedSeconds()), event.sleepLocation, event.sleepQuality?.let(::sleepQualityLabel), event.notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.HealthVisit -> listOf(event.healthStatus?.let(::statusLabel), event.providerDisplayName, event.healthReason, event.healthObservations, event.healthAdvice, event.followUp, event.notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.Vaccination -> listOf(event.healthStatus?.let(::statusLabel), event.vaccineDose, event.vaccineBatchNumber, event.injectionSite, event.reactionNotes, event.notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-}
-private fun formatDuration(seconds: Long) = "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60)
 private fun formatMinutes(minutes: Long) = if (minutes >= 60) "${minutes / 60} t ${minutes % 60} min" else "$minutes min"
 private fun timeAgo(value: Long): String {
     val minutes = ((System.currentTimeMillis() - value).coerceAtLeast(0) / 60_000)
     return when { minutes < 1 -> "Nu"; minutes < 60 -> "$minutes min"; minutes < 1_440 -> "${minutes / 60} t"; else -> "${minutes / 1_440} d" }
 }
-private fun eventIcon(event: CareEventEntity) = when (event.type) { CareEventType.Breastfeeding -> "🤱"; CareEventType.Bottle -> "🍼"; CareEventType.Pumping -> "🥛"; CareEventType.Diaper -> "🧷"; CareEventType.Sleep -> "🌙"; CareEventType.HealthVisit -> "🩺"; CareEventType.Vaccination -> "💉" }
-private fun eventSummary(event: CareEventEntity) = when (event.type) {
-    CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep -> formatDuration(event.elapsedSeconds())
-    CareEventType.Bottle -> event.amountConsumedMl?.let { "$it ml" } ?: bottleLabel(event.bottleContent)
-    CareEventType.Diaper -> diaperLabel(event.diaperType)
-    CareEventType.HealthVisit -> event.providerDisplayName.ifBlank { "Besøg" }
-    CareEventType.Vaccination -> event.vaccineDose.ifBlank { "Vaccine" }
-}
 private fun sideLabel(side: BreastSide?) = if (side == BreastSide.Right) "højre" else "venstre"
-private fun diaperLabel(type: DiaperType?) = when (type) { DiaperType.Wet -> "Våd"; DiaperType.Dirty -> "Afføring"; DiaperType.Both -> "Begge"; DiaperType.Dry -> "Tør"; null -> "Ble" }
-private fun bottleLabel(content: BottleContent?) = when (content) { BottleContent.BreastMilk -> "Modermælk"; BottleContent.Formula -> "Modermælkserstatning"; BottleContent.Water -> "Vand"; BottleContent.Other -> "Andet"; null -> "Ikke angivet" }
-internal fun sleepQualityLabel(quality: SleepQuality) = when (quality) { SleepQuality.Restful -> "Rolig"; SleepQuality.Mixed -> "Blandet"; SleepQuality.Restless -> "Urolig" }
 
 @Composable
 internal fun DateTimeButton(value: Long, onChange: (Long) -> Unit) {
@@ -426,7 +365,7 @@ internal fun DateTimeButton(value: Long, onChange: (Long) -> Unit) {
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var offered by remember { mutableStateOf("") }; var consumed by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }; var content by remember { mutableStateOf(BottleContent.BreastMilk) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilføj flaske") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeButton(time) { time = it }
-        Text("Indhold"); Row { BottleContent.entries.forEach { TextButton(onClick = { content = it }) { Text(if (content == it) "✓ ${bottleLabel(it)}" else bottleLabel(it)) } } }
+        Text("Indhold"); Row { BottleContent.entries.forEach { TextButton(onClick = { content = it }) { Text(if (content == it) "✓ ${it.displayLabel()}" else it.displayLabel()) } } }
         OutlinedTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") })
         OutlinedTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") })
         OutlinedTextField(notes, { notes = it }, label = { Text("Noter (valgfrit)") })
@@ -436,7 +375,7 @@ internal fun DateTimeButton(value: Long, onChange: (Long) -> Unit) {
 @Composable internal fun DiaperDialog(onDismiss: () -> Unit, onSave: (Long, DiaperType, String, String) -> Unit) {
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var type by remember { mutableStateOf(DiaperType.Wet) }; var observation by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilføj ble") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        DateTimeButton(time) { time = it }; Row { DiaperType.entries.forEach { TextButton(onClick = { type = it }) { Text(if (type == it) "✓ ${diaperLabel(it)}" else diaperLabel(it)) } } }
+        DateTimeButton(time) { time = it }; Row { DiaperType.entries.forEach { TextButton(onClick = { type = it }) { Text(if (type == it) "✓ ${it.displayLabel()}" else it.displayLabel()) } } }
         OutlinedTextField(observation, { observation = it }, label = { Text("Observation (valgfrit)") }); OutlinedTextField(notes, { notes = it }, label = { Text("Noter (valgfrit)") })
     } }, confirmButton = { Button(onClick = { onSave(time, type, observation, notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
@@ -477,7 +416,7 @@ internal fun SleepDialog(
             OutlinedTextField(settling, { settling = it }, label = { Text("Puttemetode (valgfrit)") })
             OutlinedTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger (valgfrit)") })
             Text("Søvnkvalitet (valgfrit)")
-            Row { SleepQuality.entries.forEach { option -> TextButton(onClick = { quality = if (quality == option) null else option }) { Text(if (quality == option) "✓ ${sleepQualityLabel(option)}" else sleepQualityLabel(option)) } } }
+            Row { SleepQuality.entries.forEach { option -> TextButton(onClick = { quality = if (quality == option) null else option }) { Text(if (quality == option) "✓ ${option.displayLabel()}" else option.displayLabel()) } } }
             OutlinedTextField(notes, { notes = it }, label = { Text("Noter (valgfrit)") })
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, location, settling, awakenings.toIntOrNull(), quality, notes) }) { Text("Gem") } },

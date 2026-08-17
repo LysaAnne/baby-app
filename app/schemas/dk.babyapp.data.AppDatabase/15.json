@@ -1,0 +1,665 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 15,
+    "identityHash": "d7d66aa4ba3bccf2ccd72f0928ce4442",
+    "entities": [
+      {
+        "tableName": "child_profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `nickname` TEXT NOT NULL, `birthStatus` TEXT NOT NULL, `birthDate` TEXT NOT NULL, `birthTime` TEXT, `dueDate` TEXT, `sex` TEXT NOT NULL, `birthWeightGrams` INTEGER, `birthLengthCm` REAL, `birthHeadCircumferenceCm` REAL, `gestationalWeeks` INTEGER, `gestationalDays` INTEGER, `hospital` TEXT NOT NULL, `cprNumber` TEXT NOT NULL, `fullName` TEXT NOT NULL, `registeredAddress` TEXT NOT NULL, `nationality` TEXT NOT NULL, `allergies` TEXT NOT NULL, `medicalNotes` TEXT NOT NULL, `photoFileName` TEXT, `avatar` TEXT NOT NULL, `colorTheme` TEXT NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nickname",
+            "columnName": "nickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthStatus",
+            "columnName": "birthStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthDate",
+            "columnName": "birthDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthTime",
+            "columnName": "birthTime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dueDate",
+            "columnName": "dueDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sex",
+            "columnName": "sex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthWeightGrams",
+            "columnName": "birthWeightGrams",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "birthLengthCm",
+            "columnName": "birthLengthCm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "birthHeadCircumferenceCm",
+            "columnName": "birthHeadCircumferenceCm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "gestationalWeeks",
+            "columnName": "gestationalWeeks",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "gestationalDays",
+            "columnName": "gestationalDays",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hospital",
+            "columnName": "hospital",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cprNumber",
+            "columnName": "cprNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fullName",
+            "columnName": "fullName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "registeredAddress",
+            "columnName": "registeredAddress",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nationality",
+            "columnName": "nationality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allergies",
+            "columnName": "allergies",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicalNotes",
+            "columnName": "medicalNotes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoFileName",
+            "columnName": "photoFileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "avatar",
+            "columnName": "avatar",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "colorTheme",
+            "columnName": "colorTheme",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "parent_profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `phone` TEXT NOT NULL, `email` TEXT NOT NULL, `cprNumber` TEXT NOT NULL, `avatar` TEXT NOT NULL, `role` TEXT NOT NULL, `notes` TEXT NOT NULL, `photoFileName` TEXT, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cprNumber",
+            "columnName": "cprNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatar",
+            "columnName": "avatar",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoFileName",
+            "columnName": "photoFileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "child_parent_links",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`childId` TEXT NOT NULL, `parentId` TEXT NOT NULL, PRIMARY KEY(`childId`, `parentId`), FOREIGN KEY(`childId`) REFERENCES `child_profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`parentId`) REFERENCES `parent_profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "childId",
+            "columnName": "childId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentId",
+            "columnName": "parentId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "childId",
+            "parentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_child_parent_links_childId",
+            "unique": false,
+            "columnNames": [
+              "childId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_child_parent_links_childId` ON `${TABLE_NAME}` (`childId`)"
+          },
+          {
+            "name": "index_child_parent_links_parentId",
+            "unique": false,
+            "columnNames": [
+              "parentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_child_parent_links_parentId` ON `${TABLE_NAME}` (`parentId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "child_profiles",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "childId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "parent_profiles",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "parentId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "care_providers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `childId` TEXT NOT NULL, `type` TEXT NOT NULL, `customTitle` TEXT NOT NULL, `name` TEXT NOT NULL, `phone` TEXT NOT NULL, `email` TEXT NOT NULL, `address` TEXT NOT NULL, `notes` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`childId`) REFERENCES `child_profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "childId",
+            "columnName": "childId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customTitle",
+            "columnName": "customTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_care_providers_childId",
+            "unique": false,
+            "columnNames": [
+              "childId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_care_providers_childId` ON `${TABLE_NAME}` (`childId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "child_profiles",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "childId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "care_events",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `childId` TEXT NOT NULL, `type` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER, `runningSince` INTEGER, `activeSide` TEXT, `leftSeconds` INTEGER NOT NULL, `rightSeconds` INTEGER NOT NULL, `amountOfferedMl` INTEGER, `amountConsumedMl` INTEGER, `pumpedAmountMl` INTEGER, `bottleContent` TEXT, `diaperType` TEXT, `sleepType` TEXT, `sleepLocation` TEXT NOT NULL, `settlingMethod` TEXT NOT NULL, `awakenings` INTEGER, `sleepQuality` TEXT, `timerSegments` TEXT NOT NULL, `healthVisitType` TEXT, `healthStatus` TEXT, `providerId` TEXT, `providerDisplayName` TEXT NOT NULL, `healthTitle` TEXT NOT NULL, `healthReason` TEXT NOT NULL, `healthObservations` TEXT NOT NULL, `healthAdvice` TEXT NOT NULL, `healthQuestions` TEXT NOT NULL, `followUp` TEXT NOT NULL, `vaccineName` TEXT NOT NULL, `vaccineDose` TEXT NOT NULL, `vaccineBatchNumber` TEXT NOT NULL, `injectionSite` TEXT NOT NULL, `reactionNotes` TEXT NOT NULL, `officialScheduleKey` TEXT, `observation` TEXT NOT NULL, `notes` TEXT NOT NULL, `deletedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "childId",
+            "columnName": "childId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "runningSince",
+            "columnName": "runningSince",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activeSide",
+            "columnName": "activeSide",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "leftSeconds",
+            "columnName": "leftSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rightSeconds",
+            "columnName": "rightSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountOfferedMl",
+            "columnName": "amountOfferedMl",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "amountConsumedMl",
+            "columnName": "amountConsumedMl",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pumpedAmountMl",
+            "columnName": "pumpedAmountMl",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bottleContent",
+            "columnName": "bottleContent",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "diaperType",
+            "columnName": "diaperType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sleepType",
+            "columnName": "sleepType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sleepLocation",
+            "columnName": "sleepLocation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settlingMethod",
+            "columnName": "settlingMethod",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "awakenings",
+            "columnName": "awakenings",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepQuality",
+            "columnName": "sleepQuality",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timerSegments",
+            "columnName": "timerSegments",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthVisitType",
+            "columnName": "healthVisitType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "healthStatus",
+            "columnName": "healthStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "providerDisplayName",
+            "columnName": "providerDisplayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthTitle",
+            "columnName": "healthTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthReason",
+            "columnName": "healthReason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthObservations",
+            "columnName": "healthObservations",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthAdvice",
+            "columnName": "healthAdvice",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthQuestions",
+            "columnName": "healthQuestions",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "followUp",
+            "columnName": "followUp",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vaccineName",
+            "columnName": "vaccineName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vaccineDose",
+            "columnName": "vaccineDose",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vaccineBatchNumber",
+            "columnName": "vaccineBatchNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "injectionSite",
+            "columnName": "injectionSite",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reactionNotes",
+            "columnName": "reactionNotes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "officialScheduleKey",
+            "columnName": "officialScheduleKey",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observation",
+            "columnName": "observation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_care_events_childId",
+            "unique": false,
+            "columnNames": [
+              "childId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_care_events_childId` ON `${TABLE_NAME}` (`childId`)"
+          },
+          {
+            "name": "index_care_events_startedAt",
+            "unique": false,
+            "columnNames": [
+              "startedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_care_events_startedAt` ON `${TABLE_NAME}` (`startedAt`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd7d66aa4ba3bccf2ccd72f0928ce4442')"
+    ]
+  }
+}

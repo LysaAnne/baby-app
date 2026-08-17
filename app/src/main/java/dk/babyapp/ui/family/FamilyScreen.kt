@@ -71,6 +71,7 @@ import dk.babyapp.ui.profile.ProfileForm
 import dk.babyapp.ui.profile.ProfileValidationError
 import dk.babyapp.ui.profile.toDraft
 import dk.babyapp.ui.profile.messageRes
+import dk.babyapp.ui.profile.labelRes
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -609,30 +610,8 @@ private fun ProfileViewDialog(
                     if (draft.birthHeadCircumferenceCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.head_circumference else R.string.head_circumference_imperial, draft.birthHeadCircumferenceCm) }
                     item { ViewSection(R.string.care_details) }
                     items(providers, key = { it.id }) { provider ->
-                        ViewValue(provider.type.viewLabelRes(), listOf(provider.customTitle, provider.name, provider.phone, provider.email, provider.address, provider.notes).filter(String::isNotBlank).joinToString("\n"))
+                        ViewValue(provider.type.labelRes(), listOf(provider.customTitle, provider.name, provider.phone, provider.email, provider.address, provider.notes).filter(String::isNotBlank).joinToString("\n"))
                     }
-                    if (profile.hospitalContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.hospitalContact) }
-                    if (profile.hospitalEmail.isNotBlank()) item { ViewValue(R.string.email, profile.hospitalEmail) }
-                    if (profile.hospitalAddress.isNotBlank()) item { ViewValue(R.string.address, profile.hospitalAddress) }
-                    if (profile.hospitalNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.hospitalNotes) }
-                    if (profile.gp.isNotBlank()) item { ViewValue(R.string.gp, profile.gp) }
-                    if (profile.gpContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.gpContact) }
-                    if (profile.gpEmail.isNotBlank()) item { ViewValue(R.string.email, profile.gpEmail) }
-                    if (profile.gpAddress.isNotBlank()) item { ViewValue(R.string.address, profile.gpAddress) }
-                    if (profile.gpNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.gpNotes) }
-                    if (profile.healthVisitor.isNotBlank()) item { ViewValue(R.string.health_visitor, profile.healthVisitor) }
-                    if (profile.healthVisitorContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.healthVisitorContact) }
-                    if (profile.healthVisitorEmail.isNotBlank()) item { ViewValue(R.string.email, profile.healthVisitorEmail) }
-                    if (profile.healthVisitorAddress.isNotBlank()) item { ViewValue(R.string.address, profile.healthVisitorAddress) }
-                    if (profile.healthVisitorNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.healthVisitorNotes) }
-                    if (profile.midwife.isNotBlank()) item { ViewValue(R.string.midwife, profile.midwife) }
-                    if (profile.midwifeContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.midwifeContact) }
-                    if (profile.midwifeEmail.isNotBlank()) item { ViewValue(R.string.email, profile.midwifeEmail) }
-                    if (profile.midwifeAddress.isNotBlank()) item { ViewValue(R.string.address, profile.midwifeAddress) }
-                    if (profile.midwifeNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.midwifeNotes) }
-                    if (profile.specialist.isNotBlank()) item { ViewValue(R.string.specialist, profile.specialist) }
-                    if (profile.specialistContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.specialistContact) }
-                    if (profile.otherProvider.isNotBlank()) item { ViewValue(R.string.other_health_professional, listOf(profile.otherProviderTitle, profile.otherProvider, profile.otherProviderContact).filter(String::isNotBlank).joinToString("\n")) }
                     item { ViewSection(R.string.health_information) }
                     if (profile.allergies.isNotBlank()) item { ViewValue(R.string.allergies, profile.allergies) }
                     if (profile.medicalNotes.isNotBlank()) item { ViewValue(R.string.medical_notes, profile.medicalNotes) }
@@ -662,7 +641,6 @@ private fun ProfileViewDialog(
 }
 
 private val LocalChildAccent = staticCompositionLocalOf { Color(0xFFF5CAD2) }
-private fun CareProviderType.viewLabelRes() = when(this) { CareProviderType.Hospital -> R.string.birth_hospital; CareProviderType.Gp -> R.string.gp; CareProviderType.HealthVisitor -> R.string.health_visitor; CareProviderType.Midwife -> R.string.midwife; CareProviderType.Specialist -> R.string.specialist; CareProviderType.Other -> R.string.other_health_professional }
 @Composable private fun ViewSection(label: Int) {
     Surface(color = LocalChildAccent.current, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(12.dp))

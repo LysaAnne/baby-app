@@ -35,6 +35,8 @@ import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.tracking.closeSegment
 import dk.babyapp.data.tracking.startSegment
+import dk.babyapp.domain.accrueUntil
+import dk.babyapp.domain.overlapsSleep
 import dk.babyapp.tracking.TimerNotificationController
 import dk.babyapp.ui.profile.ProfileDraft
 import dk.babyapp.ui.profile.ProfileValidationError
@@ -88,22 +90,22 @@ class AppViewModel @Inject constructor(
     private val colorProfileRepository: ColorProfileRepository,
 ) : ViewModel() {
     private val colorProfileJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
+    private val profileState = combine(
+        preferencesRepository.preferences,
+        profilesRepository.profiles,
+        parentRepository.parents,
+        parentRepository.links,
+    ) { preferences, profiles, parents, links ->
+        AppUiState(preferences = preferences, profiles = profiles, parents = parents, parentLinks = links)
+    }
+
     val state: StateFlow<AppUiState> = combine(
-        preferencesRepository.preferences, profilesRepository.profiles, parentRepository.parents,
-        parentRepository.links, profilesRepository.careProviders, careEventRepository.events,
+        profileState,
+        profilesRepository.careProviders,
+        careEventRepository.events,
         colorProfileRepository.profiles,
-    ) { values ->
-        @Suppress("UNCHECKED_CAST")
-        AppUiState(
-            preferences = values[0] as AppPreferences,
-            profiles = values[1] as List<ChildProfile>,
-            loaded = true,
-            parents = values[2] as List<ParentProfile>,
-            parentLinks = values[3] as List<ChildParentLink>,
-            careProviders = values[4] as List<CareProvider>,
-            careEvents = values[5] as List<CareEventEntity>,
-            colorProfiles = values[6] as List<ColorProfile>,
-        )
+    ) { base, careProviders, careEvents, colorProfiles ->
+        base.copy(loaded = true, careProviders = careProviders, careEvents = careEvents, colorProfiles = colorProfiles)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
 
     fun completeOnboarding(
@@ -206,19 +208,19 @@ class AppViewModel @Inject constructor(
         if (event.runningSince == null) {
             careEventRepository.save(event.startSegment(now).copy(runningSince = now))
         } else {
-            careEventRepository.save(accrue(event, now).closeSegment(now).copy(runningSince = null))
+            careEventRepository.save(event.accrueUntil(now).closeSegment(now).copy(runningSince = null))
         }
     }
 
     fun switchBreastSide(event: CareEventEntity) = viewModelScope.launch {
         val now = System.currentTimeMillis()
-        val accrued = accrue(event, now)
+        val accrued = event.accrueUntil(now)
         careEventRepository.save(accrued.copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = if (event.runningSince != null) now else null))
     }
 
     fun stopTimer(event: CareEventEntity, amountMl: Int? = null, onComplete: (CareEventEntity) -> Unit = {}) = viewModelScope.launch {
         val now = System.currentTimeMillis()
-        val completed = accrue(event, now).closeSegment(now).copy(endedAt = now, runningSince = null, pumpedAmountMl = amountMl ?: event.pumpedAmountMl)
+        val completed = event.accrueUntil(now).closeSegment(now).copy(endedAt = now, runningSince = null, pumpedAmountMl = amountMl ?: event.pumpedAmountMl)
         careEventRepository.save(completed)
         timerNotifications.hide()
         onComplete(completed)
@@ -250,10 +252,8 @@ class AppViewModel @Inject constructor(
         notes: String,
         onResult: (Boolean) -> Unit = {},
     ) = viewModelScope.launch {
-        val overlaps = state.value.careEvents.any { event ->
-            event.childId == childId && event.type == CareEventType.Sleep && event.deletedAt == null &&
-                start < (event.endedAt ?: System.currentTimeMillis()) && end > event.startedAt
-        }
+        val candidate = CareEventEntity(childId = childId, type = CareEventType.Sleep, startedAt = start, endedAt = end)
+        val overlaps = overlapsSleep(candidate, state.value.careEvents)
         if (end <= start || overlaps) {
             onResult(false)
         } else {
@@ -269,10 +269,7 @@ class AppViewModel @Inject constructor(
     }
 
     fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
-        val overlaps = event.type == CareEventType.Sleep && state.value.careEvents.any { other ->
-            other.id != event.id && other.childId == event.childId && other.type == CareEventType.Sleep && other.deletedAt == null &&
-                event.startedAt < (other.endedAt ?: System.currentTimeMillis()) && (event.endedAt ?: System.currentTimeMillis()) > other.startedAt
-        }
+        val overlaps = overlapsSleep(event, state.value.careEvents)
         if (overlaps) onResult(false) else { careEventRepository.save(event); onResult(true) }
     }
     fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.softDelete(event) }
@@ -416,16 +413,7 @@ class AppViewModel @Inject constructor(
     private suspend fun stopExistingTimer(childId: String) {
         careEventRepository.activeForChild(childId)?.let { current ->
             val now = System.currentTimeMillis()
-            careEventRepository.save(accrue(current, now).closeSegment(now).copy(endedAt = now, runningSince = null))
-        }
-    }
-
-    private fun accrue(event: CareEventEntity, now: Long): CareEventEntity {
-        val seconds = event.runningSince?.let { ((now - it).coerceAtLeast(0) / 1_000) } ?: 0
-        return when {
-            event.type != CareEventType.Breastfeeding -> event.copy(leftSeconds = event.leftSeconds + seconds)
-            event.activeSide == BreastSide.Right -> event.copy(rightSeconds = event.rightSeconds + seconds)
-            else -> event.copy(leftSeconds = event.leftSeconds + seconds)
+            careEventRepository.save(current.accrueUntil(now).closeSegment(now).copy(endedAt = now, runningSince = null))
         }
     }
 }

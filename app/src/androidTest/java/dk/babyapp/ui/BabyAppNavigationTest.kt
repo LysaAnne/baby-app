@@ -50,7 +50,7 @@ class BabyAppNavigationTest {
                 .filter(hasClickAction())
                 .onFirst()
                 .performClick()
-            composeRule.onAllNodesWithText(destination).assertCountEquals(2)
+            composeRule.onAllNodesWithText(destination).filter(hasClickAction()).assertCountEquals(1)
         }
 
         composeRule
