@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Baby App</string>
+    <string name="nav_today">I dag</string>
+    <string name="nav_timeline">Tidslinje</string>
+    <string name="nav_insights">Overblik</string>
+    <string name="nav_guide">Guide</string>
+    <string name="nav_family">Familie</string>
+    <string name="today_title">I dag</string>
+    <string name="today_description">Hurtige handlinger og dagens overblik kommer til at være her.</string>
+    <string name="timeline_title">Tidslinje</string>
+    <string name="timeline_description">Historikken over dit barns pleje kommer til at være her.</string>
+    <string name="insights_title">Overblik</string>
+    <string name="insights_description">Rolige og nyttige mønstre kommer til at være her.</string>
+    <string name="guide_title">Guide</string>
+    <string name="guide_description">Alderssvarende dansk vejledning kommer til at være her.</string>
+    <string name="family_title">Familie</string>
+    <string name="family_description">Profiler, omsorgspersoner, privatliv og indstillinger kommer til at være her.</string>
+</resources>
+
