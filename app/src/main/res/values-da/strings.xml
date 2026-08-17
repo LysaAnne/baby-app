@@ -16,5 +16,105 @@
     <string name="guide_description">Alderssvarende dansk vejledning kommer til at være her.</string>
     <string name="family_title">Familie</string>
     <string name="family_description">Profiler, omsorgspersoner, privatliv og indstillinger kommer til at være her.</string>
+    <string name="onboarding_progress">Trin %1$d af %2$d</string>
+    <string name="welcome_title">Velkommen til Baby App</string>
+    <string name="welcome_body">Et roligt sted til at følge dit barns hverdag, pleje og udvikling.</string>
+    <string name="local_privacy_title">Privat og lokalt først</string>
+    <string name="local_privacy_body">Dine oplysninger bliver på denne enhed. Du behøver hverken konto eller internetforbindelse.</string>
+    <string name="medical_boundary">Baby App hjælper dig med at registrere observationer. Appen kan ikke diagnosticere sygdom eller erstatte læge, sundhedsplejerske, jordemoder, hospital eller akut hjælp.</string>
+    <string name="preferences_title">Tilpas appen</string>
+    <string name="choose_language">Vælg dit sprog</string>
+    <string name="language">Sprog</string>
+    <string name="danish">Dansk</string>
+    <string name="english">English</string>
+    <string name="region">Dansk region</string>
+    <string name="region_hovedstaden">Region Hovedstaden</string>
+    <string name="region_midtjylland">Region Midtjylland</string>
+    <string name="region_nordjylland">Region Nordjylland</string>
+    <string name="region_sjaelland">Region Sjælland</string>
+    <string name="region_syddanmark">Region Syddanmark</string>
+    <string name="units_metric_only">Måleenheder: metriske (kg, cm, °C)</string>
+    <string name="units">Måleenheder</string><string name="units_metric">Metriske (g, cm)</string><string name="units_imperial">Imperiale (lb, in)</string>
+    <string name="theme">Udseende</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Lys</string>
+    <string name="theme_dark">Mørk</string>
+    <string name="theme_night">Nat</string>
+    <string name="next">Næste</string>
+    <string name="back">Tilbage</string>
+    <string name="finish">Afslut</string>
+    <string name="create_first_profile">Opret dit barns profil</string>
+    <string name="profile_identity">Om dit barn</string>
+    <string name="profile_photo_description">Barnets profilbillede</string>
+    <string name="choose_photo">Vælg privat billede</string>
+    <string name="remove_photo">Fjern billede</string>
+    <string name="choose_avatar">Vælg en avatar</string>
+    <string name="child_name">Navn</string>
+    <string name="nickname">Kaldenavn</string>
+    <string name="birth_date">Fødselsdato</string>
+    <string name="birth_status">Fødselsstatus</string><string name="already_born">Allerede født</string><string name="not_born_yet">Ikke født endnu</string>
+    <string name="birth_time">Fødselstidspunkt</string>
+    <string name="due_date">Terminsdato</string>
+    <string name="date_hint">Brug ÅÅÅÅ-MM-DD</string>
+    <string name="time_hint">Brug TT:MM, for eksempel 14:30</string>
+    <string name="biological_sex">Køn</string>
+    <string name="sex_not_specified">Ønsker ikke at oplyse</string>
+    <string name="sex_female">Hunkøn</string>
+    <string name="sex_male">Hankøn</string>
+    <string name="sex_intersex">Interkøn</string>
+    <string name="birth_details">Oplysninger om fødslen</string>
+    <string name="birth_weight">Fødselsvægt (gram)</string>
+    <string name="birth_weight_imperial">Fødselsvægt (lb)</string><string name="birth_length_imperial">Fødselslængde (tommer)</string><string name="head_circumference_imperial">Hovedomkreds (tommer)</string>
+    <string name="birth_length">Fødselslængde (cm)</string>
+    <string name="head_circumference">Hovedomkreds (cm)</string>
+    <string name="gestational_weeks">Graviditetsuger</string>
+    <string name="gestational_days">Ekstra dage</string>
+    <string name="care_details">Behandlere</string>
+    <string name="birth_hospital">Fødested</string>
+    <string name="gp">Egen læge</string>
+    <string name="health_visitor">Sundhedsplejerske</string>
+    <string name="contact_information">Telefon eller andre kontaktoplysninger</string>
+    <string name="midwife">Jordemoder</string><string name="provider_name">Navn eller klinik</string><string name="phone_number">Telefonnummer</string><string name="email">E-mail</string><string name="address">Adresse</string><string name="notes">Noter</string>
+    <string name="health_information">Helbredsoplysninger</string><string name="cpr_number">CPR-nummer</string>
+    <string name="parents">Forældre</string><string name="add_parent">Tilføj forælderprofil</string><string name="edit_parent">Rediger forælderprofil</string><string name="parent_name">Forælderens navn</string><string name="parent_profile">Forælderprofil</string><string name="no_parents_linked">Ingen forælderprofiler er tilknyttet.</string>
+    <string name="delete_parent_title">Slet %1$s?</string><string name="delete_parent_message">Dette fjerner den genanvendelige forælderprofil fra alle tilknyttede børn. Handlingen kan ikke fortrydes.</string>
+    <string name="no_child_registered">Intet barn registreret</string><string name="go_to_family">Gå til Familie for at oprette en profil</string><string name="add_profile">Tilføj profil</string><string name="add_family_member">Tilføj andet familiemedlem</string><string name="family_members">Forældre og familiemedlemmer</string><string name="parent">Forælder</string><string name="other_family_member">Andet familiemedlem</string><string name="add_family_profile">Tilføj familieprofil</string><string name="edit_family_profile">Rediger familieprofil</string><string name="link_to_children">Tilknyt til børn</string><string name="siblings">Søskende</string>
+    <string name="family_role">Familierolle</string>
+    <string name="parent_role">Forælderrolle</string><string name="other_family_members">Andre familiemedlemmer</string><string name="no_other_family_linked">Ingen andre familiemedlemmer er tilknyttet.</string>
+    <string name="role_mother">Mor</string><string name="role_father">Far</string><string name="role_parent_unspecified">Ønsker ikke at svare</string><string name="role_grandmother">Bedstemor</string><string name="role_grandfather">Bedstefar</string><string name="role_grandparent">Bedsteforælder</string><string name="role_bonus_mother">Bonusmor</string><string name="role_bonus_father">Bonusfar</string><string name="role_bonus_parent">Bonusforælder</string><string name="role_sister">Søster</string><string name="role_brother">Bror</string><string name="role_sibling">Søskende</string><string name="role_bonus_sibling">Bonussøskende</string><string name="role_aunt">Tante</string><string name="role_uncle">Onkel</string><string name="role_maternal_aunt">Moster</string><string name="role_paternal_aunt">Faster</string><string name="role_maternal_uncle">Morbror</string><string name="role_paternal_uncle">Farbror</string><string name="role_cousin">Fætter/kusine</string><string name="role_not_specified">Ikke angivet</string>
+    <string name="allergies">Allergier</string>
+    <string name="medical_notes">Vigtige helbredsnoter</string>
+    <string name="error_name_required">Indtast barnets navn.</string>
+    <string name="error_birth_date">Indtast en gyldig fødselsdato som ÅÅÅÅ-MM-DD.</string>
+    <string name="error_due_date_required">Vælg en terminsdato for et barn, der ikke er født endnu.</string>
+    <string name="check_information">Kontrollér oplysningerne</string><string name="ok">OK</string><string name="select">Vælg</string><string name="clear">Ryd</string>
+    <string name="settings">Indstillinger</string><string name="close">Luk</string>
+    <string name="developer_tools">Udviklerværktøjer</string><string name="clear_app_data">Ryd alle appdata</string><string name="clear_app_data_title">Nulstil Baby App?</string><string name="clear_app_data_message">Dette fjerner permanent alle børneprofiler, private billeder, indstillinger og registreringer på denne enhed. Appen lukker og starter med førstegangsopsætningen, næste gang den åbnes.</string><string name="clear_everything">Ryd alt</string>
+    <string name="error_birth_date_future">Fødselsdatoen må ikke være i fremtiden.</string>
+    <string name="error_birth_time">Indtast et gyldigt tidspunkt som TT:MM.</string>
+    <string name="error_due_date">Indtast en gyldig terminsdato som ÅÅÅÅ-MM-DD.</string>
+    <string name="error_weight">Indtast en fødselsvægt mellem 100 og 10.000 gram.</string>
+    <string name="error_length">Indtast en fødselslængde mellem 20 og 100 cm.</string>
+    <string name="error_head">Indtast en hovedomkreds mellem 15 og 60 cm.</string>
+    <string name="error_gestation">Graviditetsalderen skal være 20–45 uger og 0–6 ekstra dage.</string>
+    <string name="child_profiles">Børneprofiler</string>
+    <string name="add_child">Tilføj barn</string>
+    <string name="edit_child">Rediger barn</string>
+    <string name="delete">Slet</string>
+    <string name="cancel">Annuller</string>
+    <string name="save">Gem</string>
+    <string name="active_child">Aktivt barn</string>
+    <string name="tap_to_select">Tryk for at se profilen</string>
+    <string name="view_child">Se barnets profil</string>
+    <string name="no_profiles">Der er ingen børneprofiler endnu.</string>
+    <string name="delete_child_title">Slet %1$s?</string>
+    <string name="delete_child_message">Dette fjerner profilen og dens private billede fra enheden. Handlingen kan ikke fortrydes.</string>
+    <string name="corrected_age">Korrigeret alder: %1$d måneder og %2$d dage</string>
+    <string name="switch_child">Skift barn</string>
+    <string name="no_active_child">Intet barn valgt</string>
+    <string name="continue_label">Fortsæt</string><string name="child_color_theme">Farvetema for barnets profil</string><string name="color_sage">Salvie</string><string name="color_rose">Rosa</string><string name="color_sky">Himmelblå</string><string name="color_lavender">Lavendel</string><string name="color_sunshine">Solskin</string>
+    <string name="add_care_provider">Tilføj behandler</string><string name="specialist">Speciallæge</string><string name="other_health_professional">Anden sundhedsperson</string><string name="custom_provider_title">Egen titel</string><string name="remove_provider">Fjern behandler</string>
+    <string name="select_sex">Vælg køn</string><string name="sex_other">Andet</string><string name="error_sex_required">Vælg en mulighed under køn. Du kan vælge “Ønsker ikke at svare”.</string>
+    <string name="role_co_mother">Medmor</string><string name="role_co_father">Medfar</string><string name="role_parent">Forælder</string>
+    <string name="child_link_required_title">Vælg et barn</string><string name="child_link_required_message">En forælder eller et familiemedlem skal tilknyttes mindst ét barn, før profilen kan gemmes.</string>
 </resources>
-

@@ -78,6 +78,24 @@ A persistent add action provides access to all record types. The selected child 
 ### Child profiles
 
 - Multiple child profiles
+- Profiles for children who are not born yet, using a due date instead of a birth date
+- Clear validation messages and date/time selectors
+- Biological sex as an optional, editable value
+- Collapsible birth hospital, GP, health visitor, and midwife sections with name, phone, email, address, and notes
+- Separate health information for CPR number, allergies, and medical notes
+- Language selection before the welcome screen, with the remainder of onboarding immediately localized
+- Debug-build developer tool for clearing all local app data and restarting first-time setup
+- Reusable parent profiles with name, phone, email, CPR number, and avatar that can be linked to multiple children
+- Reusable parent and other-family-member profiles that can be linked from either the child or family-member editor
+- Automatic sibling relationships when children share at least one linked parent
+- Separate parent roles and extended-family roles, with relationship labels in the child profile
+- Collapsible child birth, care-provider, health, and family sections with visually grouped read-only details
+- Danish-only welcome onboarding, globally available settings, family-member photos, child colour themes, and add-driven care providers
+- Repeatable care-provider records with color-accented cards and custom titles inside Other-provider details
+- Required child gender selection with inclusive opt-out/other choices, expanded parent roles, and mandatory child linking for family profiles
+- Onboarding without child creation; an empty-state action guides users to Family
+- Expanded child and parent avatar selection
+- Read-only profile details as the default child view, with editing and deletion kept inside the profile flow
 - Name, nickname, date and time of birth, and due date
 - Profile photo or illustrated avatar
 - Biological sex where required for clinical growth references
@@ -89,6 +107,7 @@ A persistent add action provides access to all record types. The selected child 
 - Optional blood type
 - Child-specific color and theme
 - Safe child switching that prevents recording for the wrong profile
+- In-app settings for Danish/English, metric/imperial measurements, region, and theme
 
 ### Feeding
 
@@ -389,7 +408,7 @@ These features are not part of the initial release unless the roadmap is explici
 - Navigation Compose
 - Kotlin Coroutines and Flow
 - Kotlin Serialization
-- Coil for images
+- Private, downsampled local bitmap storage for profile images
 - JUnit and Compose UI testing
 
 The initial minimum Android version should be decided during Stage 1 after checking device-support needs. API 26 is the current planning assumption.
@@ -599,6 +618,6 @@ The project owner should run these commands only after reviewing and testing the
 - Product plan: complete
 - Technical direction: planned
 - Android project: created and verified
-- Implementation: Stage 1 complete
+- Implementation: Stages 1–2 complete
 - Android baseline: minimum API 26, compile and target API 37
-- Current roadmap stage: awaiting instruction for Stage 2
+- Current roadmap stage: awaiting instruction for Stage 3

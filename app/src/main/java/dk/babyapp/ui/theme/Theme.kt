@@ -37,17 +37,10 @@ private val DarkColors = darkColorScheme(
     onSurface = Cream90,
 )
 
-private val NightColors = DarkColors.copy(
-    background = NightSurface,
-    surface = NightSurface,
-    surfaceContainer = Color(0xFF101310),
-)
-
 enum class AppThemeMode {
     System,
     Light,
     Dark,
-    Night,
 }
 
 @Composable
@@ -59,11 +52,10 @@ fun BabyAppTheme(
     val darkTheme = when (themeMode) {
         AppThemeMode.System -> isSystemInDarkTheme()
         AppThemeMode.Light -> false
-        AppThemeMode.Dark, AppThemeMode.Night -> true
+        AppThemeMode.Dark -> true
     }
     val context = LocalContext.current
     val colors = when {
-        themeMode == AppThemeMode.Night -> NightColors
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme -> {
             dynamicDarkColorScheme(context)
         }
@@ -81,4 +73,3 @@ fun BabyAppTheme(
         content = content,
     )
 }
-

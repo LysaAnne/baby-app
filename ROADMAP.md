@@ -92,7 +92,7 @@ A stage is complete only when:
 
 ## Stage 2 — Onboarding and child profiles
 
-**Status:** `[ ] Not started`
+**Status:** `[x] Complete`
 
 **Outcome:** Parents can complete onboarding and safely create, edit, select, and remove local child profiles.
 
@@ -115,14 +115,14 @@ A stage is complete only when:
 
 ### Acceptance criteria
 
-- [ ] App works without an account or internet connection.
-- [ ] Multiple profiles can be created and switched.
-- [ ] Active child remains selected after app restart.
-- [ ] Corrected age is calculated and clearly labeled where relevant.
-- [ ] Profile images are stored privately and efficiently.
-- [ ] Required validation and accessible error messages are present.
-- [ ] Removing a child cannot happen accidentally.
-- [ ] Database and ViewModel tests cover profile operations.
+- [x] App works without an account or internet connection.
+- [x] Multiple profiles can be created and switched.
+- [x] Active child remains selected after app restart.
+- [x] Corrected age is calculated and clearly labeled where relevant.
+- [x] Profile images are downsampled and stored in private internal storage.
+- [x] Required validation and accessible error messages are present.
+- [x] Removing a child requires explicit confirmation.
+- [x] Database and ViewModel tests cover profile operations.
 
 ---
 
@@ -555,6 +555,18 @@ Use this table whenever a requested feature changes the agreed plan.
 | 2026-08-17 | Initial product and implementation roadmap created. | 0–15 | Accepted |
 | 2026-08-17 | Android foundation implemented with API 26 minimum, API 37 target, one initial app module, Hilt, Compose, and five-destination navigation. | 1 | Complete |
 | 2026-08-17 | Added a required testing and Git handoff after every implemented stage or standalone feature. | All stages | Accepted |
+| 2026-08-17 | Implemented offline onboarding, Room-backed child profiles, DataStore preferences, private photos, corrected age, and active-child persistence. | 2 | Complete |
+| 2026-08-17 | Improved Stage 2 with visible validation dialogs, expected-child profiles, immediate onboarding language changes, reliable sex selection, metric/imperial units, settings, and date/time pickers. | 2 | Complete |
+| 2026-08-17 | Changed child-profile validation to popup-only messages in onboarding and profile editing. | 2 | Complete |
+| 2026-08-17 | Added health-professional contact details and made a read-only child profile the default Family view, with edit and delete actions nested inside it. | 2 | Complete |
+| 2026-08-17 | Moved language selection before welcome, changed birth status and sex to dropdowns, and expanded collapsible provider and health-information fields. | 2 | Complete |
+| 2026-08-17 | Added a debug-only, confirmation-protected developer control that clears all local app data for first-run testing. | 2 | Complete |
+| 2026-08-17 | Fixed first-run locale application, changed region to a dropdown, removed duplicate night mode and gestational inputs, expanded avatars, and added reusable parent profiles linked to children. | 2 | Complete |
+| 2026-08-17 | Removed child creation from onboarding, added a Family add-profile menu and reusable parent/other-member profiles with two-way child linking and inferred siblings. | 2 | Complete |
+| 2026-08-17 | Refined collapsible child sections, separated parent and extended-family role choices, and redesigned child viewing into colored Parents, Siblings, and Other family sections. | 2 | Complete |
+| 2026-08-17 | Simplified onboarding to Danish welcome only, globalized Settings, restored two-way family linking, added family photos and child color themes, and made care providers add-driven. | 2 | Complete |
+| 2026-08-17 | Replaced fixed care-provider slots with repeatable records, moved custom provider titles inside colored cards, applied child colors to headings, and removed family linking from child editing. | 2 | Complete |
+| 2026-08-17 | Required every family profile to link to a child, added co-parent roles, and made child gender an explicit required choice with opt-out and Other options. | 2 | Complete |
 
 ## Implementation request examples
 

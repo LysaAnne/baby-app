@@ -1,0 +1,635 @@
+package dk.babyapp.ui.family
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import dk.babyapp.R
+import dk.babyapp.data.profile.ChildProfile
+import dk.babyapp.data.profile.ParentProfile
+import dk.babyapp.data.profile.ChildParentLink
+import dk.babyapp.data.profile.FamilyMemberRole
+import dk.babyapp.data.profile.CareProvider
+import dk.babyapp.data.profile.CareProviderType
+import dk.babyapp.data.preferences.AppPreferences
+import dk.babyapp.data.preferences.MeasurementUnits
+import dk.babyapp.data.preferences.ThemePreference
+import dk.babyapp.data.preferences.DanishRegion
+import dk.babyapp.ui.OnboardingSettings
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import dk.babyapp.domain.calculateChildAge
+import dk.babyapp.domain.totalMonths
+import dk.babyapp.ui.profile.ProfileDraft
+import dk.babyapp.ui.profile.ProfileForm
+import dk.babyapp.ui.profile.ProfileValidationError
+import dk.babyapp.ui.profile.toDraft
+import dk.babyapp.ui.profile.messageRes
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.launch
+import java.io.File
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import android.app.ActivityManager
+import dk.babyapp.BuildConfig
+
+@Composable
+fun FamilyScreen(
+    profiles: List<ChildProfile>,
+    activeChildId: String?,
+    contentPadding: PaddingValues,
+    onSelectChild: (String) -> Unit,
+    onSaveProfile: (ProfileDraft, (ProfileValidationError?) -> Unit) -> Unit,
+    onDeleteProfile: (ChildProfile) -> Unit,
+    photoFile: (String?) -> File?,
+    onPhotoSelected: suspend (Uri) -> String,
+    preferences: AppPreferences,
+    onUpdateSettings: (OnboardingSettings) -> Unit,
+    parents: List<ParentProfile>,
+    parentLinks: List<ChildParentLink>,
+    onSaveParent: (ParentProfile, Set<String>) -> Unit,
+    onDeleteParent: (ParentProfile) -> Unit,
+    careProviders: List<CareProvider>,
+) {
+    var editing by remember { mutableStateOf<ChildProfile?>(null) }
+    var viewing by remember { mutableStateOf<ChildProfile?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    var addMenuOpen by remember { mutableStateOf(false) }
+    var addingMemberRole by remember { mutableStateOf<FamilyMemberRole?>(null) }
+    var editingMember by remember { mutableStateOf<ParentProfile?>(null) }
+    var deleting by remember { mutableStateOf<ChildProfile?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.child_profiles), style = MaterialTheme.typography.headlineSmall)
+                }
+            }
+            items(profiles, key = { it.id }) { profile ->
+                ProfileCard(
+                    profile = profile,
+                    selected = profile.id == activeChildId,
+                    onView = { onSelectChild(profile.id); viewing = profile },
+                    photoFile = photoFile(profile.photoFileName),
+                )
+            }
+            if (profiles.isEmpty()) item { Text(stringResource(R.string.no_profiles)) }
+            item { Text(stringResource(R.string.family_members), style = MaterialTheme.typography.titleLarge) }
+            items(parents, key = { it.id }) { member ->
+                Card(onClick = { editingMember = member }, modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        val memberBitmap = photoFile(member.photoFileName)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
+                        if (memberBitmap != null) Image(memberBitmap, null, Modifier.size(44.dp).clip(CircleShape), contentScale = ContentScale.Crop) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
+                        Column { Text(member.name); Text(roleLabel(member.role), style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
+        }
+        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
+            FloatingActionButton(onClick = { addMenuOpen = true }) { Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add_profile)) }
+            DropdownMenu(expanded = addMenuOpen, onDismissRequest = { addMenuOpen = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.add_child)) }, onClick = { addMenuOpen = false; adding = true })
+                DropdownMenuItem(text = { Text(stringResource(R.string.add_parent)) }, onClick = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.ParentNotSpecified })
+                DropdownMenuItem(text = { Text(stringResource(R.string.add_family_member)) }, onClick = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.OtherNotSpecified })
+            }
+        }
+    }
+
+    viewing?.let { profile ->
+        ProfileViewDialog(
+            profile = profile,
+            units = preferences.units,
+            photoFile = photoFile(profile.photoFileName),
+            parents = parents.filter { parent -> parentLinks.any { it.childId == profile.id && it.parentId == parent.id } },
+            siblings = run {
+                val sharedParentIds = parentLinks.filter { it.childId == profile.id }.map { it.parentId }.filter { id -> parents.any { it.id == id && it.role.isParent } }.toSet()
+                profiles.filter { child -> child.id != profile.id && parentLinks.any { it.childId == child.id && it.parentId in sharedParentIds } }
+            },
+            familyPhotoFile = photoFile,
+            providers = careProviders.filter { it.childId == profile.id },
+            onEdit = { viewing = null; editing = profile },
+            onDismiss = { viewing = null },
+        )
+    }
+
+    if (adding || editing != null) {
+        ProfileEditorDialog(
+            existing = editing,
+            onSaveProfile = onSaveProfile,
+            photoFile = photoFile,
+            onPhotoSelected = onPhotoSelected,
+            units = preferences.units,
+            onDelete = editing?.let { profile -> { adding = false; editing = null; deleting = profile } },
+            parents = parents,
+            linkedParentIds = editing?.let { child -> parentLinks.filter { it.childId == child.id }.map { it.parentId }.toSet() }.orEmpty(),
+            onSaveParent = onSaveParent,
+            onDeleteParent = onDeleteParent,
+            children = profiles,
+            familyLinks = parentLinks,
+            careProviders = editing?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
+            onDismiss = { adding = false; editing = null },
+        )
+    }
+    addingMemberRole?.let { role -> ParentEditorDialog(
+        existing = null, initialRole = role, children = profiles, selectedChildIds = emptySet(),
+        onSave = onSaveParent, onDelete = {}, photoFile = photoFile, onPhotoSelected = onPhotoSelected, onDismiss = { addingMemberRole = null },
+    ) }
+    editingMember?.let { member -> ParentEditorDialog(
+        existing = member, initialRole = member.role, children = profiles,
+        selectedChildIds = parentLinks.filter { it.parentId == member.id }.map { it.childId }.toSet(),
+        onSave = onSaveParent, onDelete = { onDeleteParent(it); editingMember = null }, photoFile = photoFile, onPhotoSelected = onPhotoSelected, onDismiss = { editingMember = null },
+    ) }
+    deleting?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text(stringResource(R.string.delete_child_title, profile.name)) },
+            text = { Text(stringResource(R.string.delete_child_message)) },
+            confirmButton = {
+                Button(onClick = { onDeleteProfile(profile); deleting = null }) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+}
+
+@Composable
+fun SettingsDialog(preferences: AppPreferences, onUpdate: (OnboardingSettings) -> Unit, onDismiss: () -> Unit) {
+    var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
+    var confirmClearData by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    fun update(value: OnboardingSettings) { settings = value; onUpdate(value) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.units))
+                MeasurementUnits.entries.forEach { units ->
+                    FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
+                }
+                Text(stringResource(R.string.theme))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ThemePreference.entries.forEach { theme ->
+                        FilterChip(settings.theme == theme, onClick = { update(settings.copy(theme = theme)) }, label = { Text(theme.name) })
+                    }
+                }
+                if (BuildConfig.DEBUG) {
+                    Text(stringResource(R.string.developer_tools), style = MaterialTheme.typography.titleMedium)
+                    Button(onClick = { confirmClearData = true }) {
+                        Text(stringResource(R.string.clear_app_data))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
+    )
+    if (confirmClearData) {
+        AlertDialog(
+            onDismissRequest = { confirmClearData = false },
+            title = { Text(stringResource(R.string.clear_app_data_title)) },
+            text = { Text(stringResource(R.string.clear_app_data_message)) },
+            confirmButton = {
+                Button(onClick = {
+                    context.getSystemService(ActivityManager::class.java).clearApplicationUserData()
+                }) { Text(stringResource(R.string.clear_everything)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmClearData = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsRegionDropdown(value: DanishRegion, onChange: (DanishRegion) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    fun label(region: DanishRegion) = when (region) {
+        DanishRegion.Hovedstaden -> R.string.region_hovedstaden
+        DanishRegion.Midtjylland -> R.string.region_midtjylland
+        DanishRegion.Nordjylland -> R.string.region_nordjylland
+        DanishRegion.Sjaelland -> R.string.region_sjaelland
+        DanishRegion.Syddanmark -> R.string.region_syddanmark
+    }
+    ExposedDropdownMenuBox(expanded, { expanded = it }) {
+        OutlinedTextField(
+            value = stringResource(label(value)), onValueChange = {}, readOnly = true,
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+        )
+        ExposedDropdownMenu(expanded, { expanded = false }) {
+            DanishRegion.entries.forEach { region -> DropdownMenuItem(
+                text = { Text(stringResource(label(region))) }, onClick = { onChange(region); expanded = false },
+            ) }
+        }
+    }
+}
+
+@Composable
+private fun ProfileCard(
+    profile: ChildProfile,
+    selected: Boolean,
+    onView: () -> Unit,
+    photoFile: File?,
+) {
+    Card(onClick = onView, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            val bitmap = remember(photoFile?.path, photoFile?.lastModified()) {
+                photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
+            }
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = stringResource(R.string.profile_photo_description),
+                    modifier = Modifier.size(52.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text(profile.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(profile.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (selected) stringResource(R.string.active_child) else stringResource(R.string.tap_to_select),
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onView) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_child)) }
+        }
+    }
+}
+
+@Composable
+private fun ProfileViewDialog(
+    profile: ChildProfile,
+    units: MeasurementUnits,
+    photoFile: File?,
+    onEdit: () -> Unit,
+    onDismiss: () -> Unit,
+    parents: List<ParentProfile>,
+    siblings: List<ChildProfile>,
+    familyPhotoFile: (String?) -> File?,
+    providers: List<CareProvider>,
+) {
+    val draft = profile.toDraft(units)
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val accent = when(profile.colorTheme) {
+            dk.babyapp.data.profile.ChildColorTheme.Sage -> Color(0xFFCFE5D5)
+            dk.babyapp.data.profile.ChildColorTheme.Rose -> Color(0xFFF5CAD2)
+            dk.babyapp.data.profile.ChildColorTheme.Sky -> Color(0xFFC9E3F5)
+            dk.babyapp.data.profile.ChildColorTheme.Lavender -> Color(0xFFDED0F2)
+            dk.babyapp.data.profile.ChildColorTheme.Sunshine -> Color(0xFFF5E4A8)
+        }
+        Surface(modifier = Modifier.fillMaxSize(), contentColor = Color(0xFF202420), color = when(profile.colorTheme) {
+            dk.babyapp.data.profile.ChildColorTheme.Sage -> Color(0xFFF2F7F3)
+            dk.babyapp.data.profile.ChildColorTheme.Rose -> Color(0xFFFFF3F5)
+            dk.babyapp.data.profile.ChildColorTheme.Sky -> Color(0xFFF1F7FC)
+            dk.babyapp.data.profile.ChildColorTheme.Lavender -> Color(0xFFF7F3FC)
+            dk.babyapp.data.profile.ChildColorTheme.Sunshine -> Color(0xFFFFFAE8)
+        }) {
+          CompositionLocalProvider(LocalChildAccent provides accent) {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(profile.name, style = MaterialTheme.typography.headlineSmall)
+                    IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit_child)) }
+                }
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        val bitmap = remember(photoFile?.path, photoFile?.lastModified()) { photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+                        if (bitmap != null) Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(96.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                        else Text(profile.avatar.symbol, style = MaterialTheme.typography.displayLarge)
+                    }
+                    item { ViewSection(R.string.profile_identity) }
+                    if (profile.nickname.isNotBlank()) item { ViewValue(R.string.nickname, profile.nickname) }
+                    item { ViewValue(R.string.birth_status, stringResource(if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) R.string.already_born else R.string.not_born_yet)) }
+                    profile.birthDate?.let { item { ViewValue(R.string.birth_date, it.toString()) } }
+                    profile.birthTime?.let { item { ViewValue(R.string.birth_time, it.toString()) } }
+                    profile.dueDate?.let { item { ViewValue(R.string.due_date, it.toString()) } }
+                    item { ViewValue(R.string.biological_sex, stringResource(when (profile.sex) {
+                        dk.babyapp.data.profile.BiologicalSex.Unselected -> R.string.select_sex
+                        dk.babyapp.data.profile.BiologicalSex.PreferNotToSay -> R.string.sex_not_specified
+                        dk.babyapp.data.profile.BiologicalSex.Female -> R.string.sex_female
+                        dk.babyapp.data.profile.BiologicalSex.Male -> R.string.sex_male
+                        dk.babyapp.data.profile.BiologicalSex.Other -> R.string.sex_other
+                    })) }
+                    item { ViewSection(R.string.birth_details) }
+                    if (draft.birthWeightGrams.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_weight else R.string.birth_weight_imperial, draft.birthWeightGrams) }
+                    if (draft.birthLengthCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_length else R.string.birth_length_imperial, draft.birthLengthCm) }
+                    if (draft.birthHeadCircumferenceCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.head_circumference else R.string.head_circumference_imperial, draft.birthHeadCircumferenceCm) }
+                    item { ViewSection(R.string.care_details) }
+                    items(providers, key = { it.id }) { provider ->
+                        ViewValue(provider.type.viewLabelRes(), listOf(provider.customTitle, provider.name, provider.phone, provider.email, provider.address, provider.notes).filter(String::isNotBlank).joinToString("\n"))
+                    }
+                    if (profile.hospital.isNotBlank()) item { ViewValue(R.string.birth_hospital, profile.hospital) }
+                    if (profile.hospitalContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.hospitalContact) }
+                    if (profile.hospitalEmail.isNotBlank()) item { ViewValue(R.string.email, profile.hospitalEmail) }
+                    if (profile.hospitalAddress.isNotBlank()) item { ViewValue(R.string.address, profile.hospitalAddress) }
+                    if (profile.hospitalNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.hospitalNotes) }
+                    if (profile.gp.isNotBlank()) item { ViewValue(R.string.gp, profile.gp) }
+                    if (profile.gpContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.gpContact) }
+                    if (profile.gpEmail.isNotBlank()) item { ViewValue(R.string.email, profile.gpEmail) }
+                    if (profile.gpAddress.isNotBlank()) item { ViewValue(R.string.address, profile.gpAddress) }
+                    if (profile.gpNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.gpNotes) }
+                    if (profile.healthVisitor.isNotBlank()) item { ViewValue(R.string.health_visitor, profile.healthVisitor) }
+                    if (profile.healthVisitorContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.healthVisitorContact) }
+                    if (profile.healthVisitorEmail.isNotBlank()) item { ViewValue(R.string.email, profile.healthVisitorEmail) }
+                    if (profile.healthVisitorAddress.isNotBlank()) item { ViewValue(R.string.address, profile.healthVisitorAddress) }
+                    if (profile.healthVisitorNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.healthVisitorNotes) }
+                    if (profile.midwife.isNotBlank()) item { ViewValue(R.string.midwife, profile.midwife) }
+                    if (profile.midwifeContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.midwifeContact) }
+                    if (profile.midwifeEmail.isNotBlank()) item { ViewValue(R.string.email, profile.midwifeEmail) }
+                    if (profile.midwifeAddress.isNotBlank()) item { ViewValue(R.string.address, profile.midwifeAddress) }
+                    if (profile.midwifeNotes.isNotBlank()) item { ViewValue(R.string.notes, profile.midwifeNotes) }
+                    if (profile.specialist.isNotBlank()) item { ViewValue(R.string.specialist, profile.specialist) }
+                    if (profile.specialistContact.isNotBlank()) item { ViewValue(R.string.phone_number, profile.specialistContact) }
+                    if (profile.otherProvider.isNotBlank()) item { ViewValue(R.string.other_health_professional, listOf(profile.otherProviderTitle, profile.otherProvider, profile.otherProviderContact).filter(String::isNotBlank).joinToString("\n")) }
+                    item { ViewSection(R.string.health_information) }
+                    if (profile.cprNumber.isNotBlank()) item { ViewValue(R.string.cpr_number, profile.cprNumber) }
+                    if (profile.allergies.isNotBlank()) item { ViewValue(R.string.allergies, profile.allergies) }
+                    if (profile.medicalNotes.isNotBlank()) item { ViewValue(R.string.medical_notes, profile.medicalNotes) }
+                    val linkedParents = parents.filter { it.role.isParent }
+                    val otherMembers = parents.filterNot { it.role.isParent }
+                    item { ViewSection(R.string.parents) }
+                    if (linkedParents.isEmpty()) item { Text(stringResource(R.string.no_parents_linked)) }
+                    items(linkedParents, key = { it.id }) { member -> FamilyMemberView(member, familyPhotoFile(member.photoFileName)) }
+                    if (siblings.isNotEmpty()) {
+                        item { ViewSection(R.string.siblings) }
+                        items(siblings, key = { it.id }) { sibling -> Text("${sibling.avatar.symbol} ${sibling.name}") }
+                    }
+                    item { ViewSection(R.string.other_family_members) }
+                    if (otherMembers.isEmpty()) item { Text(stringResource(R.string.no_other_family_linked)) }
+                    items(otherMembers, key = { it.id }) { member -> FamilyMemberView(member, familyPhotoFile(member.photoFileName)) }
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.close)) }
+            }
+          }
+        }
+    }
+}
+
+private val LocalChildAccent = staticCompositionLocalOf { Color(0xFFF5CAD2) }
+private fun CareProviderType.viewLabelRes() = when(this) { CareProviderType.Hospital -> R.string.birth_hospital; CareProviderType.Gp -> R.string.gp; CareProviderType.HealthVisitor -> R.string.health_visitor; CareProviderType.Midwife -> R.string.midwife; CareProviderType.Specialist -> R.string.specialist; CareProviderType.Other -> R.string.other_health_professional }
+@Composable private fun ViewSection(label: Int) {
+    Surface(color = LocalChildAccent.current, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(12.dp))
+    }
+}
+@Composable private fun ViewValue(label: Int, value: String) { Column { Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value) } }
+
+@Composable private fun FamilyMemberView(member: ParentProfile, photoFile: File?) {
+    Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            val bitmap = remember(photoFile?.path, photoFile?.lastModified()) { photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+            if (bitmap != null) Image(bitmap, null, Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
+            Column { Text(roleLabel(member.role), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Text(member.name, style = MaterialTheme.typography.titleMedium); if (member.phone.isNotBlank()) Text(member.phone); if (member.email.isNotBlank()) Text(member.email) }
+        }
+    }
+}
+
+@Composable private fun roleLabel(role: FamilyMemberRole): String = stringResource(when (role) {
+    FamilyMemberRole.Mother -> R.string.role_mother
+    FamilyMemberRole.Father -> R.string.role_father
+    FamilyMemberRole.CoMother -> R.string.role_co_mother
+    FamilyMemberRole.CoFather -> R.string.role_co_father
+    FamilyMemberRole.Parent -> R.string.role_parent
+    FamilyMemberRole.ParentNotSpecified -> R.string.role_parent_unspecified
+    FamilyMemberRole.Grandmother -> R.string.role_grandmother
+    FamilyMemberRole.Grandfather -> R.string.role_grandfather
+    FamilyMemberRole.Grandparent -> R.string.role_grandparent
+    FamilyMemberRole.BonusMother -> R.string.role_bonus_mother
+    FamilyMemberRole.BonusFather -> R.string.role_bonus_father
+    FamilyMemberRole.BonusParent -> R.string.role_bonus_parent
+    FamilyMemberRole.Sister -> R.string.role_sister
+    FamilyMemberRole.Brother -> R.string.role_brother
+    FamilyMemberRole.Sibling -> R.string.role_sibling
+    FamilyMemberRole.BonusSibling -> R.string.role_bonus_sibling
+    FamilyMemberRole.Aunt -> R.string.role_aunt
+    FamilyMemberRole.Uncle -> R.string.role_uncle
+    FamilyMemberRole.MaternalAunt -> R.string.role_maternal_aunt
+    FamilyMemberRole.PaternalAunt -> R.string.role_paternal_aunt
+    FamilyMemberRole.MaternalUncle -> R.string.role_maternal_uncle
+    FamilyMemberRole.PaternalUncle -> R.string.role_paternal_uncle
+    FamilyMemberRole.Cousin -> R.string.role_cousin
+    FamilyMemberRole.OtherNotSpecified -> R.string.role_not_specified
+})
+
+@Composable
+private fun ProfileEditorDialog(
+    existing: ChildProfile?,
+    onSaveProfile: (ProfileDraft, (ProfileValidationError?) -> Unit) -> Unit,
+    photoFile: (String?) -> File?,
+    onPhotoSelected: suspend (Uri) -> String,
+    onDismiss: () -> Unit,
+    units: MeasurementUnits,
+    onDelete: (() -> Unit)?,
+    parents: List<ParentProfile>,
+    linkedParentIds: Set<String>,
+    onSaveParent: (ParentProfile, Set<String>) -> Unit,
+    onDeleteParent: (ParentProfile) -> Unit,
+    children: List<ChildProfile>,
+    familyLinks: List<ChildParentLink>,
+    careProviders: List<CareProvider>,
+) {
+    var draft by remember(existing?.id, units) { mutableStateOf(existing?.toDraft(units, linkedParentIds, careProviders) ?: ProfileDraft()) }
+    var error by remember { mutableStateOf<ProfileValidationError?>(null) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    stringResource(if (existing == null) R.string.add_child else R.string.edit_child),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                ProfileForm(
+                    draft = draft,
+                    onDraftChange = { draft = it; error = null },
+                    photoFile = photoFile(draft.photoFileName),
+                    onPhotoSelected = onPhotoSelected,
+                    units = units,
+                    modifier = Modifier.weight(1f),
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (onDelete != null) TextButton(onClick = onDelete) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+                    Button(onClick = {
+                        onSaveProfile(draft) { result -> error = result; if (result == null) onDismiss() }
+                    }) { Text(stringResource(R.string.save)) }
+                }
+            }
+        }
+    }
+    error?.let { validationError ->
+        AlertDialog(
+            onDismissRequest = { error = null },
+            title = { Text(stringResource(R.string.check_information)) },
+            text = { Text(stringResource(validationError.messageRes())) },
+            confirmButton = { TextButton(onClick = { error = null }) { Text(stringResource(R.string.ok)) } },
+        )
+    }
+}
+
+@Composable
+private fun ParentsEditor(
+    parents: List<ParentProfile>, selected: Set<String>, onSelectedChange: (Set<String>) -> Unit,
+    children: List<ChildProfile>, currentChildId: String?, familyLinks: List<ChildParentLink>, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String, onSave: (ParentProfile, Set<String>) -> Unit, onDelete: (ParentProfile) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<ParentProfile?>(null) }
+    var creating by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Button(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.family_title) + if (expanded) " ▲" else " ▼") }
+        if (expanded) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                parents.forEach { parent ->
+                    FilterChip(
+                        selected = parent.id in selected,
+                        onClick = { onSelectedChange(if (parent.id in selected) selected - parent.id else selected + parent.id) },
+                        label = { Text("${parent.avatar.symbol} ${parent.name}") },
+                    )
+                    IconButton(onClick = { editing = parent }) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit_parent)) }
+                }
+            }
+            TextButton(onClick = { creating = true }) { Text(stringResource(R.string.add_parent)) }
+        }
+    }
+    if (creating || editing != null) ParentEditorDialog(
+        existing = editing, initialRole = FamilyMemberRole.ParentNotSpecified, children = children,
+        selectedChildIds = editing?.let { member -> familyLinks.filter { it.parentId == member.id }.map { it.childId }.toSet() }
+            ?: currentChildId?.let(::setOf).orEmpty(), onSave = onSave,
+        onDelete = { parent -> onDelete(parent); editing = null }, photoFile = photoFile, onPhotoSelected = onPhotoSelected, onDismiss = { creating = false; editing = null },
+    )
+}
+
+@Composable
+private fun ParentEditorDialog(
+    existing: ParentProfile?, initialRole: FamilyMemberRole, children: List<ChildProfile>, selectedChildIds: Set<String>,
+    onSave: (ParentProfile, Set<String>) -> Unit, onDelete: (ParentProfile) -> Unit, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String, onDismiss: () -> Unit,
+) {
+    var name by remember(existing?.id) { mutableStateOf(existing?.name.orEmpty()) }
+    var phone by remember(existing?.id) { mutableStateOf(existing?.phone.orEmpty()) }
+    var email by remember(existing?.id) { mutableStateOf(existing?.email.orEmpty()) }
+    var cpr by remember(existing?.id) { mutableStateOf(existing?.cprNumber.orEmpty()) }
+    var avatar by remember(existing?.id) { mutableStateOf(existing?.avatar ?: dk.babyapp.data.profile.ProfileAvatar.Bear) }
+    var role by remember(existing?.id) { mutableStateOf(existing?.role ?: initialRole) }
+    var notes by remember(existing?.id) { mutableStateOf(existing?.notes.orEmpty()) }
+    var childIds by remember(existing?.id) { mutableStateOf(selectedChildIds) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var missingChildError by remember { mutableStateOf(false) }
+    var photoName by remember(existing?.id) { mutableStateOf(existing?.photoFileName) }
+    val photoScope = rememberCoroutineScope()
+    val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photoScope.launch { photoName = onPhotoSelected(uri) } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(if (role.isParent) (if (existing == null) R.string.add_parent else R.string.edit_parent) else (if (existing == null) R.string.add_family_profile else R.string.edit_family_profile))) },
+        text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.choose_avatar), style = MaterialTheme.typography.labelLarge)
+            photoFile(photoName)?.let { file -> BitmapFactory.decodeFile(file.path)?.asImageBitmap()?.let { bitmap -> Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(72.dp).clip(CircleShape), contentScale = ContentScale.Crop) } }
+            TextButton(onClick = { photoLauncher.launch("image/*") }) { Text(stringResource(R.string.choose_photo)) }
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { dk.babyapp.data.profile.ProfileAvatar.entries.forEach { option -> FilterChip(avatar == option, { avatar = option }, label = { Text(option.symbol) }) } }
+            androidx.compose.material3.OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.parent_name)) })
+            androidx.compose.material3.OutlinedTextField(phone, { phone = it }, label = { Text(stringResource(R.string.phone_number)) })
+            androidx.compose.material3.OutlinedTextField(email, { email = it }, label = { Text(stringResource(R.string.email)) })
+            androidx.compose.material3.OutlinedTextField(cpr, { cpr = it }, label = { Text(stringResource(R.string.cpr_number)) })
+            FamilyRoleDropdown(role, role.isParent) { role = it }
+            androidx.compose.material3.OutlinedTextField(notes, { notes = it }, label = { Text(stringResource(R.string.notes)) })
+            Text(stringResource(R.string.link_to_children))
+            androidx.compose.foundation.layout.FlowRow { children.forEach { child -> FilterChip(child.id in childIds, { childIds = if (child.id in childIds) childIds - child.id else childIds + child.id }, label = { Text(child.name) }) } }
+        } },
+        confirmButton = { Button(enabled = name.isNotBlank(), onClick = {
+            if (childIds.isEmpty()) missingChildError = true else {
+                onSave(ParentProfile(existing?.id ?: java.util.UUID.randomUUID().toString(), name.trim(), phone.trim(), email.trim(), cpr.trim(), avatar, role, notes.trim(), photoName), childIds); onDismiss()
+            }
+        }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { Row { if (existing != null) TextButton(onClick = { confirmDelete = true }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }; TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } } },
+    )
+    if (confirmDelete && existing != null) AlertDialog(
+        onDismissRequest = { confirmDelete = false },
+        title = { Text(stringResource(R.string.delete_parent_title, existing.name)) },
+        text = { Text(stringResource(R.string.delete_parent_message)) },
+        confirmButton = { Button(onClick = { onDelete(existing); onDismiss() }) { Text(stringResource(R.string.delete)) } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
+    )
+    if (missingChildError) AlertDialog(
+        onDismissRequest = { missingChildError = false },
+        title = { Text(stringResource(R.string.child_link_required_title)) },
+        text = { Text(stringResource(R.string.child_link_required_message)) },
+        confirmButton = { TextButton(onClick = { missingChildError = false }) { Text(stringResource(R.string.ok)) } },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FamilyRoleDropdown(value: FamilyMemberRole, parentProfile: Boolean, onChange: (FamilyMemberRole) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded, { expanded = it }) {
+        OutlinedTextField(value = roleLabel(value), onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable), label = { Text(stringResource(if (parentProfile) R.string.parent_role else R.string.family_role)) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) })
+        val options = FamilyMemberRole.entries.filter { it.isParent == parentProfile }
+        ExposedDropdownMenu(expanded, { expanded = false }) { options.forEach { role -> DropdownMenuItem(text = { Text(roleLabel(role)) }, onClick = { onChange(role); expanded = false }) } }
+    }
+}

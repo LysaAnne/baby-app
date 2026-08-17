@@ -22,6 +22,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        kapt {
+            arguments {
+                arg("room.schemaLocation", "$projectDir/schemas")
+                arg("room.incremental", "true")
+            }
+        }
     }
 
     buildTypes {
@@ -57,6 +64,8 @@ android {
         // sources and Android-test sources remain fully analyzed.
         checkTestSources = false
     }
+
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
 }
 
 kotlin {
@@ -77,6 +86,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.appcompat)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 
@@ -91,11 +105,23 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
 
     testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// AGP 9.2 may start lint on kapt-backed test sources before their stubs exist.
+// Explicit ordering keeps the normal combined verification command reliable.
+tasks.matching { it.name == "lintAnalyzeDebugUnitTest" }.configureEach {
+    mustRunAfter("kaptDebugUnitTestKotlin")
+}
+tasks.matching { it.name == "lintAnalyzeDebugAndroidTest" }.configureEach {
+    mustRunAfter("kaptDebugAndroidTestKotlin")
 }

@@ -1,18 +1,61 @@
 package dk.babyapp.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dk.babyapp.data.preferences.ThemePreference
 import dk.babyapp.ui.navigation.BabyAppNavigation
+import dk.babyapp.ui.onboarding.OnboardingScreen
+import dk.babyapp.ui.theme.AppThemeMode
 import dk.babyapp.ui.theme.BabyAppTheme
 
 @Composable
-fun BabyApp() {
-    BabyAppTheme {
+fun BabyApp(viewModel: AppViewModel = viewModel()) {
+    val state by viewModel.state.collectAsState()
+    LaunchedEffect(state.loaded, state.preferences.languageTag) {
+        if (state.loaded && AppCompatDelegate.getApplicationLocales().toLanguageTags() != "da") {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("da"))
+        }
+    }
+    val themeMode = when (state.preferences.theme) {
+        ThemePreference.System -> AppThemeMode.System
+        ThemePreference.Light -> AppThemeMode.Light
+        ThemePreference.Dark -> AppThemeMode.Dark
+    }
+    BabyAppTheme(themeMode = themeMode) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            BabyAppNavigation()
+            when {
+                !state.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                !state.preferences.onboardingCompleted -> OnboardingScreen(viewModel, state.preferences)
+                else -> BabyAppNavigation(
+                    profiles = state.profiles,
+                    activeChild = state.activeChild,
+                    onSelectChild = viewModel::selectChild,
+                    onSaveProfile = viewModel::saveProfile,
+                    onDeleteProfile = viewModel::deleteProfile,
+                    photoFile = viewModel::photoFile,
+                    onPhotoSelected = viewModel::importPhoto,
+                    preferences = state.preferences,
+                    onUpdateSettings = viewModel::updateSettings,
+                    parents = state.parents,
+                    parentLinks = state.parentLinks,
+                    onSaveParent = viewModel::saveFamilyMember,
+                    onDeleteParent = viewModel::deleteParent,
+                    careProviders = state.careProviders,
+                )
+            }
         }
     }
 }
-

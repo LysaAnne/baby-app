@@ -1,0 +1,143 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "d99f806ee0dea3889802940a2ff08710",
+    "entities": [
+      {
+        "tableName": "child_profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `nickname` TEXT NOT NULL, `birthDate` TEXT NOT NULL, `birthTime` TEXT, `dueDate` TEXT, `sex` TEXT NOT NULL, `birthWeightGrams` INTEGER, `birthLengthCm` REAL, `birthHeadCircumferenceCm` REAL, `gestationalWeeks` INTEGER, `gestationalDays` INTEGER, `hospital` TEXT NOT NULL, `gp` TEXT NOT NULL, `healthVisitor` TEXT NOT NULL, `allergies` TEXT NOT NULL, `medicalNotes` TEXT NOT NULL, `photoFileName` TEXT, `avatar` TEXT NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nickname",
+            "columnName": "nickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthDate",
+            "columnName": "birthDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthTime",
+            "columnName": "birthTime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dueDate",
+            "columnName": "dueDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sex",
+            "columnName": "sex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthWeightGrams",
+            "columnName": "birthWeightGrams",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "birthLengthCm",
+            "columnName": "birthLengthCm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "birthHeadCircumferenceCm",
+            "columnName": "birthHeadCircumferenceCm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "gestationalWeeks",
+            "columnName": "gestationalWeeks",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "gestationalDays",
+            "columnName": "gestationalDays",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hospital",
+            "columnName": "hospital",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gp",
+            "columnName": "gp",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "healthVisitor",
+            "columnName": "healthVisitor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allergies",
+            "columnName": "allergies",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicalNotes",
+            "columnName": "medicalNotes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoFileName",
+            "columnName": "photoFileName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "avatar",
+            "columnName": "avatar",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd99f806ee0dea3889802940a2ff08710')"
+    ]
+  }
+}
