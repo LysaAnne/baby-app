@@ -164,7 +164,7 @@ A stage is complete only when:
 
 ## Stage 4 — Sleep tracking and unified timeline
 
-**Status:** `[ ] Not started`
+**Status:** `[x] Implemented`
 
 **Outcome:** Parents can track sleep reliably and review all care events in one editable timeline.
 
@@ -184,13 +184,13 @@ A stage is complete only when:
 
 ### Acceptance criteria
 
-- [ ] Sleep can be started and stopped in approximately two taps.
-- [ ] Invalid overlapping sleep sessions are prevented or resolved explicitly.
-- [ ] Daylight-saving changes do not corrupt recorded duration.
-- [ ] Timeline displays feeding, diaper, pumping, and sleep consistently.
-- [ ] Filters and editing remain usable with a large local dataset.
-- [ ] Notification and app controls stay synchronized.
-- [ ] Timeline and sleep tests pass.
+- [x] Sleep can be started and stopped in approximately two taps.
+- [x] Invalid overlapping sleep sessions are prevented or resolved explicitly.
+- [x] Daylight-saving changes do not corrupt recorded duration.
+- [x] Timeline displays feeding, diaper, pumping, and sleep consistently.
+- [x] Filters and editing remain usable with a large local dataset.
+- [x] Notification and app controls stay synchronized.
+- [x] Timeline and sleep tests pass.
 
 ---
 
@@ -581,6 +581,8 @@ Use this table whenever a requested feature changes the agreed plan.
 | 2026-08-17 | Reduced the initial palette selection to Salvie plus matching yellow, pink, and light-blue variants; Salvie is the app default while the developer editor remains available. | 2–3 | Complete |
 | 2026-08-17 | Expanded the developer test family with Hector, added direct child editing from Family, and added a central relationship review workflow. | 2–3 | Complete |
 | 2026-08-17 | Added persisted drag ordering for children and family members, simplified the Family headings, and reserved active-child selection for the global selector. | 2–3 | Complete |
+| 2026-08-17 | Implemented sleep timers, sleep details and overlap protection, persistent sleep controls, and a unified lazy timeline with child, event-type, and date filters. | 4 | Complete |
+| 2026-08-17 | Kept paused timers visible, persisted timer intervals, limited Today to five collapsible records, scoped Timeline to the active child, collapsed older days, and opened completed quick records for immediate editing. | 4 | Complete |
 | 2026-08-17 | Increased the neutral profiles’ green contrast and added light/dark baby-blue and baby-pink profiles plus a pastel-yellow profile. | 2–3 | Complete |
 | 2026-08-17 | Centralized all editable palette HEX codes in one documented file and added an in-app developer preview showing every colour role for every profile. | 2–3 | Complete |
 | 2026-08-17 | Replaced manual palette editing with a debug-only visual colour-profile manager supporting HSV/HEX editing, live previews, dynamic create/rename/duplicate/delete, local persistence, stable child links, and JSON import/export for bundled defaults. | 2–3 | Complete |

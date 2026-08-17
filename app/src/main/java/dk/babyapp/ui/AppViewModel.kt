@@ -31,6 +31,10 @@ import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.data.tracking.SleepQuality
+import dk.babyapp.data.tracking.SleepType
+import dk.babyapp.data.tracking.closeSegment
+import dk.babyapp.data.tracking.startSegment
 import dk.babyapp.tracking.TimerNotificationController
 import dk.babyapp.ui.profile.ProfileDraft
 import dk.babyapp.ui.profile.ProfileValidationError
@@ -174,23 +178,35 @@ class AppViewModel @Inject constructor(
     fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch {
         stopExistingTimer(childId)
         val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side)
+        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side).startSegment(now)
         careEventRepository.save(event); timerNotifications.show(event.id)
     }
 
     fun startPumping(childId: String) = viewModelScope.launch {
         stopExistingTimer(childId)
         val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = now, runningSince = now)
+        val event = CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = now, runningSince = now).startSegment(now)
         careEventRepository.save(event); timerNotifications.show(event.id)
+    }
+
+    fun startSleep(childId: String, sleepType: SleepType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
+        if (careEventRepository.activeForChild(childId) != null) {
+            onResult(false)
+        } else {
+            val now = System.currentTimeMillis()
+            val event = CareEventEntity(childId = childId, type = CareEventType.Sleep, sleepType = sleepType, startedAt = now, runningSince = now).startSegment(now)
+            careEventRepository.save(event)
+            timerNotifications.show(event.id)
+            onResult(true)
+        }
     }
 
     fun toggleTimer(event: CareEventEntity) = viewModelScope.launch {
         val now = System.currentTimeMillis()
         if (event.runningSince == null) {
-            careEventRepository.save(event.copy(runningSince = now))
+            careEventRepository.save(event.startSegment(now).copy(runningSince = now))
         } else {
-            careEventRepository.save(accrue(event, now).copy(runningSince = null))
+            careEventRepository.save(accrue(event, now).closeSegment(now).copy(runningSince = null))
         }
     }
 
@@ -200,24 +216,65 @@ class AppViewModel @Inject constructor(
         careEventRepository.save(accrued.copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = if (event.runningSince != null) now else null))
     }
 
-    fun stopTimer(event: CareEventEntity, amountMl: Int? = null) = viewModelScope.launch {
+    fun stopTimer(event: CareEventEntity, amountMl: Int? = null, onComplete: (CareEventEntity) -> Unit = {}) = viewModelScope.launch {
         val now = System.currentTimeMillis()
-        careEventRepository.save(accrue(event, now).copy(endedAt = now, runningSince = null, pumpedAmountMl = amountMl ?: event.pumpedAmountMl))
+        val completed = accrue(event, now).closeSegment(now).copy(endedAt = now, runningSince = null, pumpedAmountMl = amountMl ?: event.pumpedAmountMl)
+        careEventRepository.save(completed)
         timerNotifications.hide()
+        onComplete(completed)
     }
 
     fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String) =
         viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = offered, amountConsumedMl = consumed, notes = notes)) }
 
-    fun addDiaper(childId: String, time: Long, type: DiaperType, observation: String, notes: String) =
-        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Diaper, startedAt = time, endedAt = time, diaperType = type, observation = observation, notes = notes)) }
+    fun addDiaper(childId: String, time: Long, type: DiaperType, observation: String, notes: String, onComplete: (CareEventEntity) -> Unit = {}) =
+        viewModelScope.launch {
+            val event = CareEventEntity(childId = childId, type = CareEventType.Diaper, startedAt = time, endedAt = time, diaperType = type, observation = observation, notes = notes)
+            careEventRepository.save(event); onComplete(event)
+        }
 
     fun addManualTimer(childId: String, type: CareEventType, start: Long, end: Long, side: BreastSide?, amountMl: Int?, notes: String) = viewModelScope.launch {
         val seconds = ((end - start).coerceAtLeast(0) / 1_000)
         careEventRepository.save(CareEventEntity(childId = childId, type = type, startedAt = start, endedAt = end, activeSide = side, leftSeconds = if (side == BreastSide.Left) seconds else 0, rightSeconds = if (side == BreastSide.Right) seconds else 0, pumpedAmountMl = amountMl, notes = notes))
     }
 
-    fun updateCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.save(event) }
+    fun addSleep(
+        childId: String,
+        start: Long,
+        end: Long,
+        sleepType: SleepType,
+        location: String,
+        settlingMethod: String,
+        awakenings: Int?,
+        quality: SleepQuality?,
+        notes: String,
+        onResult: (Boolean) -> Unit = {},
+    ) = viewModelScope.launch {
+        val overlaps = state.value.careEvents.any { event ->
+            event.childId == childId && event.type == CareEventType.Sleep && event.deletedAt == null &&
+                start < (event.endedAt ?: System.currentTimeMillis()) && end > event.startedAt
+        }
+        if (end <= start || overlaps) {
+            onResult(false)
+        } else {
+            careEventRepository.save(
+                CareEventEntity(
+                    childId = childId, type = CareEventType.Sleep, startedAt = start, endedAt = end,
+                    leftSeconds = (end - start) / 1_000, sleepType = sleepType, sleepLocation = location,
+                    settlingMethod = settlingMethod, awakenings = awakenings, sleepQuality = quality, notes = notes,
+                ),
+            )
+            onResult(true)
+        }
+    }
+
+    fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
+        val overlaps = event.type == CareEventType.Sleep && state.value.careEvents.any { other ->
+            other.id != event.id && other.childId == event.childId && other.type == CareEventType.Sleep && other.deletedAt == null &&
+                event.startedAt < (other.endedAt ?: System.currentTimeMillis()) && (event.endedAt ?: System.currentTimeMillis()) > other.startedAt
+        }
+        if (overlaps) onResult(false) else { careEventRepository.save(event); onResult(true) }
+    }
     fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.softDelete(event) }
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
@@ -355,7 +412,7 @@ class AppViewModel @Inject constructor(
     private suspend fun stopExistingTimer(childId: String) {
         careEventRepository.activeForChild(childId)?.let { current ->
             val now = System.currentTimeMillis()
-            careEventRepository.save(accrue(current, now).copy(endedAt = now, runningSince = null))
+            careEventRepository.save(accrue(current, now).closeSegment(now).copy(endedAt = now, runningSince = null))
         }
     }
 

@@ -53,6 +53,9 @@ import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.DiaperType
 import dk.babyapp.ui.tracking.TodayScreen
+import dk.babyapp.ui.tracking.TimelineScreen
+import dk.babyapp.data.tracking.SleepQuality
+import dk.babyapp.data.tracking.SleepType
 import java.time.LocalDate
 import dk.babyapp.domain.shouldShowDueDateReminder
 
@@ -85,13 +88,15 @@ fun BabyAppNavigation(
     colorProfiles: List<ColorProfile> = emptyList(),
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
     onStartPumping: (String) -> Unit = {},
+    onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onToggleTimer: (CareEventEntity) -> Unit = {},
     onSwitchSide: (CareEventEntity) -> Unit = {},
-    onStopTimer: (CareEventEntity, Int?) -> Unit = { _, _ -> },
+    onStopTimer: (CareEventEntity, Int?, (CareEventEntity) -> Unit) -> Unit = { _, _, _ -> },
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit = { _, _, _, _, _, _ -> },
-    onAddDiaper: (String, Long, DiaperType, String, String) -> Unit = { _, _, _, _, _ -> },
+    onAddDiaper: (String, Long, DiaperType, String, String, (CareEventEntity) -> Unit) -> Unit = { _, _, _, _, _, _ -> },
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
-    onUpdateCareEvent: (CareEventEntity) -> Unit = {},
+    onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
+    onUpdateCareEvent: (CareEventEntity, (Boolean) -> Unit) -> Unit = { _, result -> result(true) },
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
     onCreateDeveloperTestFamily: (() -> Unit) -> Unit = { it() },
@@ -183,11 +188,12 @@ fun BabyAppNavigation(
                     childId = activeChild?.id, events = careEvents, contentPadding = contentPadding, preferences = preferences,
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
-                    onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping,
+                    onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
                     onToggleTimer = onToggleTimer, onSwitchSide = onSwitchSide, onStopTimer = onStopTimer,
-                    onAddBottle = onAddBottle, onAddDiaper = onAddDiaper, onAddManualTimer = onAddManualTimer,
+                    onAddBottle = onAddBottle, onAddDiaper = onAddDiaper, onAddManualTimer = onAddManualTimer, onAddSleep = onAddSleep,
                     onUpdate = onUpdateCareEvent, onDelete = onDeleteCareEvent,
                     onUpdateQuickActions = onUpdateQuickActions,
+                    onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
                 )
                 if (activeChild == null && !preferences.hasSeenGettingStarted) {
                     androidx.compose.material3.AlertDialog(
@@ -204,10 +210,16 @@ fun BabyAppNavigation(
                 }
             }
             composable<AppDestination.Timeline> {
-                PlaceholderScreen(
-                    title = stringResource(R.string.timeline_title),
-                    description = stringResource(R.string.timeline_description),
+                TimelineScreen(
+                    activeChildId = activeChild?.id,
+                    events = careEvents,
                     contentPadding = contentPadding,
+                    onAddSleep = onAddSleep,
+                    onAddBottle = onAddBottle,
+                    onAddDiaper = onAddDiaper,
+                    onAddManualTimer = onAddManualTimer,
+                    onUpdate = onUpdateCareEvent,
+                    onDelete = onDeleteCareEvent,
                 )
             }
             composable<AppDestination.Insights> {

@@ -17,6 +17,8 @@ import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
 import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.closeSegment
+import dk.babyapp.data.tracking.startSegment
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,10 +62,10 @@ class TimerNotificationService : Service() {
         scope.launch {
             val event = repository.get(id) ?: return@launch stopSelf()
             when (intent?.action) {
-                ACTION_PAUSE -> repository.save(accrue(event).copy(runningSince = null))
-                ACTION_RESUME -> repository.save(event.copy(runningSince = System.currentTimeMillis()))
+                ACTION_PAUSE -> { val now = System.currentTimeMillis(); repository.save(accrue(event).closeSegment(now).copy(runningSince = null)) }
+                ACTION_RESUME -> { val now = System.currentTimeMillis(); repository.save(event.startSegment(now).copy(runningSince = now)) }
                 ACTION_SWITCH -> repository.save(accrue(event).copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = System.currentTimeMillis()))
-                ACTION_STOP -> { repository.save(accrue(event).copy(endedAt = System.currentTimeMillis(), runningSince = null)); stopSelf(); return@launch }
+                ACTION_STOP -> { val now = System.currentTimeMillis(); repository.save(accrue(event).closeSegment(now).copy(endedAt = now, runningSince = null)); stopSelf(); return@launch }
             }
             beginUpdates(id)
         }
@@ -83,7 +85,11 @@ class TimerNotificationService : Service() {
     }
 
     private fun notification(event: CareEventEntity): android.app.Notification {
-        val title = if (event.type == CareEventType.Breastfeeding) "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"}" else "Pumpning"
+        val title = when (event.type) {
+            CareEventType.Breastfeeding -> "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"}"
+            CareEventType.Sleep -> "Søvn"
+            else -> "Pumpning"
+        }
         val elapsed = event.elapsedSeconds()
         val text = "%02d:%02d:%02d".format(elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60)
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)

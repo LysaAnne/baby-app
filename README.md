@@ -641,4 +641,6 @@ The project owner should run these commands only after reviewing and testing the
 - Android project: created and verified
 - Implementation: Stages 1–2 complete
 - Android baseline: minimum API 26, compile and target API 37
-- Current roadmap stage: Stage 3 implemented; awaiting instruction for Stage 4
+- Current roadmap stage: Stage 4 implemented; awaiting instruction for Stage 5
+
+Stage 4 follow-up behavior: paused timers remain visible and retain every active time interval. Today shows five collapsed recent records with a direct route to Timeline. Timeline is scoped to the globally selected child; records and previous days are collapsed by default, while today stays open. Completing a quick diaper or timed record opens its editor immediately for optional details.

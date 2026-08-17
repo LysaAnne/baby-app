@@ -65,7 +65,7 @@ abstract class CoreModule {
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "baby_app.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .build()
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -148,6 +148,20 @@ abstract class CoreModule {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE child_profiles ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 2147483647")
                 db.execSQL("ALTER TABLE parent_profiles ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 2147483647")
+            }
+        }
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE care_events ADD COLUMN sleepType TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN sleepLocation TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN settlingMethod TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN awakenings INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN sleepQuality TEXT DEFAULT NULL")
+            }
+        }
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE care_events ADD COLUMN timerSegments TEXT NOT NULL DEFAULT ''")
             }
         }
 

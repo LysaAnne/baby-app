@@ -20,6 +20,8 @@ import dk.babyapp.data.profile.CareProvider
 import dk.babyapp.data.profile.BiologicalSex
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
+import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.tracking.TimerNotificationController
 import dk.babyapp.ui.profile.ProfileDraft
 import java.io.File
@@ -165,6 +167,42 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         assertEquals(profileToMove.id, viewModel.state.value.colorProfiles.filterNot { it.isDark }.first().id)
+        collector.cancel()
+    }
+
+    @Test
+    fun `sleep starts as a running timer and can be stopped`() = runTest(dispatcher) {
+        val events = FakeCareEventRepository()
+        val viewModel = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        var started: Boolean? = null
+
+        viewModel.startSleep("child-1", SleepType.Nap) { started = it }
+        advanceUntilIdle()
+        val running = events.items.value.single()
+        viewModel.stopTimer(running, null)
+        advanceUntilIdle()
+
+        assertEquals(true, started)
+        assertEquals(CareEventType.Sleep, running.type)
+        assertEquals(SleepType.Nap, running.sleepType)
+        assertEquals(true, running.isRunning)
+        assertEquals(false, events.items.value.single().isRunning)
+    }
+
+    @Test
+    fun `manual sleep rejects an overlapping interval`() = runTest(dispatcher) {
+        val existing = CareEventEntity(childId = "child-1", type = CareEventType.Sleep, sleepType = SleepType.Nap, startedAt = 1_000, endedAt = 5_000, leftSeconds = 4)
+        val events = FakeCareEventRepository().also { it.items.value = listOf(existing) }
+        val viewModel = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        val collector = launch { viewModel.state.collect {} }
+        advanceUntilIdle()
+        var saved: Boolean? = null
+
+        viewModel.addSleep("child-1", 4_000, 7_000, SleepType.Nap, "", "", null, null, "") { saved = it }
+        advanceUntilIdle()
+
+        assertEquals(false, saved)
+        assertEquals(1, events.items.value.size)
         collector.cancel()
     }
 }

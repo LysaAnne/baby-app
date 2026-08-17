@@ -5,10 +5,12 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper }
+enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep }
 enum class BreastSide { Left, Right }
 enum class BottleContent { BreastMilk, Formula, Water, Other }
 enum class DiaperType { Wet, Dirty, Both, Dry }
+enum class SleepType { Nap, Night }
+enum class SleepQuality { Restful, Mixed, Restless }
 
 @Entity(
     tableName = "care_events",
@@ -29,6 +31,12 @@ data class CareEventEntity(
     val pumpedAmountMl: Int? = null,
     val bottleContent: BottleContent? = null,
     val diaperType: DiaperType? = null,
+    val sleepType: SleepType? = null,
+    val sleepLocation: String = "",
+    val settlingMethod: String = "",
+    val awakenings: Int? = null,
+    val sleepQuality: SleepQuality? = null,
+    val timerSegments: String = "",
     val observation: String = "",
     val notes: String = "",
     val deletedAt: Long? = null,
@@ -41,4 +49,19 @@ data class CareEventEntity(
         val stored = leftSeconds + rightSeconds
         return stored + if (runningSince != null) ((now - runningSince).coerceAtLeast(0) / 1_000) else 0
     }
+}
+
+fun CareEventEntity.startSegment(at: Long): CareEventEntity = copy(
+    timerSegments = (timerSegments.takeIf { it.isNotBlank() }?.plus(";") ?: "") + "$at-",
+)
+
+fun CareEventEntity.closeSegment(at: Long): CareEventEntity {
+    if (timerSegments.isBlank() || !timerSegments.endsWith("-")) return this
+    return copy(timerSegments = timerSegments + at)
+}
+
+fun CareEventEntity.segmentIntervals(): List<Pair<Long, Long?>> = timerSegments.split(';').mapNotNull { value ->
+    val parts = value.split('-', limit = 2)
+    val start = parts.firstOrNull()?.toLongOrNull() ?: return@mapNotNull null
+    start to parts.getOrNull(1)?.toLongOrNull()
 }
