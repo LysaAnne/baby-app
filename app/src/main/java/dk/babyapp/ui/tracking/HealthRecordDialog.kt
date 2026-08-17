@@ -3,9 +3,14 @@ package dk.babyapp.ui.tracking
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenuItem
@@ -24,7 +29,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import dk.babyapp.data.profile.CareProvider
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
@@ -66,10 +74,11 @@ fun HealthRecordDialog(
     var reactions by remember { mutableStateOf(existing?.reactionNotes.orEmpty()) }
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     var officialKey by remember { mutableStateOf(existing?.officialScheduleKey) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (vaccination) "Registrér vaccination" else "Registrér sundhedsbesøg") },
-        text = { Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(if (vaccination) "Registrér vaccination" else "Registrér sundhedsbesøg", style = MaterialTheme.typography.headlineSmall)
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Dette er dine egne noter og ikke en officiel sundhedsjournal.")
             DateOnlyButton(time) { time = it }
             SelectionDropdown("Status", statusLabel(status), HealthRecordStatus.entries.map { it to statusLabel(it) }) { status = it }
@@ -115,19 +124,22 @@ fun HealthRecordDialog(
                 OutlinedTextField(followUp, { followUp = it }, label = { Text("Opfølgning") })
             }
             OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
-        } },
-        confirmButton = { Button(enabled = !vaccination || vaccine.isNotBlank(), onClick = {
-            onSave((existing ?: CareEventEntity(childId = childId, type = if (vaccination) CareEventType.Vaccination else CareEventType.HealthVisit, startedAt = time, endedAt = time)).copy(
-                startedAt = time, endedAt = time, healthStatus = status, healthVisitType = if (vaccination) null else visitType,
-                providerId = providerId, providerDisplayName = providerName, healthTitle = title, healthReason = reason,
-                healthObservations = observations, healthAdvice = advice, healthQuestions = questions, followUp = followUp,
-                vaccineName = vaccine, vaccineDose = dose, vaccineBatchNumber = batch, injectionSite = site,
-                reactionNotes = reactions, notes = notes,
-                officialScheduleKey = officialKey,
-            ))
-        }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
-    )
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onDismiss) { Text("Annuller") }
+                    Button(enabled = !vaccination || vaccine.isNotBlank(), onClick = {
+                        onSave((existing ?: CareEventEntity(childId = childId, type = if (vaccination) CareEventType.Vaccination else CareEventType.HealthVisit, startedAt = time, endedAt = time)).copy(
+                            startedAt = time, endedAt = time, healthStatus = status, healthVisitType = if (vaccination) null else visitType,
+                            providerId = providerId, providerDisplayName = providerName, healthTitle = title, healthReason = reason,
+                            healthObservations = observations, healthAdvice = advice, healthQuestions = questions, followUp = followUp,
+                            vaccineName = vaccine, vaccineDose = dose, vaccineBatchNumber = batch, injectionSite = site,
+                            reactionNotes = reactions, notes = notes, officialScheduleKey = officialKey,
+                        ))
+                    }) { Text("Gem") }
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

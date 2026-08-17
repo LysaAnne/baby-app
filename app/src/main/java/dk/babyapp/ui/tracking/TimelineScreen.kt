@@ -1,19 +1,19 @@
 package dk.babyapp.ui.tracking
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,6 +40,7 @@ import dk.babyapp.data.tracking.DiaperType
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.profile.CareProvider
+import dk.babyapp.ui.components.BabyEmptyState
 import java.text.DateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -63,8 +64,9 @@ fun TimelineScreen(
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
 ) {
-    var typeFilter by remember { mutableStateOf<CareEventType?>(null) }
+    var typeFilters by remember { mutableStateOf(emptySet<CareEventType>()) }
     var range by remember { mutableStateOf(TimelineRange.Week) }
+    var filtersOpen by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
     var addKind by remember { mutableStateOf<AddKind?>(null) }
     var editing by remember { mutableStateOf<CareEventEntity?>(null) }
@@ -76,7 +78,7 @@ fun TimelineScreen(
     val firstDate = range.days?.let { LocalDate.now().minusDays(it - 1) }
     val filtered = events.asSequence()
         .filter { it.childId == activeChildId }
-        .filter { typeFilter == null || it.type == typeFilter }
+        .filter { typeFilters.isEmpty() || it.type in typeFilters }
         .filter { firstDate == null || Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() >= firstDate }
         .toList()
     val groups = filtered.groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }.toSortedMap(compareByDescending { it })
@@ -92,11 +94,13 @@ fun TimelineScreen(
             contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + inner.calculateTopPadding() + 12.dp, bottom = contentPadding.calculateBottomPadding() + 88.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { Text("Tidslinje", style = MaterialTheme.typography.headlineSmall) }
             item {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(typeFilter == null, { typeFilter = null }, { Text("Alle typer") })
-                    CareEventType.entries.forEach { type -> FilterChip(typeFilter == type, { typeFilter = type }, { Text(typeLabel(type)) }) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Tidslinje", style = MaterialTheme.typography.headlineSmall)
+                    TextButton(onClick = { filtersOpen = true }) {
+                        Icon(Icons.Outlined.FilterList, null)
+                        Text(if (typeFilters.isEmpty() && range == TimelineRange.Week) "Filtre" else "Filtre (${typeFilters.size + if (range == TimelineRange.Week) 0 else 1})")
+                    }
                 }
             }
             item {
@@ -104,7 +108,7 @@ fun TimelineScreen(
                     TimelineRange.entries.forEach { option -> FilterChip(range == option, { range = option }, { Text(when (option) { TimelineRange.Today -> "I dag"; TimelineRange.Week -> "7 dage"; TimelineRange.All -> "Alle" }) }) }
                 }
             }
-            if (groups.isEmpty()) item { Text("Ingen registreringer matcher filtrene.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (groups.isEmpty()) item { BabyEmptyState(Icons.Outlined.History, "Ingen registreringer fundet", "Prøv at nulstille filtrene, eller tilføj en ny registrering.") }
             groups.forEach { (date, dayEvents) ->
                 item(key = "day-$date") {
                     TextButton(onClick = { expandedDays = if (date in expandedDays) expandedDays - date else expandedDays + date }) {
@@ -117,6 +121,25 @@ fun TimelineScreen(
             }
         }
     }
+    if (filtersOpen) AlertDialog(
+        onDismissRequest = { filtersOpen = false },
+        title = { Text("Filtrér tidslinjen") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Periode", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TimelineRange.entries.forEach { option -> FilterChip(range == option, { range = option }, { Text(when (option) { TimelineRange.Today -> "I dag"; TimelineRange.Week -> "7 dage"; TimelineRange.All -> "Alle" }) }) }
+            }
+            Text("Registreringstyper", style = MaterialTheme.typography.titleSmall)
+            CareEventType.entries.forEach { type ->
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    androidx.compose.material3.Checkbox(type in typeFilters, { selected -> typeFilters = if (selected) typeFilters + type else typeFilters - type })
+                    Text(typeLabel(type))
+                }
+            }
+            TextButton(onClick = { typeFilters = emptySet(); range = TimelineRange.Week }) { Text("Nulstil filtre") }
+        } },
+        confirmButton = { Button(onClick = { filtersOpen = false }) { Text("Vis resultater") } },
+    )
     if (addMenu) AlertDialog(
         onDismissRequest = { addMenu = false }, title = { Text("Tilføj registrering") },
         text = {

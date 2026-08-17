@@ -247,7 +247,7 @@ private fun TodayPalettePreviewDialog(profile: ColorProfile, onDismiss: () -> Un
                     item { PreviewActionSection("🍼  Madning", listOf("Venstre bryst", "Højre bryst", "Flaske", "Pumpning")) }
                     item { PreviewActionSection("🧷  Ble", listOf("Våd", "Afføring", "Begge", "Tør")) }
                     item {
-                        OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("＋  Manuel indtastning") }
+                        OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("＋  Manuel registrering") }
                     }
                     item {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {

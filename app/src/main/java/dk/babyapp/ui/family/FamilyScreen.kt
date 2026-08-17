@@ -127,6 +127,7 @@ fun FamilyScreen(
     var addMenuOpen by remember { mutableStateOf(false) }
     var addingMemberRole by remember { mutableStateOf<FamilyMemberRole?>(null) }
     var editingMember by remember { mutableStateOf<ParentProfile?>(null) }
+    var viewingMember by remember { mutableStateOf<ParentProfile?>(null) }
     var deleting by remember { mutableStateOf<ChildProfile?>(null) }
     var reviewingRelations by remember { mutableStateOf(false) }
     var reorderingChildren by remember { mutableStateOf(false) }
@@ -180,11 +181,13 @@ fun FamilyScreen(
                 }
             }
             items(parents, key = { it.id }) { member ->
-                Card(onClick = { editingMember = member }, modifier = Modifier.fillMaxWidth()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         val memberBitmap = photoFile(member.photoFileName)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
                         if (memberBitmap != null) Image(memberBitmap, null, Modifier.size(44.dp).clip(CircleShape), contentScale = ContentScale.Crop) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
-                        Column { Text(member.name); Text(roleLabel(member.role), style = MaterialTheme.typography.bodySmall) }
+                        Column(Modifier.weight(1f)) { Text(member.name); Text(roleLabel(member.role), style = MaterialTheme.typography.bodySmall) }
+                        IconButton(onClick = { viewingMember = member }) { Icon(Icons.Outlined.Visibility, "Se ${member.name}") }
+                        IconButton(onClick = { editingMember = member }) { Icon(Icons.Outlined.Edit, "Rediger ${member.name}") }
                     }
                 }
             }
@@ -244,6 +247,15 @@ fun FamilyScreen(
         selectedChildIds = parentLinks.filter { it.parentId == member.id }.map { it.childId }.toSet(),
         onSave = onSaveParent, onDelete = { onDeleteParent(it); editingMember = null }, photoFile = photoFile, onPhotoSelected = onPhotoSelected, onDismiss = { editingMember = null },
     ) }
+    viewingMember?.let { member ->
+        AlertDialog(
+            onDismissRequest = { viewingMember = null },
+            title = { Text(member.name) },
+            text = { FamilyMemberView(member, photoFile(member.photoFileName)) },
+            confirmButton = { Button(onClick = { viewingMember = null; editingMember = member }) { Icon(Icons.Outlined.Edit, null); Text(stringResource(R.string.edit_parent)) } },
+            dismissButton = { TextButton(onClick = { viewingMember = null }) { Text(stringResource(R.string.close)) } },
+        )
+    }
     if (reviewingRelations) RelationsDialog(
         children = profiles,
         members = parents,
@@ -305,6 +317,7 @@ fun SettingsDialog(
     var paletteChildrenCreated by remember { mutableStateOf(false) }
     var creatingPaletteChildren by remember { mutableStateOf(false) }
     var palettePreviewOpen by remember { mutableStateOf(false) }
+    var developerToolsOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     fun update(value: OnboardingSettings) { settings = value; onUpdate(value) }
     AlertDialog(
@@ -317,26 +330,35 @@ fun SettingsDialog(
                     FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
                 }
                 if (BuildConfig.DEBUG) {
-                    Text(stringResource(R.string.developer_tools), style = MaterialTheme.typography.titleMedium)
-                    Button(enabled = !creatingTestFamily, onClick = {
-                        creatingTestFamily = true
-                        onCreateDeveloperTestFamily { creatingTestFamily = false; testFamilyCreated = true }
-                    }) { Text(stringResource(if (creatingTestFamily) R.string.creating_test_family else R.string.create_test_family)) }
-                    Button(enabled = !creatingPaletteChildren, onClick = {
-                        creatingPaletteChildren = true
-                        onCreateDeveloperPaletteChildren { creatingPaletteChildren = false; paletteChildrenCreated = true }
-                    }) { Text(stringResource(if (creatingPaletteChildren) R.string.creating_palette_children else R.string.create_palette_children)) }
-                    Button(onClick = { palettePreviewOpen = true }) {
-                        Text(stringResource(R.string.preview_color_profiles))
-                    }
-                    Button(onClick = { confirmClearData = true }) {
-                        Text(stringResource(R.string.clear_app_data))
+                    OutlinedButton(onClick = { developerToolsOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.developer_tools))
                     }
                 }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
     )
+    if (developerToolsOpen) Dialog(onDismissRequest = { developerToolsOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.developer_tools), style = MaterialTheme.typography.headlineSmall)
+                    TextButton(onClick = { developerToolsOpen = false }) { Text(stringResource(R.string.close)) }
+                }
+                Text("Testdata og designværktøjer til udvikling. Funktionerne vises ikke i release-versionen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(enabled = !creatingTestFamily, onClick = {
+                    creatingTestFamily = true
+                    onCreateDeveloperTestFamily { creatingTestFamily = false; testFamilyCreated = true }
+                }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(if (creatingTestFamily) R.string.creating_test_family else R.string.create_test_family)) }
+                Button(enabled = !creatingPaletteChildren, onClick = {
+                    creatingPaletteChildren = true
+                    onCreateDeveloperPaletteChildren { creatingPaletteChildren = false; paletteChildrenCreated = true }
+                }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(if (creatingPaletteChildren) R.string.creating_palette_children else R.string.create_palette_children)) }
+                OutlinedButton(onClick = { palettePreviewOpen = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.preview_color_profiles)) }
+                OutlinedButton(onClick = { confirmClearData = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.clear_app_data), color = MaterialTheme.colorScheme.error) }
+            }
+        }
+    }
     if (confirmClearData) {
         AlertDialog(
             onDismissRequest = { confirmClearData = false },
@@ -791,10 +813,11 @@ private fun ParentEditorDialog(
     var photoName by remember(existing?.id) { mutableStateOf(existing?.photoFileName) }
     val photoScope = rememberCoroutineScope()
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photoScope.launch { photoName = onPhotoSelected(uri) } }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (role.isParent) (if (existing == null) R.string.add_parent else R.string.edit_parent) else (if (existing == null) R.string.add_family_profile else R.string.edit_family_profile))) },
-        text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(if (role.isParent) (if (existing == null) R.string.add_parent else R.string.edit_parent) else (if (existing == null) R.string.add_family_profile else R.string.edit_family_profile)), style = MaterialTheme.typography.headlineSmall)
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.choose_avatar), style = MaterialTheme.typography.labelLarge)
             photoFile(photoName)?.let { file -> BitmapFactory.decodeFile(file.path)?.asImageBitmap()?.let { bitmap -> Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(72.dp).clip(CircleShape), contentScale = ContentScale.Crop) } }
             TextButton(onClick = { photoLauncher.launch("image/*") }) { Text(stringResource(R.string.choose_photo)) }
@@ -806,15 +829,20 @@ private fun ParentEditorDialog(
             FamilyRoleDropdown(role, role.isParent) { role = it }
             androidx.compose.material3.OutlinedTextField(notes, { notes = it }, label = { Text(stringResource(R.string.notes)) })
             Text(stringResource(R.string.link_to_children))
-            androidx.compose.foundation.layout.FlowRow { children.forEach { child -> FilterChip(child.id in childIds, { childIds = if (child.id in childIds) childIds - child.id else childIds + child.id }, label = { Text(child.name) }) } }
-        } },
-        confirmButton = { Button(enabled = name.isNotBlank(), onClick = {
-            if (childIds.isEmpty()) missingChildError = true else {
-                onSave(ParentProfile(existing?.id ?: java.util.UUID.randomUUID().toString(), name.trim(), phone.trim(), email.trim(), cpr.trim(), avatar, role, notes.trim(), photoName), childIds); onDismiss()
+                androidx.compose.foundation.layout.FlowRow { children.forEach { child -> FilterChip(child.id in childIds, { childIds = if (child.id in childIds) childIds - child.id else childIds + child.id }, label = { Text(child.name) }) } }
             }
-        }) { Text(stringResource(R.string.save)) } },
-        dismissButton = { Row { if (existing != null) TextButton(onClick = { confirmDelete = true }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }; TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } } },
-    )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (existing != null) TextButton(onClick = { confirmDelete = true }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+                Button(enabled = name.isNotBlank(), onClick = {
+                    if (childIds.isEmpty()) missingChildError = true else {
+                        onSave(ParentProfile(existing?.id ?: java.util.UUID.randomUUID().toString(), name.trim(), phone.trim(), email.trim(), cpr.trim(), avatar, role, notes.trim(), photoName), childIds); onDismiss()
+                    }
+                }) { Text(stringResource(R.string.save)) }
+            }
+            }
+        }
+    }
     if (confirmDelete && existing != null) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text(stringResource(R.string.delete_parent_title, existing.name)) },

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -129,13 +130,24 @@ fun BabyAppNavigation(
                                 contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
                             ),
                         ) {
-                            Text(
-                                text = activeChild?.let { "${it.avatar.symbol} ${it.name}" } ?: stringResource(R.string.no_active_child),
-                                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                            )
+                            Column {
+                                Text(
+                                    text = activeChild?.let { "${it.avatar.symbol} ${it.name}" } ?: stringResource(R.string.no_active_child),
+                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                )
+                                if (activeChild != null) Text(
+                                    "Du registrerer for ${activeChild.name}",
+                                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                )
+                            }
                             Icon(Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.switch_child))
                         }
                         DropdownMenu(expanded = childMenuOpen, onDismissRequest = { childMenuOpen = false }) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Vælg aktivt barn", style = androidx.compose.material3.MaterialTheme.typography.labelLarge) },
+                                enabled = false,
+                                onClick = {},
+                            )
                             profiles.forEach { profile ->
                                 DropdownMenuItem(
                                     text = { Text("${profile.avatar.symbol} ${profile.name}") },
