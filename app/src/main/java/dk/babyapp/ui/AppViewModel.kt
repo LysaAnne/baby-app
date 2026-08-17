@@ -164,6 +164,8 @@ class AppViewModel @Inject constructor(
     fun saveParent(parent: ParentProfile) { viewModelScope.launch { parentRepository.save(parent) } }
     fun saveFamilyMember(parent: ParentProfile, childIds: Set<String>) { viewModelScope.launch { parentRepository.save(parent); parentRepository.setChildren(parent.id, childIds) } }
     fun deleteParent(parent: ParentProfile) { viewModelScope.launch { parentRepository.delete(parent) } }
+    fun reorderChildren(ids: List<String>) { viewModelScope.launch { profilesRepository.setOrder(ids) } }
+    fun reorderFamily(ids: List<String>) { viewModelScope.launch { parentRepository.setOrder(ids) } }
 
     suspend fun importPhoto(uri: Uri): String = withContext(Dispatchers.IO) { photoStore.import(uri) }
 
@@ -263,6 +265,7 @@ class AppViewModel @Inject constructor(
 
     fun createDeveloperTestFamily(onComplete: () -> Unit = {}) = viewModelScope.launch {
         val childId = "developer-test-child-freja"
+        val hectorId = "developer-test-child-hector"
         val child = ChildProfile(
             id = childId,
             name = "Freja",
@@ -284,9 +287,25 @@ class AppViewModel @Inject constructor(
             allergies = "Ingen kendte allergier",
             medicalNotes = "Dette er en testprofil og indeholder ikke rigtige helbredsoplysninger.",
             avatar = ProfileAvatar.Bunny,
-            colorTheme = ChildColorTheme.NeutralLight.name,
+            colorTheme = ChildColorTheme.GirlLight.name,
         )
         profilesRepository.save(child)
+        profilesRepository.save(
+            ChildProfile(
+                id = hectorId,
+                name = "Hector",
+                nickname = "Hec",
+                birthStatus = BirthStatus.Born,
+                birthDate = LocalDate.now().minusYears(2),
+                sex = BiologicalSex.Male,
+                cprNumber = "TEST-HECTOR",
+                fullName = "Hector Testfamilie Jensen",
+                registeredAddress = "Testvej 12, 2100 København Ø",
+                nationality = "Dansk",
+                avatar = ProfileAvatar.Fox,
+                colorTheme = ChildColorTheme.BoyLight.name,
+            ),
+        )
         profilesRepository.setCareProviders(
             childId,
             listOf(
@@ -297,13 +316,14 @@ class AppViewModel @Inject constructor(
             ),
         )
         val members = listOf(
-            ParentProfile(id = "developer-parent-sofie", name = "Sofie", phone = "+45 20 11 22 33", email = "sofie@example.test", cprNumber = "TEST-SOFIE", avatar = ProfileAvatar.Butterfly, role = FamilyMemberRole.Mother, notes = "Frejas mor · testprofil"),
-            ParentProfile(id = "developer-parent-jonas", name = "Jonas", phone = "+45 21 44 55 66", email = "jonas@example.test", cprNumber = "TEST-JONAS", avatar = ProfileAvatar.Fox, role = FamilyMemberRole.Father, notes = "Frejas far · testprofil"),
+            ParentProfile(id = "developer-parent-sofie", name = "Sofie", phone = "+45 20 11 22 33", email = "sofie@example.test", cprNumber = "TEST-SOFIE", avatar = ProfileAvatar.Butterfly, role = FamilyMemberRole.Mother, notes = "Freja og Hectors mor · testprofil"),
+            ParentProfile(id = "developer-parent-jonas", name = "Jonas", phone = "+45 21 44 55 66", email = "jonas@example.test", cprNumber = "TEST-JONAS", avatar = ProfileAvatar.Fox, role = FamilyMemberRole.Father, notes = "Freja og Hectors far · testprofil"),
             ParentProfile(id = "developer-grandparent-karen", name = "Karen", phone = "+45 24 55 66 77", email = "karen@example.test", avatar = ProfileAvatar.Panda, role = FamilyMemberRole.Grandmother, notes = "Mormor · testprofil"),
             ParentProfile(id = "developer-grandparent-poul", name = "Poul", phone = "+45 26 77 88 99", email = "poul@example.test", avatar = ProfileAvatar.Lion, role = FamilyMemberRole.Grandfather, notes = "Morfar · testprofil"),
         )
         members.forEach { parentRepository.save(it) }
         parentRepository.setParents(childId, members.map { it.id }.toSet())
+        parentRepository.setParents(hectorId, members.map { it.id }.toSet())
         val now = System.currentTimeMillis()
         listOf(
             CareEventEntity(id = "developer-event-breast", childId = childId, type = CareEventType.Breastfeeding, startedAt = now - 3 * 60 * 60 * 1_000, endedAt = now - 2 * 60 * 60 * 1_000 - 42 * 60 * 1_000, activeSide = BreastSide.Right, leftSeconds = 480, rightSeconds = 600, notes = "Rolig amning"),

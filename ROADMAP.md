@@ -579,6 +579,8 @@ Use this table whenever a requested feature changes the agreed plan.
 | 2026-08-17 | Made each colour profile inherently light or dark, strengthened its app-wide colour identity, grouped the profile picker by appearance, removed the separate appearance control, and added developer-generated palette children. | 2–3 | Complete |
 | 2026-08-17 | Added neutral light and dark defaults as the first choices in their profile groups and included both in developer palette testing. | 2–3 | Complete |
 | 2026-08-17 | Reduced the initial palette selection to Salvie plus matching yellow, pink, and light-blue variants; Salvie is the app default while the developer editor remains available. | 2–3 | Complete |
+| 2026-08-17 | Expanded the developer test family with Hector, added direct child editing from Family, and added a central relationship review workflow. | 2–3 | Complete |
+| 2026-08-17 | Added persisted drag ordering for children and family members, simplified the Family headings, and reserved active-child selection for the global selector. | 2–3 | Complete |
 | 2026-08-17 | Increased the neutral profiles’ green contrast and added light/dark baby-blue and baby-pink profiles plus a pastel-yellow profile. | 2–3 | Complete |
 | 2026-08-17 | Centralized all editable palette HEX codes in one documented file and added an in-app developer preview showing every colour role for every profile. | 2–3 | Complete |
 | 2026-08-17 | Replaced manual palette editing with a debug-only visual colour-profile manager supporting HSV/HEX editing, live previews, dynamic create/rename/duplicate/delete, local persistence, stable child links, and JSON import/export for bundled defaults. | 2–3 | Complete |

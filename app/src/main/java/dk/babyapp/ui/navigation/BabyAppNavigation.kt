@@ -78,6 +78,8 @@ fun BabyAppNavigation(
     parentLinks: List<ChildParentLink> = emptyList(),
     onSaveParent: (ParentProfile, Set<String>) -> Unit = { _, _ -> },
     onDeleteParent: (ParentProfile) -> Unit = {},
+    onReorderChildren: (List<String>) -> Unit = {},
+    onReorderFamily: (List<String>) -> Unit = {},
     careProviders: List<CareProvider> = emptyList(),
     careEvents: List<CareEventEntity> = emptyList(),
     colorProfiles: List<ColorProfile> = emptyList(),
@@ -227,7 +229,6 @@ fun BabyAppNavigation(
                     profiles = profiles,
                     activeChildId = activeChild?.id,
                     contentPadding = contentPadding,
-                    onSelectChild = onSelectChild,
                     onSaveProfile = { draft, onResult ->
                         val profilesWereEmpty = profiles.isEmpty()
                         onSaveProfile(draft) { error ->
@@ -249,6 +250,8 @@ fun BabyAppNavigation(
                     parentLinks = parentLinks,
                     onSaveParent = onSaveParent,
                     onDeleteParent = onDeleteParent,
+                    onReorderChildren = onReorderChildren,
+                    onReorderFamily = onReorderFamily,
                     careProviders = careProviders,
                     colorProfiles = colorProfiles,
                     requestedEditChildId = requestedEditChildId,

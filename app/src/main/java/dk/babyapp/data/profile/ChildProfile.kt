@@ -51,6 +51,7 @@ data class ChildProfile(
     val colorTheme: String = ChildColorTheme.NeutralLight.name,
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val updatedAtEpochMillis: Long = System.currentTimeMillis(),
+    val sortOrder: Int = Int.MAX_VALUE,
 )
 
 enum class BirthStatus { Born, Expected }

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.FilterChip
@@ -23,9 +24,11 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -89,6 +92,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import kotlin.math.abs
 import android.app.ActivityManager
 import dk.babyapp.BuildConfig
 import dk.babyapp.ui.theme.ColorProfileManagerDialog
@@ -98,7 +104,6 @@ fun FamilyScreen(
     profiles: List<ChildProfile>,
     activeChildId: String?,
     contentPadding: PaddingValues,
-    onSelectChild: (String) -> Unit,
     onSaveProfile: (ProfileDraft, (ProfileValidationError?) -> Unit) -> Unit,
     onDeleteProfile: (ChildProfile) -> Unit,
     photoFile: (String?) -> File?,
@@ -109,6 +114,8 @@ fun FamilyScreen(
     parentLinks: List<ChildParentLink>,
     onSaveParent: (ParentProfile, Set<String>) -> Unit,
     onDeleteParent: (ParentProfile) -> Unit,
+    onReorderChildren: (List<String>) -> Unit,
+    onReorderFamily: (List<String>) -> Unit,
     careProviders: List<CareProvider>,
     colorProfiles: List<ColorProfile>,
     requestedEditChildId: String? = null,
@@ -121,6 +128,9 @@ fun FamilyScreen(
     var addingMemberRole by remember { mutableStateOf<FamilyMemberRole?>(null) }
     var editingMember by remember { mutableStateOf<ParentProfile?>(null) }
     var deleting by remember { mutableStateOf<ChildProfile?>(null) }
+    var reviewingRelations by remember { mutableStateOf(false) }
+    var reorderingChildren by remember { mutableStateOf(false) }
+    var reorderingFamily by remember { mutableStateOf(false) }
 
     LaunchedEffect(requestedEditChildId, profiles) {
         requestedEditChildId?.let { id ->
@@ -140,18 +150,35 @@ fun FamilyScreen(
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.child_profiles), style = MaterialTheme.typography.headlineSmall)
+                    IconButton(onClick = { reorderingChildren = true }, enabled = profiles.size > 1) {
+                        Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_children))
+                    }
                 }
             }
             items(profiles, key = { it.id }) { profile ->
                 ProfileCard(
                     profile = profile,
                     selected = profile.id == activeChildId,
-                    onView = { onSelectChild(profile.id); viewing = profile },
+                    onView = { viewing = profile },
+                    onEdit = { editing = profile },
                     photoFile = photoFile(profile.photoFileName),
                 )
             }
             if (profiles.isEmpty()) item { Text(stringResource(R.string.no_profiles)) }
-            item { Text(stringResource(R.string.family_members), style = MaterialTheme.typography.titleLarge) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.family_members), style = MaterialTheme.typography.titleLarge)
+                        IconButton(onClick = { reorderingFamily = true }, enabled = parents.size > 1) {
+                            Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_family))
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = { reviewingRelations = true },
+                        enabled = profiles.isNotEmpty() && parents.isNotEmpty(),
+                    ) { Text(stringResource(R.string.review_relations)) }
+                }
+            }
             items(parents, key = { it.id }) { member ->
                 Card(onClick = { editingMember = member }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -217,6 +244,30 @@ fun FamilyScreen(
         selectedChildIds = parentLinks.filter { it.parentId == member.id }.map { it.childId }.toSet(),
         onSave = onSaveParent, onDelete = { onDeleteParent(it); editingMember = null }, photoFile = photoFile, onPhotoSelected = onPhotoSelected, onDismiss = { editingMember = null },
     ) }
+    if (reviewingRelations) RelationsDialog(
+        children = profiles,
+        members = parents,
+        existingLinks = parentLinks,
+        onSave = { links ->
+            parents.forEach { member ->
+                onSaveParent(member, links.filter { it.parentId == member.id }.map { it.childId }.toSet())
+            }
+            reviewingRelations = false
+        },
+        onDismiss = { reviewingRelations = false },
+    )
+    if (reorderingChildren) ReorderProfilesDialog(
+        title = stringResource(R.string.reorder_children),
+        items = profiles.map { Triple(it.id, it.name, it.avatar.symbol) },
+        onSave = { onReorderChildren(it); reorderingChildren = false },
+        onDismiss = { reorderingChildren = false },
+    )
+    if (reorderingFamily) ReorderProfilesDialog(
+        title = stringResource(R.string.reorder_family),
+        items = parents.map { Triple(it.id, it.name, it.avatar.symbol) },
+        onSave = { onReorderFamily(it); reorderingFamily = false },
+        onDismiss = { reorderingFamily = false },
+    )
     deleting?.let { profile ->
         AlertDialog(
             onDismissRequest = { deleting = null },
@@ -353,9 +404,10 @@ private fun ProfileCard(
     profile: ChildProfile,
     selected: Boolean,
     onView: () -> Unit,
+    onEdit: () -> Unit,
     photoFile: File?,
 ) {
-    Card(onClick = onView, modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -376,14 +428,114 @@ private fun ProfileCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(profile.name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    if (selected) stringResource(R.string.active_child) else stringResource(R.string.tap_to_select),
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (selected) Text(stringResource(R.string.active_child), color = MaterialTheme.colorScheme.primary)
             }
             IconButton(onClick = onView) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_child)) }
+            IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit_child)) }
         }
     }
+}
+
+@Composable
+private fun ReorderProfilesDialog(
+    title: String,
+    items: List<Triple<String, String, String>>,
+    onSave: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var ordered by remember(items) { mutableStateOf(items) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.drag_to_reorder))
+                ordered.forEach { item ->
+                    var dragDistance by remember(item.first) { mutableStateOf(0f) }
+                    Card(
+                        modifier = Modifier.fillMaxWidth().pointerInput(item.first, ordered) {
+                            detectDragGesturesAfterLongPress(
+                                onDragEnd = { dragDistance = 0f },
+                                onDragCancel = { dragDistance = 0f },
+                            ) { change, amount ->
+                                change.consume()
+                                dragDistance += amount.y
+                                if (abs(dragDistance) > 48f) {
+                                    val from = ordered.indexOfFirst { it.first == item.first }
+                                    val to = (from + if (dragDistance > 0) 1 else -1).coerceIn(0, ordered.lastIndex)
+                                    if (from != to) {
+                                        ordered = ordered.toMutableList().apply { add(to, removeAt(from)) }
+                                    }
+                                    dragDistance = 0f
+                                }
+                            }
+                        },
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(Icons.Outlined.DragHandle, null)
+                            Text(item.third, style = MaterialTheme.typography.titleLarge)
+                            Text(item.second, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(ordered.map { it.first }) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun RelationsDialog(
+    children: List<ChildProfile>,
+    members: List<ParentProfile>,
+    existingLinks: List<ChildParentLink>,
+    onSave: (Set<ChildParentLink>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selectedLinks by remember(existingLinks) { mutableStateOf(existingLinks.toSet()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.review_relations)) },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item { Text(stringResource(R.string.review_relations_description)) }
+                children.forEach { child ->
+                    item(key = "relation-child-${child.id}") {
+                        Text(child.name, style = MaterialTheme.typography.titleMedium)
+                    }
+                    items(members, key = { member -> "${child.id}-${member.id}" }) { member ->
+                        val link = ChildParentLink(child.id, member.id)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Checkbox(
+                                checked = link in selectedLinks,
+                                onCheckedChange = { checked ->
+                                    selectedLinks = if (checked) selectedLinks + link else selectedLinks - link
+                                },
+                            )
+                            Column {
+                                Text(member.name)
+                                Text(roleLabel(member.role), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(selectedLinks) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable

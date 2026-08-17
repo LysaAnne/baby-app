@@ -10,6 +10,7 @@ interface ChildProfileRepository {
     suspend fun save(profile: ChildProfile)
     suspend fun delete(profile: ChildProfile)
     suspend fun setCareProviders(childId: String, providers: List<CareProvider>)
+    suspend fun setOrder(ids: List<String>)
 }
 
 class DefaultChildProfileRepository(
@@ -39,4 +40,5 @@ class DefaultChildProfileRepository(
         careProviderDao.deleteForChild(childId)
         if (providers.isNotEmpty()) careProviderDao.upsertAll(providers.map { it.toEntity(childId) })
     }
+    override suspend fun setOrder(ids: List<String>) { ids.forEachIndexed { index, id -> dao.updateSortOrder(id, index) } }
 }

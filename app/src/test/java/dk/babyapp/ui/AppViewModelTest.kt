@@ -10,6 +10,7 @@ import dk.babyapp.data.color.ColorProfile
 import dk.babyapp.data.color.ColorProfileRepository
 import dk.babyapp.ui.theme.defaultColorProfiles
 import dk.babyapp.data.profile.ChildProfile
+import dk.babyapp.data.profile.ChildColorTheme
 import dk.babyapp.data.profile.ChildProfileRepository
 import dk.babyapp.data.profile.ProfileImageStorage
 import dk.babyapp.data.profile.ParentProfile
@@ -93,9 +94,11 @@ class AppViewModelTest {
         viewModel.createDeveloperTestFamily()
         advanceUntilIdle()
 
-        assertEquals("Freja", profiles.items.value.single().name)
+        assertEquals(setOf("Freja", "Hector"), profiles.items.value.map { it.name }.toSet())
+        assertEquals(ChildColorTheme.GirlLight.name, profiles.items.value.first { it.name == "Freja" }.colorTheme)
+        assertEquals(ChildColorTheme.BoyLight.name, profiles.items.value.first { it.name == "Hector" }.colorTheme)
         assertEquals(4, parents.parents.value.size)
-        assertEquals(4, parents.links.value.size)
+        assertEquals(8, parents.links.value.size)
         assertEquals(4, events.items.value.size)
         assertEquals("developer-test-child-freja", preferences.items.value.activeChildId)
     }
@@ -178,6 +181,10 @@ private class FakeProfilesRepository(initial: List<ChildProfile> = emptyList()) 
         items.value = items.value.filterNot { it.id == profile.id }
     }
     override suspend fun setCareProviders(childId: String, providers: List<CareProvider>) { careProviders.value = providers.map { it.copy(childId = childId) } }
+    override suspend fun setOrder(ids: List<String>) {
+        val positions = ids.withIndex().associate { it.value to it.index }
+        items.value = items.value.sortedBy { positions[it.id] ?: Int.MAX_VALUE }
+    }
 }
 
 private class FakePreferencesRepository(initial: AppPreferences = AppPreferences()) : AppPreferencesRepository {
@@ -217,8 +224,16 @@ private class FakeParentRepository : ParentProfileRepository {
     override val links = MutableStateFlow<List<ChildParentLink>>(emptyList())
     override suspend fun save(parent: ParentProfile) { parents.value = parents.value.filterNot { it.id == parent.id } + parent }
     override suspend fun delete(parent: ParentProfile) { parents.value = parents.value.filterNot { it.id == parent.id } }
-    override suspend fun setParents(childId: String, parentIds: Set<String>) { links.value = parentIds.map { ChildParentLink(childId, it) } }
-    override suspend fun setChildren(memberId: String, childIds: Set<String>) { links.value = childIds.map { ChildParentLink(it, memberId) } }
+    override suspend fun setParents(childId: String, parentIds: Set<String>) {
+        links.value = links.value.filterNot { it.childId == childId } + parentIds.map { ChildParentLink(childId, it) }
+    }
+    override suspend fun setChildren(memberId: String, childIds: Set<String>) {
+        links.value = links.value.filterNot { it.parentId == memberId } + childIds.map { ChildParentLink(it, memberId) }
+    }
+    override suspend fun setOrder(ids: List<String>) {
+        val positions = ids.withIndex().associate { it.value to it.index }
+        parents.value = parents.value.sortedBy { positions[it.id] ?: Int.MAX_VALUE }
+    }
 }
 
 private class FakeCareEventRepository : CareEventRepository {

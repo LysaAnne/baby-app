@@ -375,6 +375,10 @@ Debug builds include a visual editor at **Settings → Developer tools → Edit 
 
 The initial app ships with four closely related light profiles: **Salvie** (the default), **Solgul**, **Lyserød**, and **Lyseblå**. The developer editor remains available for experimentation and later additions.
 
+The Family screen provides direct view and edit actions on each child card. **Review relationships** presents every child and reusable family member in one place, making missing links easy to add after a new child is created. The developer test family contains siblings Freja and Hector, linked to the same parents and grandparents, using the pink and light-blue profiles respectively.
+
+Children and family members have independently persisted manual ordering, edited from the drag-handle action beside each section heading. Child cards are passive: only their eye and pencil actions open view and edit, while changing the active child is reserved for the app-wide child selector.
+
 The complete profile collection can be exported and imported as `child_color_profiles.json`. To ship edited profiles as defaults, place the exported file at `app/src/main/assets/child_color_profiles.json`; clean installations load that bundled file, while installations with local edits retain their local copy. The original Kotlin definitions remain a safe fallback when no bundled JSON exists.
 
 The design should use a soft Scandinavian visual style, rounded surfaces, calm colors, accessible contrast, large tap targets, and limited friendly illustration. Important health information must remain clear and serious.

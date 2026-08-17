@@ -21,6 +21,7 @@ data class ParentProfile(
     val role: FamilyMemberRole = FamilyMemberRole.ParentNotSpecified,
     val notes: String = "",
     val photoFileName: String? = null,
+    val sortOrder: Int = Int.MAX_VALUE,
 )
 
 enum class FamilyMemberRole {
@@ -45,6 +46,7 @@ data class ParentProfileEntity(
     val role: String,
     val notes: String,
     val photoFileName: String?,
+    val sortOrder: Int,
 )
 
 @Entity(
@@ -60,17 +62,18 @@ data class ChildParentLink(val childId: String, val parentId: String)
 
 @Dao
 interface ParentProfileDao {
-    @Query("SELECT * FROM parent_profiles ORDER BY name COLLATE NOCASE") fun observeParents(): Flow<List<ParentProfileEntity>>
+    @Query("SELECT * FROM parent_profiles ORDER BY sortOrder, name COLLATE NOCASE") fun observeParents(): Flow<List<ParentProfileEntity>>
     @Query("SELECT * FROM child_parent_links") fun observeLinks(): Flow<List<ChildParentLink>>
     @Upsert suspend fun upsert(parent: ParentProfileEntity)
     @Query("DELETE FROM parent_profiles WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM child_parent_links WHERE childId = :childId") suspend fun clearLinks(childId: String)
     @Query("DELETE FROM child_parent_links WHERE parentId = :parentId") suspend fun clearMemberLinks(parentId: String)
     @Upsert suspend fun upsertLinks(links: List<ChildParentLink>)
+    @Query("UPDATE parent_profiles SET sortOrder = :position WHERE id = :id") suspend fun updateSortOrder(id: String, position: Int)
 }
 
-fun ParentProfile.toEntity() = ParentProfileEntity(id, name, phone, email, cprNumber, avatar.name, role.name, notes, photoFileName)
-fun ParentProfileEntity.toModel() = ParentProfile(id, name, phone, email, cprNumber, enumValues<ProfileAvatar>().firstOrNull { it.name == avatar } ?: ProfileAvatar.Bear, enumValues<FamilyMemberRole>().firstOrNull { it.name == role } ?: FamilyMemberRole.ParentNotSpecified, notes, photoFileName)
+fun ParentProfile.toEntity() = ParentProfileEntity(id, name, phone, email, cprNumber, avatar.name, role.name, notes, photoFileName, sortOrder)
+fun ParentProfileEntity.toModel() = ParentProfile(id, name, phone, email, cprNumber, enumValues<ProfileAvatar>().firstOrNull { it.name == avatar } ?: ProfileAvatar.Bear, enumValues<FamilyMemberRole>().firstOrNull { it.name == role } ?: FamilyMemberRole.ParentNotSpecified, notes, photoFileName, sortOrder)
 
 interface ParentProfileRepository {
     val parents: Flow<List<ParentProfile>>
@@ -79,6 +82,7 @@ interface ParentProfileRepository {
     suspend fun delete(parent: ParentProfile)
     suspend fun setParents(childId: String, parentIds: Set<String>)
     suspend fun setChildren(memberId: String, childIds: Set<String>)
+    suspend fun setOrder(ids: List<String>)
 }
 
 class DefaultParentProfileRepository(private val dao: ParentProfileDao, private val photoStore: ProfileImageStorage) : ParentProfileRepository {
@@ -94,4 +98,5 @@ class DefaultParentProfileRepository(private val dao: ParentProfileDao, private 
         dao.clearMemberLinks(memberId)
         if (childIds.isNotEmpty()) dao.upsertLinks(childIds.map { ChildParentLink(it, memberId) })
     }
+    override suspend fun setOrder(ids: List<String>) { ids.forEachIndexed { index, id -> dao.updateSortOrder(id, index) } }
 }

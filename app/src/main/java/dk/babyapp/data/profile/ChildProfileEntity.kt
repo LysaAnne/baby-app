@@ -53,6 +53,7 @@ data class ChildProfileEntity(
     val colorTheme: String,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
+    val sortOrder: Int,
 )
 
 fun ChildProfile.toEntity() = ChildProfileEntity(
@@ -92,6 +93,7 @@ fun ChildProfile.toEntity() = ChildProfileEntity(
     colorTheme = colorTheme,
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
+    sortOrder = sortOrder,
 )
 
 fun ChildProfileEntity.toModel() = ChildProfile(
@@ -131,6 +133,7 @@ fun ChildProfileEntity.toModel() = ChildProfile(
     colorTheme = colorTheme,
     createdAtEpochMillis = createdAtEpochMillis,
     updatedAtEpochMillis = updatedAtEpochMillis,
+    sortOrder = sortOrder,
 )
 
 private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String, default: T): T =
