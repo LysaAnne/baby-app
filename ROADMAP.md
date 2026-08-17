@@ -24,6 +24,9 @@ A stage is complete only when:
 - Privacy and safety requirements relevant to the stage are addressed.
 - README and roadmap status match the implementation.
 - Known limitations and deferred work are documented.
+- The handoff includes a feature-specific Android Studio test checklist.
+- The handoff includes copy-ready Git commands and an appropriate commit message for use after project-owner testing.
+- No commit or push is performed unless the project owner explicitly requests it.
 
 ## Stage 0 — Product specification
 
@@ -551,6 +554,7 @@ Use this table whenever a requested feature changes the agreed plan.
 | --- | --- | --- | --- |
 | 2026-08-17 | Initial product and implementation roadmap created. | 0–15 | Accepted |
 | 2026-08-17 | Android foundation implemented with API 26 minimum, API 37 target, one initial app module, Hilt, Compose, and five-destination navigation. | 1 | Complete |
+| 2026-08-17 | Added a required testing and Git handoff after every implemented stage or standalone feature. | All stages | Accepted |
 
 ## Implementation request examples
 

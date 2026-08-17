@@ -566,6 +566,33 @@ The following rules apply:
 5. If the project owner adds, removes, postpones, or changes a feature, update this README and the roadmap in the same change.
 6. Do not silently omit an agreed feature. Move it to another stage or explicitly mark it as removed.
 7. When all required stages are complete, the planned app is considered complete and ready for release preparation.
+8. After every implemented stage or standalone feature, provide a practical Android Studio test checklist tailored to the change.
+9. After every implemented stage or standalone feature, provide copy-ready Git commands with an appropriate commit message so the project owner can commit and push after completing their own testing.
+10. The handoff must tell the project owner to review `git status` and the staged changes before committing. Do not automatically commit or push unless the project owner explicitly requests it.
+
+### Required implementation handoff
+
+Every completed stage or feature response must contain:
+
+- A concise summary of what was implemented.
+- The automated checks that were run and their results.
+- A bullet list explaining how to test the new behavior in Android Studio.
+- Important edge cases or regressions to check.
+- Any known limitations or deferred work.
+- Copy-ready commands using a commit message that describes the completed work.
+
+The standard Git handoff format is:
+
+```shell
+git status
+git diff --stat
+git add .
+git status
+git commit -m "Appropriate description of the implemented change"
+git push
+```
+
+The project owner should run these commands only after reviewing and testing the change. The exact commit message must be adapted to the stage or feature rather than reused generically.
 
 ## Current status
 
