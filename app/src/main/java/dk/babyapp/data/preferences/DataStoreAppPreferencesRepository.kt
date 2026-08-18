@@ -28,6 +28,11 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             showPumpingQuickAction = values[SHOW_PUMPING] ?: true,
             showDiaperQuickAction = values[SHOW_DIAPER] ?: true,
             hasSeenGettingStarted = values[GETTING_STARTED_SEEN] ?: false,
+            dashboardMetrics = values[DASHBOARD_METRICS]
+                ?.split(',')
+                ?.mapNotNull { stored -> DashboardMetric.entries.firstOrNull { it.name == stored } }
+                ?.takeIf { it.size == 4 && it.distinct().size == 4 }
+                ?: DashboardMetric.defaults,
         )
     }
 
@@ -81,6 +86,11 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         }
     }
 
+    override suspend fun updateDashboardMetrics(metrics: List<DashboardMetric>) {
+        require(metrics.size == 4 && metrics.distinct().size == 4)
+        context.appPreferencesDataStore.edit { values -> values[DASHBOARD_METRICS] = metrics.joinToString(",") { it.name } }
+    }
+
     override suspend fun markGettingStartedSeen() {
         context.appPreferencesDataStore.edit { values -> values[GETTING_STARTED_SEEN] = true }
     }
@@ -97,6 +107,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val SHOW_PUMPING = booleanPreferencesKey("show_pumping")
         val SHOW_DIAPER = booleanPreferencesKey("show_diaper")
         val GETTING_STARTED_SEEN = booleanPreferencesKey("getting_started_seen")
+        val DASHBOARD_METRICS = stringPreferencesKey("dashboard_metrics")
     }
 }
 

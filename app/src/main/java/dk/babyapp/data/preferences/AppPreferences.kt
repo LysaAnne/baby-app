@@ -12,7 +12,23 @@ data class AppPreferences(
     val showPumpingQuickAction: Boolean = true,
     val showDiaperQuickAction: Boolean = true,
     val hasSeenGettingStarted: Boolean = false,
+    val dashboardMetrics: List<DashboardMetric> = DashboardMetric.defaults,
 )
+
+enum class DashboardMetric {
+    Feeding,
+    Diapers,
+    Sleep,
+    TummyTime,
+    Weight,
+    Height,
+    HeadCircumference,
+    Temperature;
+
+    companion object {
+        val defaults = listOf(Feeding, Diapers, Sleep, TummyTime)
+    }
+}
 
 enum class DanishRegion {
     Hovedstaden,

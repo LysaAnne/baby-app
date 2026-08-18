@@ -65,7 +65,13 @@ class TimerNotificationService : Service() {
                 ACTION_PAUSE -> { val now = System.currentTimeMillis(); repository.save(accrue(event).closeSegment(now).copy(runningSince = null)) }
                 ACTION_RESUME -> { val now = System.currentTimeMillis(); repository.save(event.startSegment(now).copy(runningSince = now)) }
                 ACTION_SWITCH -> repository.save(accrue(event).copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = System.currentTimeMillis()))
-                ACTION_STOP -> { val now = System.currentTimeMillis(); repository.save(accrue(event).closeSegment(now).copy(endedAt = now, runningSince = null)); stopSelf(); return@launch }
+                ACTION_STOP -> {
+                    val now = System.currentTimeMillis()
+                    val accrued = accrue(event).closeSegment(now)
+                    repository.save(accrued.copy(endedAt = now, runningSince = null, activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds))
+                    stopSelf()
+                    return@launch
+                }
             }
             beginUpdates(id)
         }
@@ -88,6 +94,14 @@ class TimerNotificationService : Service() {
         val title = when (event.type) {
             CareEventType.Breastfeeding -> "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"}"
             CareEventType.Sleep -> "Søvn"
+            CareEventType.Activity -> event.activityType?.let { type -> when (type) {
+                dk.babyapp.data.tracking.ActivityType.TummyTime -> "Mavetid"
+                dk.babyapp.data.tracking.ActivityType.Bath -> "Bad"
+                dk.babyapp.data.tracking.ActivityType.OutdoorTime -> "Udetid"
+                dk.babyapp.data.tracking.ActivityType.Play -> "Leg"
+                dk.babyapp.data.tracking.ActivityType.Medicine -> "Medicin"
+                dk.babyapp.data.tracking.ActivityType.Other -> "Anden aktivitet"
+            } } ?: "Aktivitet"
             else -> "Pumpning"
         }
         val elapsed = event.elapsedSeconds()

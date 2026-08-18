@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,13 +15,18 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Today
+import androidx.compose.material.icons.outlined.UnfoldLess
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,12 +37,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.BottleContent
 import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.data.tracking.DiaperColor
+import dk.babyapp.data.tracking.DiaperConsistency
+import dk.babyapp.data.tracking.MeasurementType
+import dk.babyapp.data.tracking.ActivityType
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.profile.CareProvider
@@ -46,10 +57,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import java.util.Date
 
-private enum class TimelineRange(val days: Long?) { Today(1), Week(7), All(null) }
-private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep }
+private enum class CalendarView { Day, Week }
+private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity }
 
 @Composable
 fun TimelineScreen(
@@ -59,13 +72,16 @@ fun TimelineScreen(
     contentPadding: PaddingValues,
     onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit,
-    onAddDiaper: (String, Long, DiaperType, String, String, (CareEventEntity) -> Unit) -> Unit,
+    onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit,
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit,
+    onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit,
+    onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
 ) {
     var typeFilters by remember { mutableStateOf(emptySet<CareEventType>()) }
-    var range by remember { mutableStateOf(TimelineRange.Week) }
+    var calendarView by remember { mutableStateOf(CalendarView.Week) }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var filtersOpen by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
     var addKind by remember { mutableStateOf<AddKind?>(null) }
@@ -74,12 +90,14 @@ fun TimelineScreen(
     var overlapError by remember { mutableStateOf(false) }
     var selectChildError by remember { mutableStateOf(false) }
     var expandedDays by remember { mutableStateOf(setOf(LocalDate.now())) }
+    var expandAllRecords by remember { mutableStateOf<Boolean?>(null) }
     val zone = ZoneId.systemDefault()
-    val firstDate = range.days?.let { LocalDate.now().minusDays(it - 1) }
+    val firstDate = if (calendarView == CalendarView.Day) selectedDate else selectedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val lastDate = if (calendarView == CalendarView.Day) selectedDate else firstDate.plusDays(6)
     val filtered = events.asSequence()
         .filter { it.childId == activeChildId }
         .filter { typeFilters.isEmpty() || it.type in typeFilters }
-        .filter { firstDate == null || Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() >= firstDate }
+        .filter { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() in firstDate..lastDate }
         .toList()
     val groups = filtered.groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }.toSortedMap(compareByDescending { it })
 
@@ -96,16 +114,40 @@ fun TimelineScreen(
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Tidslinje", style = MaterialTheme.typography.headlineSmall)
+                    Text("Journal", style = MaterialTheme.typography.headlineSmall)
                     TextButton(onClick = { filtersOpen = true }) {
                         Icon(Icons.Outlined.FilterList, null)
-                        Text(if (typeFilters.isEmpty() && range == TimelineRange.Week) "Filtre" else "Filtre (${typeFilters.size + if (range == TimelineRange.Week) 0 else 1})")
+                        Text(if (typeFilters.isEmpty()) "Filtre" else "Filtre (${typeFilters.size})")
                     }
                 }
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TimelineRange.entries.forEach { option -> FilterChip(range == option, { range = option }, { Text(when (option) { TimelineRange.Today -> "I dag"; TimelineRange.Week -> "7 dage"; TimelineRange.All -> "Alle" }) }) }
+                val context = LocalContext.current
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(calendarView == CalendarView.Day, { calendarView = CalendarView.Day }, { Text("Dag") })
+                        FilterChip(calendarView == CalendarView.Week, { calendarView = CalendarView.Week }, { Text("Uge") })
+                        OutlinedButton(onClick = {
+                            DatePickerDialog(context, { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day) }, selectedDate.year, selectedDate.monthValue - 1, selectedDate.dayOfMonth).show()
+                        }) { Text(if (calendarView == CalendarView.Day) selectedDate.format(DateTimeFormatter.ofPattern("d. MMM")) else "Uge ${selectedDate.format(DateTimeFormatter.ofPattern("w"))}") }
+                    }
+                    FilledTonalButton(onClick = { selectedDate = LocalDate.now() }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Outlined.Today, null)
+                        Text(if (calendarView == CalendarView.Day) "Gå til i dag" else "Gå til denne uge")
+                    }
+                }
+            }
+            item {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val allDaysExpanded = groups.isNotEmpty() && groups.keys.all { it in expandedDays }
+                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { expandedDays = if (allDaysExpanded) emptySet() else groups.keys }) {
+                        Icon(if (allDaysExpanded) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, null)
+                        Text(if (allDaysExpanded) "Fold alle datoer sammen" else "Udfold alle datoer")
+                    }
+                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { expandAllRecords = expandAllRecords != true }) {
+                        Icon(if (expandAllRecords == true) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, null)
+                        Text(if (expandAllRecords == true) "Fold alle registreringer sammen" else "Udfold alle registreringer")
+                    }
                 }
             }
             if (groups.isEmpty()) item { BabyEmptyState(Icons.Outlined.History, "Ingen registreringer fundet", "Prøv at nulstille filtrene, eller tilføj en ny registrering.") }
@@ -116,19 +158,15 @@ fun TimelineScreen(
                     }
                 }
                 if (date in expandedDays) items(dayEvents, key = { it.id }) { event ->
-                    EventCard(event, onEdit = { editing = event }, onDelete = { deleting = event })
+                    EventCard(event, expandAll = expandAllRecords, onEdit = { editing = event }, onDelete = { deleting = event })
                 }
             }
         }
     }
     if (filtersOpen) AlertDialog(
         onDismissRequest = { filtersOpen = false },
-        title = { Text("Filtrér tidslinjen") },
+        title = { Text("Filtrér journalen") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Periode", style = MaterialTheme.typography.titleSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TimelineRange.entries.forEach { option -> FilterChip(range == option, { range = option }, { Text(when (option) { TimelineRange.Today -> "I dag"; TimelineRange.Week -> "7 dage"; TimelineRange.All -> "Alle" }) }) }
-            }
             Text("Registreringstyper", style = MaterialTheme.typography.titleSmall)
             CareEventType.entries.forEach { type ->
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -136,7 +174,7 @@ fun TimelineScreen(
                     Text(type.displayLabel())
                 }
             }
-            TextButton(onClick = { typeFilters = emptySet(); range = TimelineRange.Week }) { Text("Nulstil filtre") }
+            TextButton(onClick = { typeFilters = emptySet() }) { Text("Nulstil filtre") }
         } },
         confirmButton = { Button(onClick = { filtersOpen = false }) { Text("Vis resultater") } },
     )
@@ -152,6 +190,8 @@ fun TimelineScreen(
                             AddKind.Pumping -> "Pumpning"
                             AddKind.Diaper -> "Ble"
                             AddKind.Sleep -> "Søvn"
+                            AddKind.Measurement -> "Mål"
+                            AddKind.Activity -> "Diverse"
                         })
                     }
                 }
@@ -165,9 +205,11 @@ fun TimelineScreen(
         addKind = null
     }
     if (addKind == AddKind.Bottle) BottleDialog({ addKind = null }) { time, content, offered, consumed, notes -> activeChildId?.let { onAddBottle(it, time, content, offered, consumed, notes) }; addKind = null }
-    if (addKind == AddKind.Diaper) DiaperDialog({ addKind = null }) { time, type, observation, notes -> activeChildId?.let { onAddDiaper(it, time, type, observation, notes) {} }; addKind = null }
+    if (addKind == AddKind.Diaper) DiaperDialog({ addKind = null }) { time, type, color, consistency, observation, notes -> activeChildId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; addKind = null }
     if (addKind == AddKind.Breastfeeding) ManualTimerDialog(CareEventType.Breastfeeding, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
     if (addKind == AddKind.Pumping) ManualTimerDialog(CareEventType.Pumping, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
+    if (addKind == AddKind.Measurement) MeasurementDialog(MeasurementType.Weight, { addKind = null }) { time, timeSpecified, type, value, unit, notes -> activeChildId?.let { onAddMeasurement(it, time, timeSpecified, type, value, unit, notes) }; addKind = null }
+    if (addKind == AddKind.Activity) ActivityDialog(null, { addKind = null }) { start, end, type, notes -> activeChildId?.let { onAddActivity(it, start, end, type, notes) }; addKind = null }
     editing?.let { event ->
         if (event.type == CareEventType.HealthVisit || event.type == CareEventType.Vaccination) {
             HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, { editing = null }) { updated ->
@@ -179,7 +221,7 @@ fun TimelineScreen(
     }
     deleting?.let { event -> AlertDialog(
         onDismissRequest = { deleting = null }, title = { Text("Slet registrering?") },
-        text = { Text("Registreringen fjernes fra tidslinjen, men bevares internt.") },
+        text = { Text("Registreringen fjernes fra journalen, men bevares internt.") },
         confirmButton = { Button(onClick = { onDelete(event); deleting = null }) { Text("Slet") } },
         dismissButton = { TextButton(onClick = { deleting = null }) { Text("Annuller") } },
     ) }

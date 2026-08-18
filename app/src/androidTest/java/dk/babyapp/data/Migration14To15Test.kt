@@ -43,6 +43,36 @@ class Migration14To15Test {
         }
     }
 
+    @Test
+    fun migration15To16AddsDetailedTrackingFields() {
+        val name = "migration-15-16-test"
+        helper.createDatabase(name, 15).close()
+
+        helper.runMigrationsAndValidate(name, 16, true, CoreModule.MIGRATION_15_16).use { database ->
+            database.query("PRAGMA table_info(care_events)").use { cursor ->
+                val names = buildSet { while (cursor.moveToNext()) add(cursor.getString(cursor.getColumnIndexOrThrow("name"))) }
+                assertEquals(true, "breastfeedingIssue" in names)
+                assertEquals(true, "diaperConsistency" in names)
+                assertEquals(true, "measurementType" in names)
+                assertEquals(true, "activityType" in names)
+            }
+        }
+    }
+
+    @Test
+    fun migration16To17AddsOptionalTimeAndMedicationFields() {
+        val name = "migration-16-17-test"
+        helper.createDatabase(name, 16).close()
+        helper.runMigrationsAndValidate(name, 17, true, CoreModule.MIGRATION_16_17).use { database ->
+            database.query("PRAGMA table_info(care_events)").use { cursor ->
+                val names = buildSet { while (cursor.moveToNext()) add(cursor.getString(cursor.getColumnIndexOrThrow("name"))) }
+                assertEquals(true, "timeSpecified" in names)
+                assertEquals(true, "medicationName" in names)
+                assertEquals(true, "medicationDose" in names)
+            }
+        }
+    }
+
     private fun insertProfile(database: SupportSQLiteDatabase) {
         database.execSQL(
             """INSERT INTO child_profiles (

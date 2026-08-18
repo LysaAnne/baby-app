@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -32,8 +33,9 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-internal fun EventCard(event: CareEventEntity, onEdit: () -> Unit, onDelete: () -> Unit) {
+internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdit: () -> Unit, onDelete: () -> Unit) {
     var expanded by remember(event.id) { mutableStateOf(false) }
+    LaunchedEffect(expandAll) { expandAll?.let { expanded = it } }
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -64,17 +66,21 @@ internal fun EventCard(event: CareEventEntity, onEdit: () -> Unit, onDelete: () 
 internal fun eventTitle(event: CareEventEntity) = when (event.type) {
     CareEventType.Diaper -> "Ble – ${event.diaperType.displayLabel()}"
     CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"
+    CareEventType.Measurement -> event.measurementType?.displayLabel() ?: event.type.displayLabel()
+    CareEventType.Activity -> if (event.activityType == dk.babyapp.data.tracking.ActivityType.Medicine) event.medicationName.ifBlank { "Medicin" } else event.activityType?.displayLabel() ?: event.type.displayLabel()
     CareEventType.HealthVisit -> event.healthTitle.ifBlank { event.type.displayLabel() }
     CareEventType.Vaccination -> event.vaccineName.ifBlank { event.type.displayLabel() }
     else -> event.type.displayLabel()
 }
 
 private fun CareEventEntity.details() = when (type) {
-    CareEventType.Breastfeeding -> "${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}"
+    CareEventType.Breastfeeding -> listOf("${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}", breastfeedingIssue?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Bottle -> "${amountConsumedMl ?: 0} af ${amountOfferedMl ?: 0} ml · ${bottleContent.displayLabel()}"
     CareEventType.Pumping -> "${formatDuration(elapsedSeconds())}${pumpedAmountMl?.let { " · $it ml" } ?: ""}"
-    CareEventType.Diaper -> listOf(observation, notes).filter(String::isNotBlank).joinToString(" · ").ifBlank { "Registreret" }
+    CareEventType.Diaper -> listOf(diaperColor?.displayLabel(), diaperConsistency?.displayLabel(), observation, notes).filter { !it.isNullOrBlank() }.joinToString(" · ").ifBlank { "Registreret" }
     CareEventType.Sleep -> listOf(formatDuration(elapsedSeconds()), sleepLocation, sleepQuality?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Measurement -> listOf(measurementValue?.let { "$it $measurementUnit" }, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Activity -> if (activityType == dk.babyapp.data.tracking.ActivityType.Medicine) listOf(medicationName, medicationDose, notes).filter { it.isNotBlank() }.joinToString(" · ") else listOf(activityDurationSeconds?.let(::formatDuration), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.HealthVisit -> listOf(healthStatus?.displayLabel(), providerDisplayName, healthReason, healthObservations, healthAdvice, followUp, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Vaccination -> listOf(healthStatus?.displayLabel(), vaccineDose, vaccineBatchNumber, injectionSite, reactionNotes, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
 }
@@ -83,11 +89,13 @@ private fun CareEventEntity.summary() = when (type) {
     CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep -> formatDuration(elapsedSeconds())
     CareEventType.Bottle -> amountConsumedMl?.let { "$it ml" } ?: bottleContent.displayLabel()
     CareEventType.Diaper -> diaperType.displayLabel()
+    CareEventType.Measurement -> measurementValue?.let { "$it $measurementUnit" } ?: "Måling"
+    CareEventType.Activity -> if (activityType == dk.babyapp.data.tracking.ActivityType.Medicine) medicationDose.ifBlank { "Medicin" } else activityDurationSeconds?.let(::formatDuration) ?: "Aktivitet"
     CareEventType.HealthVisit -> providerDisplayName.ifBlank { "Besøg" }
     CareEventType.Vaccination -> vaccineDose.ifBlank { "Vaccine" }
 }
 
-private fun CareEventEntity.recordedAt(): String = if (type == CareEventType.HealthVisit || type == CareEventType.Vaccination) {
+private fun CareEventEntity.recordedAt(): String = if (!timeSpecified) {
     DateFormat.getDateInstance(DateFormat.SHORT).format(Date(startedAt))
 } else {
     DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(startedAt))
@@ -99,6 +107,8 @@ private fun CareEventEntity.icon() = when (type) {
     CareEventType.Pumping -> "🥛"
     CareEventType.Diaper -> "🧷"
     CareEventType.Sleep -> "🌙"
+    CareEventType.Measurement -> "📏"
+    CareEventType.Activity -> "🧸"
     CareEventType.HealthVisit -> "🩺"
     CareEventType.Vaccination -> "💉"
 }

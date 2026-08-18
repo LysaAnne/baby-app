@@ -5,12 +5,17 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep, HealthVisit, Vaccination }
+enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity, HealthVisit, Vaccination }
 enum class BreastSide { Left, Right }
+enum class BreastfeedingIssue { PainfulLatch, SoreNipples, CrackedNipples, Engorgement, BlockedDuct, MastitisSymptoms, Other }
 enum class BottleContent { BreastMilk, Formula, Water, Other }
 enum class DiaperType { Wet, Dirty, Both, Dry }
+enum class DiaperColor { Yellow, Brown, Green, Black, Red, White, Other }
+enum class DiaperConsistency { Watery, Loose, Soft, Formed, Hard, Mucous }
 enum class SleepType { Nap, Night }
 enum class SleepQuality { Restful, Mixed, Restless }
+enum class MeasurementType { Weight, Height, HeadCircumference, Temperature }
+enum class ActivityType { TummyTime, Bath, OutdoorTime, Play, Medicine, Other }
 enum class HealthVisitType { PreventiveExam, GpVisit, HealthVisitor, Midwife, Hospital, Specialist, Dental, Other }
 enum class HealthRecordStatus { Scheduled, Completed, Postponed, Cancelled, Declined }
 
@@ -26,6 +31,7 @@ data class CareEventEntity(
     val endedAt: Long? = null,
     val runningSince: Long? = null,
     val activeSide: BreastSide? = null,
+    val breastfeedingIssue: BreastfeedingIssue? = null,
     val leftSeconds: Long = 0,
     val rightSeconds: Long = 0,
     val amountOfferedMl: Int? = null,
@@ -33,12 +39,22 @@ data class CareEventEntity(
     val pumpedAmountMl: Int? = null,
     val bottleContent: BottleContent? = null,
     val diaperType: DiaperType? = null,
+    val diaperColor: DiaperColor? = null,
+    val diaperConsistency: DiaperConsistency? = null,
     val sleepType: SleepType? = null,
     val sleepLocation: String = "",
     val settlingMethod: String = "",
     val awakenings: Int? = null,
     val sleepQuality: SleepQuality? = null,
     val timerSegments: String = "",
+    val measurementType: MeasurementType? = null,
+    val measurementValue: Double? = null,
+    val measurementUnit: String = "",
+    val activityType: ActivityType? = null,
+    val activityDurationSeconds: Long? = null,
+    val timeSpecified: Boolean = true,
+    val medicationName: String = "",
+    val medicationDose: String = "",
     val healthVisitType: HealthVisitType? = null,
     val healthStatus: HealthRecordStatus? = null,
     val providerId: String? = null,

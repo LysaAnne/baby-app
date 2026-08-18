@@ -1,6 +1,5 @@
 package dk.babyapp.ui.tracking
 
-import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dk.babyapp.data.profile.CareProvider
@@ -40,11 +38,6 @@ import dk.babyapp.data.tracking.HealthRecordStatus
 import dk.babyapp.data.tracking.HealthVisitType
 import dk.babyapp.data.tracking.danishPreventiveExaminationTemplates
 import dk.babyapp.data.tracking.danishVaccinationTemplates
-import java.text.DateFormat
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +50,7 @@ fun HealthRecordDialog(
     onSave: (CareEventEntity) -> Unit,
 ) {
     var time by remember { mutableLongStateOf(existing?.startedAt ?: System.currentTimeMillis()) }
+    var timeSpecified by remember { mutableStateOf(existing?.timeSpecified ?: false) }
     var status by remember { mutableStateOf(existing?.healthStatus ?: HealthRecordStatus.Completed) }
     var visitType by remember { mutableStateOf(existing?.healthVisitType ?: HealthVisitType.GpVisit) }
     var providerId by remember { mutableStateOf(existing?.providerId) }
@@ -80,12 +74,12 @@ fun HealthRecordDialog(
                 Text(if (vaccination) "Registrér vaccination" else "Registrér sundhedsbesøg", style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Dette er dine egne noter og ikke en officiel sundhedsjournal.")
-            DateOnlyButton(time) { time = it }
-            SelectionDropdown("Status", status.displayLabel(), HealthRecordStatus.entries.map { it to it.displayLabel() }) { status = it }
+            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
+            SelectionDropdown("Status *", status.displayLabel(), HealthRecordStatus.entries.map { it to it.displayLabel() }) { status = it }
             if (vaccination) {
                 val selectedTemplate = danishVaccinationTemplates.firstOrNull { it.key == officialKey }
                 SelectionDropdown(
-                    "Dansk vaccinationsprogram (valgfrit)",
+                    "Dansk vaccinationsprogram",
                     selectedTemplate?.title ?: "Ingen standardskabelon",
                     listOf<String?>(null).map { it to "Ingen standardskabelon" } + danishVaccinationTemplates.map { it.key as String? to it.title },
                 ) { key ->
@@ -100,17 +94,17 @@ fun HealthRecordDialog(
             } else {
                 val selectedTemplate = danishPreventiveExaminationTemplates.firstOrNull { it.key == officialKey }
                 SelectionDropdown(
-                    "Forebyggende børneundersøgelse (valgfrit)",
+                    "Forebyggende børneundersøgelse",
                     selectedTemplate?.title ?: "Ingen standardskabelon",
                     listOf<String?>(null).map { it to "Ingen standardskabelon" } + danishPreventiveExaminationTemplates.map { it.key as String? to it.title },
                 ) { key ->
                     officialKey = key
                     danishPreventiveExaminationTemplates.firstOrNull { it.key == key }?.let { template -> title = template.title; visitType = HealthVisitType.PreventiveExam }
                 }
-                SelectionDropdown("Besøgstype", visitType.displayLabel(), HealthVisitType.entries.map { it to it.displayLabel() }) { visitType = it }
+                SelectionDropdown("Besøgstype *", visitType.displayLabel(), HealthVisitType.entries.map { it to it.displayLabel() }) { visitType = it }
                 if (providers.isNotEmpty()) {
                     SelectionDropdown(
-                        "Registreret behandler (valgfrit)",
+                        "Registreret behandler",
                         providers.firstOrNull { it.id == providerId }?.name ?: "Ingen valgt",
                         listOf<String?>(null).map { it to "Ingen valgt" } + providers.map { it.id as String? to it.name },
                     ) { id -> providerId = id; providerName = providers.firstOrNull { it.id == id }?.name.orEmpty() }
@@ -133,7 +127,7 @@ fun HealthRecordDialog(
                             providerId = providerId, providerDisplayName = providerName, healthTitle = title, healthReason = reason,
                             healthObservations = observations, healthAdvice = advice, healthQuestions = questions, followUp = followUp,
                             vaccineName = vaccine, vaccineDose = dose, vaccineBatchNumber = batch, injectionSite = site,
-                            reactionNotes = reactions, notes = notes, officialScheduleKey = officialKey,
+                            reactionNotes = reactions, notes = notes, officialScheduleKey = officialKey, timeSpecified = timeSpecified,
                         ))
                     }) { Text("Gem") }
                 }
@@ -144,7 +138,7 @@ fun HealthRecordDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun <T> SelectionDropdown(label: String, value: String, options: List<Pair<T, String>>, onSelected: (T) -> Unit) {
+internal fun <T> SelectionDropdown(label: String, value: String, options: List<Pair<T, String>>, onSelected: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
@@ -159,15 +153,4 @@ private fun <T> SelectionDropdown(label: String, value: String, options: List<Pa
             options.forEach { (option, text) -> DropdownMenuItem(text = { Text(text) }, onClick = { onSelected(option); expanded = false }) }
         }
     }
-}
-
-@Composable
-private fun DateOnlyButton(value: Long, onChange: (Long) -> Unit) {
-    val context = LocalContext.current
-    val date = Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).toLocalDate()
-    Button(onClick = {
-        DatePickerDialog(context, { _, year, month, day ->
-            onChange(LocalDate.of(year, month + 1, day).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli())
-        }, date.year, date.monthValue - 1, date.dayOfMonth).show()
-    }) { Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(value))) }
 }

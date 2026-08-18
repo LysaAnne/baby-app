@@ -65,7 +65,7 @@ abstract class CoreModule {
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "baby_app.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
                 .build()
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -182,6 +182,26 @@ abstract class CoreModule {
                 db.execSQL("INSERT INTO child_profiles_new (id, name, nickname, birthStatus, birthDate, birthTime, dueDate, sex, birthWeightGrams, birthLengthCm, birthHeadCircumferenceCm, gestationalWeeks, gestationalDays, hospital, cprNumber, fullName, registeredAddress, nationality, allergies, medicalNotes, photoFileName, avatar, colorTheme, createdAtEpochMillis, updatedAtEpochMillis, sortOrder) SELECT id, name, nickname, birthStatus, birthDate, birthTime, dueDate, sex, birthWeightGrams, birthLengthCm, birthHeadCircumferenceCm, gestationalWeeks, gestationalDays, hospital, cprNumber, fullName, registeredAddress, nationality, allergies, medicalNotes, photoFileName, avatar, colorTheme, createdAtEpochMillis, updatedAtEpochMillis, sortOrder FROM child_profiles")
                 db.execSQL("DROP TABLE child_profiles")
                 db.execSQL("ALTER TABLE child_profiles_new RENAME TO child_profiles")
+            }
+        }
+        internal val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE care_events ADD COLUMN breastfeedingIssue TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN diaperColor TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN diaperConsistency TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN measurementType TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN measurementValue REAL DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN measurementUnit TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN activityType TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN activityDurationSeconds INTEGER DEFAULT NULL")
+            }
+        }
+        internal val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE care_events ADD COLUMN timeSpecified INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN medicationName TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN medicationDose TEXT NOT NULL DEFAULT ''")
+                db.execSQL("UPDATE care_events SET timeSpecified = 0 WHERE type IN ('HealthVisit', 'Vaccination')")
             }
         }
 

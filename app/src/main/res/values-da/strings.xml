@@ -2,13 +2,13 @@
 <resources>
     <string name="app_name">Baby App</string>
     <string name="nav_today">I dag</string>
-    <string name="nav_timeline">Tidslinje</string>
+    <string name="nav_timeline">Journal</string>
     <string name="nav_insights">Overblik</string>
     <string name="nav_guide">Guide</string>
     <string name="nav_family">Familie</string>
     <string name="today_title">I dag</string>
     <string name="today_description">Hurtige handlinger og dagens overblik kommer til at være her.</string>
-    <string name="timeline_title">Tidslinje</string>
+    <string name="timeline_title">Journal</string>
     <string name="timeline_description">Historikken over dit barns pleje kommer til at være her.</string>
     <string name="insights_title">Overblik</string>
     <string name="insights_description">Rolige og nyttige mønstre kommer til at være her.</string>
@@ -84,7 +84,7 @@
     <string name="review_relations_description">Vælg de familiemedlemmer, der skal være tilknyttet hvert barn.</string>
     <string name="reorder_children">Ændr rækkefølgen af børn</string>
     <string name="reorder_family">Ændr rækkefølgen af familie</string>
-    <string name="drag_to_reorder">Hold på et kort, og træk det op eller ned.</string>
+    <string name="drag_to_reorder">Træk et kort op eller ned for at ændre rækkefølgen.</string>
     <string name="parent_role">Forælderrolle</string><string name="other_family_members">Andre familiemedlemmer</string><string name="no_other_family_linked">Ingen andre familiemedlemmer er tilknyttet.</string>
     <string name="role_mother">Mor</string><string name="role_father">Far</string><string name="role_parent_unspecified">Ønsker ikke at svare</string><string name="role_grandmother">Bedstemor</string><string name="role_grandfather">Bedstefar</string><string name="role_grandparent">Bedsteforælder</string><string name="role_bonus_mother">Bonusmor</string><string name="role_bonus_father">Bonusfar</string><string name="role_bonus_parent">Bonusforælder</string><string name="role_sister">Søster</string><string name="role_brother">Bror</string><string name="role_sibling">Søskende</string><string name="role_bonus_sibling">Bonussøskende</string><string name="role_aunt">Tante</string><string name="role_uncle">Onkel</string><string name="role_maternal_aunt">Moster</string><string name="role_paternal_aunt">Faster</string><string name="role_maternal_uncle">Morbror</string><string name="role_paternal_uncle">Farbror</string><string name="role_cousin">Fætter/kusine</string><string name="role_not_specified">Ikke angivet</string>
     <string name="allergies">Allergier</string>

@@ -40,6 +40,7 @@ import dk.babyapp.ui.family.SettingsDialog
 import dk.babyapp.ui.profile.ProfileDraft
 import dk.babyapp.ui.profile.ProfileValidationError
 import dk.babyapp.data.preferences.AppPreferences
+import dk.babyapp.data.preferences.DashboardMetric
 import dk.babyapp.ui.OnboardingSettings
 import dk.babyapp.data.profile.ParentProfile
 import dk.babyapp.data.profile.ChildParentLink
@@ -53,10 +54,14 @@ import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.data.tracking.DiaperColor
+import dk.babyapp.data.tracking.DiaperConsistency
 import dk.babyapp.ui.tracking.TodayScreen
 import dk.babyapp.ui.tracking.TimelineScreen
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
+import dk.babyapp.data.tracking.MeasurementType
+import dk.babyapp.data.tracking.ActivityType
 import java.time.LocalDate
 import dk.babyapp.domain.shouldShowDueDateReminder
 
@@ -90,17 +95,21 @@ fun BabyAppNavigation(
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
     onStartPumping: (String) -> Unit = {},
     onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
+    onStartActivity: (String, ActivityType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onToggleTimer: (CareEventEntity) -> Unit = {},
     onSwitchSide: (CareEventEntity) -> Unit = {},
     onStopTimer: (CareEventEntity, Int?, (CareEventEntity) -> Unit) -> Unit = { _, _, _ -> },
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit = { _, _, _, _, _, _ -> },
-    onAddDiaper: (String, Long, DiaperType, String, String, (CareEventEntity) -> Unit) -> Unit = { _, _, _, _, _, _ -> },
+    onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
+    onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
+    onAddActivity: (String, Long, Long, ActivityType, String) -> Unit = { _, _, _, _, _ -> },
     onSaveHealthRecord: (CareEventEntity) -> Unit = {},
     onUpdateCareEvent: (CareEventEntity, (Boolean) -> Unit) -> Unit = { _, result -> result(true) },
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
+    onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit = {},
     onCreateDeveloperTestFamily: (() -> Unit) -> Unit = { it() },
     onCreateDeveloperPaletteChildren: (() -> Unit) -> Unit = { it() },
     onSaveColorProfile: (ColorProfile) -> Unit = {},
@@ -134,10 +143,6 @@ fun BabyAppNavigation(
                                 Text(
                                     text = activeChild?.let { "${it.avatar.symbol} ${it.name}" } ?: stringResource(R.string.no_active_child),
                                     style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                )
-                                if (activeChild != null) Text(
-                                    "Du registrerer for ${activeChild.name}",
-                                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                                 )
                             }
                             Icon(Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.switch_child))
@@ -203,10 +208,13 @@ fun BabyAppNavigation(
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
+                    onStartActivity = onStartActivity,
                     onToggleTimer = onToggleTimer, onSwitchSide = onSwitchSide, onStopTimer = onStopTimer,
                     onAddBottle = onAddBottle, onAddDiaper = onAddDiaper, onAddManualTimer = onAddManualTimer, onAddSleep = onAddSleep,
+                    onAddMeasurement = onAddMeasurement, onAddActivity = onAddActivity,
                     onUpdate = onUpdateCareEvent, onDelete = onDeleteCareEvent,
                     onUpdateQuickActions = onUpdateQuickActions,
+                    onUpdateDashboardMetrics = onUpdateDashboardMetrics,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
                     onSaveHealthRecord = onSaveHealthRecord,
                 )
@@ -234,6 +242,8 @@ fun BabyAppNavigation(
                     onAddBottle = onAddBottle,
                     onAddDiaper = onAddDiaper,
                     onAddManualTimer = onAddManualTimer,
+                    onAddMeasurement = onAddMeasurement,
+                    onAddActivity = onAddActivity,
                     onUpdate = onUpdateCareEvent,
                     onDelete = onDeleteCareEvent,
                 )

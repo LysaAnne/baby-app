@@ -248,6 +248,9 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
     override suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) {
         items.value = items.value.copy(showBreastfeedingQuickAction = showBreastfeeding, showBottleQuickAction = showBottle, showPumpingQuickAction = showPumping, showDiaperQuickAction = showDiaper)
     }
+    override suspend fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) {
+        items.value = items.value.copy(dashboardMetrics = metrics)
+    }
     override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }
 }
 

@@ -140,7 +140,10 @@ A stage is complete only when:
 - Bottle records with content, amount offered, and amount consumed.
 - Pumping timer and amount records.
 - Wet, dirty, both, and dry diaper quick records.
-- Optional diaper observations.
+- Diaper details including colour, consistency, observations, and notes.
+- Breastfeeding details including editable time interval and a structured list of discomforts.
+- Quick measurement records for weight, height, head circumference, and temperature.
+- Diverse records for tummy time, bath, outdoor time, play, medicine, and other activities.
 - Manual and backdated entry for every included event.
 - Edit and soft-delete records.
 - Recent-event cards and daily totals.
@@ -176,9 +179,10 @@ A stage is complete only when:
 - Persistent sleep notification and lock-screen actions.
 - Active timer restoration after interruption or process death.
 - Overlap detection and resolution.
-- Unified chronological timeline.
-- Filters by event type, date, and child.
+- Unified chronological Journal for the active child.
+- Calendar navigation by a chosen date or week and filters by event type.
 - Day grouping and clear running-event display.
+- Expand or collapse all dates and all records.
 - Add, edit, and soft-delete from the timeline.
 - Empty states and large-history performance.
 

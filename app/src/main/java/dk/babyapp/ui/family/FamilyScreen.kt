@@ -94,7 +94,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import kotlin.math.abs
 import android.app.ActivityManager
 import dk.babyapp.BuildConfig
@@ -477,7 +477,7 @@ private fun ReorderProfilesDialog(
                     var dragDistance by remember(item.first) { mutableStateOf(0f) }
                     Card(
                         modifier = Modifier.fillMaxWidth().pointerInput(item.first, ordered) {
-                            detectDragGesturesAfterLongPress(
+                            detectDragGestures(
                                 onDragEnd = { dragDistance = 0f },
                                 onDragCancel = { dragDistance = 0f },
                             ) { change, amount ->

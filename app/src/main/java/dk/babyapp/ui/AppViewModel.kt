@@ -31,8 +31,12 @@ import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.data.tracking.DiaperColor
+import dk.babyapp.data.tracking.DiaperConsistency
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
+import dk.babyapp.data.tracking.MeasurementType
+import dk.babyapp.data.tracking.ActivityType
 import dk.babyapp.data.tracking.closeSegment
 import dk.babyapp.data.tracking.startSegment
 import dk.babyapp.domain.accrueUntil
@@ -203,6 +207,18 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    fun startActivity(childId: String, activityType: ActivityType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
+        if (careEventRepository.activeForChild(childId) != null) {
+            onResult(false)
+        } else {
+            val now = System.currentTimeMillis()
+            val event = CareEventEntity(childId = childId, type = CareEventType.Activity, activityType = activityType, startedAt = now, runningSince = now).startSegment(now)
+            careEventRepository.save(event)
+            timerNotifications.show(event.id)
+            onResult(true)
+        }
+    }
+
     fun toggleTimer(event: CareEventEntity) = viewModelScope.launch {
         val now = System.currentTimeMillis()
         if (event.runningSince == null) {
@@ -220,7 +236,13 @@ class AppViewModel @Inject constructor(
 
     fun stopTimer(event: CareEventEntity, amountMl: Int? = null, onComplete: (CareEventEntity) -> Unit = {}) = viewModelScope.launch {
         val now = System.currentTimeMillis()
-        val completed = event.accrueUntil(now).closeSegment(now).copy(endedAt = now, runningSince = null, pumpedAmountMl = amountMl ?: event.pumpedAmountMl)
+        val accrued = event.accrueUntil(now).closeSegment(now)
+        val completed = accrued.copy(
+            endedAt = now,
+            runningSince = null,
+            pumpedAmountMl = amountMl ?: event.pumpedAmountMl,
+            activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds,
+        )
         careEventRepository.save(completed)
         timerNotifications.hide()
         onComplete(completed)
@@ -229,11 +251,19 @@ class AppViewModel @Inject constructor(
     fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String) =
         viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = offered, amountConsumedMl = consumed, notes = notes)) }
 
-    fun addDiaper(childId: String, time: Long, type: DiaperType, observation: String, notes: String, onComplete: (CareEventEntity) -> Unit = {}) =
+    fun addDiaper(childId: String, time: Long, type: DiaperType, color: DiaperColor?, consistency: DiaperConsistency?, observation: String, notes: String, onComplete: (CareEventEntity) -> Unit = {}) =
         viewModelScope.launch {
-            val event = CareEventEntity(childId = childId, type = CareEventType.Diaper, startedAt = time, endedAt = time, diaperType = type, observation = observation, notes = notes)
+            val event = CareEventEntity(childId = childId, type = CareEventType.Diaper, startedAt = time, endedAt = time, diaperType = type, diaperColor = color, diaperConsistency = consistency, observation = observation, notes = notes)
             careEventRepository.save(event); onComplete(event)
         }
+
+    fun addMeasurement(childId: String, time: Long, timeSpecified: Boolean, type: MeasurementType, value: Double, unit: String, notes: String) = viewModelScope.launch {
+        careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Measurement, startedAt = time, endedAt = time, timeSpecified = timeSpecified, measurementType = type, measurementValue = value, measurementUnit = unit, notes = notes))
+    }
+
+    fun addActivity(childId: String, start: Long, end: Long, type: ActivityType, notes: String) = viewModelScope.launch {
+        careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = start, endedAt = end, activityType = type, activityDurationSeconds = ((end - start).coerceAtLeast(0) / 1_000), notes = notes))
+    }
 
     fun addManualTimer(childId: String, type: CareEventType, start: Long, end: Long, side: BreastSide?, amountMl: Int?, notes: String) = viewModelScope.launch {
         val seconds = ((end - start).coerceAtLeast(0) / 1_000)
@@ -279,6 +309,9 @@ class AppViewModel @Inject constructor(
     }
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
+    }
+    fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) = viewModelScope.launch {
+        preferencesRepository.updateDashboardMetrics(metrics)
     }
     fun restoreTimerNotification(event: CareEventEntity?) { if (event != null && event.endedAt == null) timerNotifications.show(event.id) }
     fun dismissGettingStarted() = viewModelScope.launch { preferencesRepository.markGettingStartedSeen() }

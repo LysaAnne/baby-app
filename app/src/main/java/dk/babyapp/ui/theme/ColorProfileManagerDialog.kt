@@ -228,7 +228,7 @@ private fun TodayPalettePreviewDialog(profile: ColorProfile, onDismiss: () -> Un
                 },
                 bottomBar = {
                     NavigationBar {
-                        listOf("I dag", "Tidslinje", "Overblik", "Guide", "Familie").forEachIndexed { index, label ->
+                        listOf("I dag", "Journal", "Overblik", "Guide", "Familie").forEachIndexed { index, label ->
                             NavigationBarItem(selected = index == 0, onClick = {}, icon = { Text(listOf("●", "◷", "▥", "♡", "♧")[index]) }, label = { Text(label) })
                         }
                     }
