@@ -9,6 +9,8 @@ import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.preferences.DanishRegion
 import dk.babyapp.data.preferences.MeasurementUnits
 import dk.babyapp.data.preferences.ThemePreference
+import dk.babyapp.data.backup.EncryptedBackupService
+import dk.babyapp.reminders.DailyReminderScheduler
 import dk.babyapp.data.color.ColorProfile
 import dk.babyapp.data.color.ColorProfileRepository
 import dk.babyapp.data.color.normalizedHex
@@ -49,6 +51,7 @@ import dk.babyapp.ui.profile.validate
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -92,6 +95,8 @@ class AppViewModel @Inject constructor(
     private val careEventRepository: CareEventRepository,
     private val timerNotifications: TimerNotificationController,
     private val colorProfileRepository: ColorProfileRepository,
+    private val backupService: EncryptedBackupService? = null,
+    private val reminderScheduler: DailyReminderScheduler? = null,
 ) : ViewModel() {
     private val colorProfileJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val profileState = combine(
@@ -164,6 +169,8 @@ class AppViewModel @Inject constructor(
     fun deleteProfile(profile: ChildProfile) {
         viewModelScope.launch {
             profilesRepository.delete(profile)
+            val currentPreferences = preferencesRepository.preferences.first()
+            preferencesRepository.updateMedicines(currentPreferences.medicines.filterNot { it.childId == profile.id })
             val next = state.value.profiles.firstOrNull { it.id != profile.id }
             if (state.value.preferences.activeChildId == profile.id) {
                 preferencesRepository.setActiveChild(next?.id)
@@ -238,6 +245,7 @@ class AppViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         val accrued = event.accrueUntil(now).closeSegment(now)
         val completed = accrued.copy(
+            isDraft = true,
             endedAt = now,
             runningSince = null,
             pumpedAmountMl = amountMl ?: event.pumpedAmountMl,
@@ -267,7 +275,7 @@ class AppViewModel @Inject constructor(
 
     fun addManualTimer(childId: String, type: CareEventType, start: Long, end: Long, side: BreastSide?, amountMl: Int?, notes: String) = viewModelScope.launch {
         val seconds = ((end - start).coerceAtLeast(0) / 1_000)
-        careEventRepository.save(CareEventEntity(childId = childId, type = type, startedAt = start, endedAt = end, activeSide = side, leftSeconds = if (side == BreastSide.Left) seconds else 0, rightSeconds = if (side == BreastSide.Right) seconds else 0, pumpedAmountMl = amountMl, notes = notes))
+        careEventRepository.save(CareEventEntity(childId = childId, type = type, startedAt = start, endedAt = end, activeSide = side, leftSeconds = if (side != BreastSide.Right) seconds else 0, rightSeconds = if (side == BreastSide.Right) seconds else 0, pumpedAmountMl = amountMl, notes = notes))
     }
 
     fun addSleep(
@@ -300,9 +308,12 @@ class AppViewModel @Inject constructor(
 
     fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
         val overlaps = overlapsSleep(event, state.value.careEvents)
-        if (overlaps) onResult(false) else { careEventRepository.save(event); onResult(true) }
+        if (overlaps) onResult(false) else { careEventRepository.save(event.copy(isDraft = false)); onResult(true) }
     }
-    fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.softDelete(event) }
+    fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch {
+        careEventRepository.softDelete(event)
+        if (event.endedAt == null) timerNotifications.hide()
+    }
     fun saveHealthRecord(event: CareEventEntity, onComplete: () -> Unit = {}) = viewModelScope.launch {
         careEventRepository.save(event)
         onComplete()
@@ -310,9 +321,24 @@ class AppViewModel @Inject constructor(
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
     }
+    fun updateQuickActionCategoryOrder(order: List<String>) = viewModelScope.launch { preferencesRepository.updateQuickActionCategoryOrder(order) }
+    fun updateHiddenQuickActions(hidden: Set<String>) = viewModelScope.launch { preferencesRepository.updateHiddenQuickActions(hidden) }
+    fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>) = viewModelScope.launch { preferencesRepository.updateMedicines(medicines) }
+
     fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) = viewModelScope.launch {
         preferencesRepository.updateDashboardMetrics(metrics)
     }
+    fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) = viewModelScope.launch {
+        preferencesRepository.updateDailyReminder(enabled, hour, minute)
+        reminderScheduler?.update(enabled, hour, minute)
+    }
+    fun updateInsightDashboardMetrics(metrics: List<String>) = viewModelScope.launch { preferencesRepository.updateInsightDashboardMetrics(metrics) }
+    fun syncDailyReminder() {
+        val preferences = state.value.preferences
+        reminderScheduler?.update(preferences.dailyReminderEnabled, preferences.dailyReminderHour, preferences.dailyReminderMinute)
+    }
+    suspend fun createEncryptedBackup(password: CharArray): ByteArray = withContext(Dispatchers.IO) { requireNotNull(backupService).create(password) }
+    suspend fun restoreEncryptedBackup(bytes: ByteArray, password: CharArray) = withContext(Dispatchers.IO) { requireNotNull(backupService).restore(bytes, password) }
     fun restoreTimerNotification(event: CareEventEntity?) { if (event != null && event.endedAt == null) timerNotifications.show(event.id) }
     fun dismissGettingStarted() = viewModelScope.launch { preferencesRepository.markGettingStartedSeen() }
 
@@ -421,9 +447,48 @@ class AppViewModel @Inject constructor(
             CareEventEntity(id = "developer-event-bottle", childId = childId, type = CareEventType.Bottle, startedAt = now - 90 * 60 * 1_000, endedAt = now - 90 * 60 * 1_000, bottleContent = BottleContent.BreastMilk, amountOfferedMl = 120, amountConsumedMl = 105, notes = "Testregistrering"),
             CareEventEntity(id = "developer-event-diaper", childId = childId, type = CareEventType.Diaper, startedAt = now - 35 * 60 * 1_000, endedAt = now - 35 * 60 * 1_000, diaperType = DiaperType.Both, observation = "Normal", notes = "Testregistrering"),
             CareEventEntity(id = "developer-event-pump", childId = childId, type = CareEventType.Pumping, startedAt = now - 5 * 60 * 60 * 1_000, endedAt = now - 5 * 60 * 60 * 1_000 + 15 * 60 * 1_000, leftSeconds = 900, pumpedAmountMl = 85),
-        ).forEach { careEventRepository.save(it) }
+        ).plus(developerFrejaHistory(childId)).forEach { careEventRepository.save(it) }
         preferencesRepository.setActiveChild(childId)
         onComplete()
+    }
+
+    private fun developerFrejaHistory(childId: String): List<CareEventEntity> {
+        val zone = ZoneId.systemDefault()
+        fun timestamp(date: LocalDate, hour: Int, minute: Int = 0): Long =
+            date.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
+
+        return (1L..60L).flatMap { daysAgo ->
+            val date = LocalDate.now().minusDays(daysAgo)
+            val variation = (daysAgo % 5).toInt()
+            val prefix = "developer-freja-day-$daysAgo"
+            val breastMinutes = 14 + variation
+            val napMinutes = 55 + variation * 8
+            val nightMinutes = 500 + variation * 12
+            val tummyMinutes = 8 + (daysAgo % 6).toInt() * 3
+            val events = mutableListOf(
+                CareEventEntity(id = "$prefix-breast-morning", childId = childId, type = CareEventType.Breastfeeding, startedAt = timestamp(date, 7, 10), endedAt = timestamp(date, 7, 10).plus(breastMinutes * 60_000L), activeSide = if (daysAgo % 2L == 0L) BreastSide.Left else BreastSide.Right, leftSeconds = if (daysAgo % 2L == 0L) breastMinutes * 60L else 0, rightSeconds = if (daysAgo % 2L == 0L) 0 else breastMinutes * 60L),
+                CareEventEntity(id = "$prefix-bottle", childId = childId, type = CareEventType.Bottle, startedAt = timestamp(date, 11, 45), endedAt = timestamp(date, 11, 45), bottleContent = BottleContent.BreastMilk, amountOfferedMl = 130, amountConsumedMl = 95 + variation * 5),
+                CareEventEntity(id = "$prefix-breast-evening", childId = childId, type = CareEventType.Breastfeeding, startedAt = timestamp(date, 18, 20), endedAt = timestamp(date, 18, 20).plus((breastMinutes + 3) * 60_000L), activeSide = BreastSide.Left, leftSeconds = (breastMinutes + 3) * 60L),
+                CareEventEntity(id = "$prefix-nap", childId = childId, type = CareEventType.Sleep, startedAt = timestamp(date, 12, 50), endedAt = timestamp(date, 12, 50).plus(napMinutes * 60_000L), leftSeconds = napMinutes * 60L, sleepType = SleepType.Nap, sleepQuality = if (variation == 0) SleepQuality.Mixed else SleepQuality.Restful),
+                CareEventEntity(id = "$prefix-night", childId = childId, type = CareEventType.Sleep, startedAt = timestamp(date, 20, 15), endedAt = timestamp(date, 20, 15).plus(nightMinutes * 60_000L), leftSeconds = nightMinutes * 60L, sleepType = SleepType.Night, awakenings = variation % 3, sleepQuality = if (variation == 4) SleepQuality.Mixed else SleepQuality.Restful),
+                CareEventEntity(id = "$prefix-diaper-1", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 8, 5), endedAt = timestamp(date, 8, 5), diaperType = DiaperType.Wet),
+                CareEventEntity(id = "$prefix-diaper-2", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 13, 20), endedAt = timestamp(date, 13, 20), diaperType = if (daysAgo % 3L == 0L) DiaperType.Both else DiaperType.Dirty, diaperColor = DiaperColor.Yellow, diaperConsistency = DiaperConsistency.Soft),
+                CareEventEntity(id = "$prefix-diaper-3", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 17, 15), endedAt = timestamp(date, 17, 15), diaperType = DiaperType.Wet),
+                CareEventEntity(id = "$prefix-diaper-4", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 20, 0), endedAt = timestamp(date, 20, 0), diaperType = DiaperType.Wet),
+                CareEventEntity(id = "$prefix-tummy", childId = childId, type = CareEventType.Activity, startedAt = timestamp(date, 15, 10), endedAt = timestamp(date, 15, 10).plus(tummyMinutes * 60_000L), activityType = ActivityType.TummyTime, activityDurationSeconds = tummyMinutes * 60L),
+            )
+            if (daysAgo % 7L == 0L) {
+                events += CareEventEntity(id = "$prefix-weight", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 10), endedAt = timestamp(date, 10), timeSpecified = false, measurementType = MeasurementType.Weight, measurementValue = 6.8 - daysAgo * 0.018, measurementUnit = "kg")
+            }
+            if (daysAgo % 14L == 0L) {
+                events += CareEventEntity(id = "$prefix-height", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 10), endedAt = timestamp(date, 10), timeSpecified = false, measurementType = MeasurementType.Height, measurementValue = 64.0 - daysAgo * 0.055, measurementUnit = "cm")
+                events += CareEventEntity(id = "$prefix-head", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 10), endedAt = timestamp(date, 10), timeSpecified = false, measurementType = MeasurementType.HeadCircumference, measurementValue = 41.5 - daysAgo * 0.025, measurementUnit = "cm")
+            }
+            if (daysAgo % 6L == 0L) {
+                events += CareEventEntity(id = "$prefix-temperature", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 16, 30), endedAt = timestamp(date, 16, 30), measurementType = MeasurementType.Temperature, measurementValue = 36.6 + variation * 0.12, measurementUnit = "°C")
+            }
+            events
+        }
     }
 
     fun createDeveloperPaletteChildren(onComplete: () -> Unit = {}) = viewModelScope.launch {

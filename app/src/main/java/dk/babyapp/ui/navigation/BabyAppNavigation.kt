@@ -58,6 +58,7 @@ import dk.babyapp.data.tracking.DiaperColor
 import dk.babyapp.data.tracking.DiaperConsistency
 import dk.babyapp.ui.tracking.TodayScreen
 import dk.babyapp.ui.tracking.TimelineScreen
+import dk.babyapp.ui.insights.InsightsScreen
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.tracking.MeasurementType
@@ -110,6 +111,13 @@ fun BabyAppNavigation(
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
     onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit = {},
+    onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
+    onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
+    onUpdateMedicines: (List<dk.babyapp.data.medicine.MedicinePlan>) -> Unit = {},
+    onUpdateDailyReminder: (Boolean, Int, Int) -> Unit = { _, _, _ -> },
+    createEncryptedBackup: suspend (CharArray) -> ByteArray = { byteArrayOf() },
+    restoreEncryptedBackup: suspend (ByteArray, CharArray) -> Unit = { _, _ -> },
+    onUpdateInsightDashboardMetrics: (List<String>) -> Unit = {},
     onCreateDeveloperTestFamily: (() -> Unit) -> Unit = { it() },
     onCreateDeveloperPaletteChildren: (() -> Unit) -> Unit = { it() },
     onSaveColorProfile: (ColorProfile) -> Unit = {},
@@ -122,6 +130,14 @@ fun BabyAppNavigation(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val activeTimer = careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
+    var keepTimerAwake by androidx.compose.runtime.saveable.rememberSaveable(activeTimer?.id) { androidx.compose.runtime.mutableStateOf(false) }
+    val timerView = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(timerView, activeTimer?.runningSince, keepTimerAwake) {
+        timerView.keepScreenOn = keepTimerAwake && activeTimer?.runningSince != null
+        onDispose { timerView.keepScreenOn = false }
+    }
+    val visibleEvents = careEvents.filterNot { it.isDraft || it.deletedAt != null }
     var settingsOpen by remember { mutableStateOf(false) }
     var requestedEditChildId by remember { mutableStateOf<String?>(null) }
 
@@ -163,6 +179,9 @@ fun BabyAppNavigation(
                     }
                 },
                 actions = {
+                    careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }?.let { event ->
+                        dk.babyapp.ui.tracking.TopBarTimer(event) { onSelectChild(event.childId); navController.navigate(AppDestination.Today) { launchSingleTop = true } }
+                    }
                     IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -215,6 +234,11 @@ fun BabyAppNavigation(
                     onUpdate = onUpdateCareEvent, onDelete = onDeleteCareEvent,
                     onUpdateQuickActions = onUpdateQuickActions,
                     onUpdateDashboardMetrics = onUpdateDashboardMetrics,
+                    keepTimerAwake = keepTimerAwake,
+                    onKeepTimerAwake = { keepTimerAwake = it },
+                    onUpdateQuickActionCategoryOrder = onUpdateQuickActionCategoryOrder,
+                    onUpdateHiddenQuickActions = onUpdateHiddenQuickActions,
+                    onUpdateMedicines = onUpdateMedicines,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
                     onSaveHealthRecord = onSaveHealthRecord,
                 )
@@ -235,7 +259,8 @@ fun BabyAppNavigation(
             composable<AppDestination.Timeline> {
                 TimelineScreen(
                     activeChildId = activeChild?.id,
-                    events = careEvents,
+                    medicines = preferences.medicines,
+                    events = visibleEvents,
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     contentPadding = contentPadding,
                     onAddSleep = onAddSleep,
@@ -249,9 +274,11 @@ fun BabyAppNavigation(
                 )
             }
             composable<AppDestination.Insights> {
-                PlaceholderScreen(
-                    title = stringResource(R.string.insights_title),
-                    description = stringResource(R.string.insights_description),
+                InsightsScreen(
+                    child = activeChild,
+                    events = visibleEvents,
+                    preferences = preferences,
+                    onUpdateDashboardMetrics = onUpdateInsightDashboardMetrics,
                     contentPadding = contentPadding,
                 )
             }
@@ -300,6 +327,11 @@ fun BabyAppNavigation(
     }
     if (settingsOpen) SettingsDialog(
         preferences = preferences,
+        activeChild = activeChild,
+        careEvents = careEvents,
+        onUpdateDailyReminder = onUpdateDailyReminder,
+        createEncryptedBackup = createEncryptedBackup,
+        restoreEncryptedBackup = restoreEncryptedBackup,
         onUpdate = onUpdateSettings,
         onCreateDeveloperTestFamily = onCreateDeveloperTestFamily,
         onCreateDeveloperPaletteChildren = onCreateDeveloperPaletteChildren,

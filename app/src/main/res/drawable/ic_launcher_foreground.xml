@@ -1,14 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#FFF8F5"
-        android:pathData="M54,25C41.3,25 31,35.3 31,48c0,15.8 12.2,28.9 23,35 10.8,-6.1 23,-19.2 23,-35C77,35.3 66.7,25 54,25z" />
-    <path
-        android:fillColor="#526C60"
-        android:pathData="M46,47a4,4 0,1 0,8 0a4,4 0,1 0,-8 0M60,47a4,4 0,1 0,8 0a4,4 0,1 0,-8 0M48,59c3.6,4.8 8.4,4.8 12,0l3,2.2c-5.1,7.2 -12.9,7.2 -18,0z" />
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Sleepy baby bear; kept within the adaptive icon safe zone. -->
+    <path android:fillColor="#DBE8E1" android:pathData="M30,37a11,11 0,1 0,22 0a11,11 0,1 0,-22 0M57,37a11,11 0,1 0,22 0a11,11 0,1 0,-22 0" />
+    <path android:fillColor="#A4D6BA" android:pathData="M35,37a6,6 0,1 0,12 0a6,6 0,1 0,-12 0M62,37a6,6 0,1 0,12 0a6,6 0,1 0,-12 0" />
+    <path android:fillColor="#FFF9ED" android:pathData="M29,53C29,23 79,23 79,53C79,72 67,79 54,79C41,79 29,72 29,53" />
+    <path android:fillColor="#F2C9CD" android:pathData="M34,56a5,3 0,1 0,10 0a5,3 0,1 0,-10 0M64,56a5,3 0,1 0,10 0a5,3 0,1 0,-10 0" />
+    <path android:fillColor="#00000000" android:strokeColor="#45616A" android:strokeWidth="2.6" android:strokeLineCap="round" android:pathData="M39,49Q43,54 47,49M61,49Q65,54 69,49M50,60Q54,64 58,60" />
+    <path android:fillColor="#45616A" android:pathData="M51,55Q54,52 57,55L54,58z" />
+    <path android:fillColor="#5A8D6F" android:pathData="M29,66Q54,78 79,66Q76,88 54,88Q32,88 29,66" />
+    <path android:fillColor="#A4D6BA" android:pathData="M32,67Q52,78 70,81Q61,87 54,87Q36,86 32,67" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50,78C48,73 42,76 45,80L50,84L55,80C58,76 52,73 50,78" />
 </vector>
-

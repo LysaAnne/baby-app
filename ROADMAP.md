@@ -200,7 +200,7 @@ A stage is complete only when:
 
 ## Stage 5 — Insights, reminders, export, and backup
 
-**Status:** `[ ] Not started`
+**Status:** `[x] Implemented`
 
 **Outcome:** Recorded data becomes useful for understanding routines and preparing for healthcare conversations.
 
@@ -220,13 +220,13 @@ A stage is complete only when:
 
 ### Acceptance criteria
 
-- [ ] Summaries update correctly after add, edit, or delete.
-- [ ] No insight claims a diagnosis or guarantees normal health.
-- [ ] Reminder behavior accounts for Android permission and battery restrictions.
-- [ ] Export clearly identifies child, date range, units, and time zone.
-- [ ] Backup and restore reproduce the original data.
-- [ ] Sensitive exports require an explicit user action and warning.
-- [ ] Calculation, export, and restoration tests pass.
+- [x] Summaries update correctly after add, edit, or delete.
+- [x] No insight claims a diagnosis or guarantees normal health.
+- [x] Reminder behavior accounts for Android permission and battery restrictions.
+- [x] Export clearly identifies child, date range, units, and time zone.
+- [x] Backup and restore reproduce the original data.
+- [x] Sensitive exports require an explicit user action and warning.
+- [x] Calculation, export, and restoration tests pass.
 
 ---
 
@@ -293,7 +293,7 @@ A stage is complete only when:
 - [ ] Relevant health data appears in timeline and export.
 - [ ] Health-domain tests pass.
 
-Implemented ahead of the full stage: reusable-provider health visits, vaccination records, the seven Danish preventive child examinations, the national childhood vaccination schedule, editable status and appointment dates, timeline integration, official-source metadata, and a clear local-record disclaimer. Symptoms, medication, supplements, reminders, and export remain for the full Stage 7 implementation.
+Implemented ahead of the full stage: reusable-provider health visits, vaccination records, the seven Danish preventive child examinations, the national childhood vaccination schedule, editable status and appointment dates, timeline integration, official-source metadata, and a clear local-record disclaimer. The September 2026 follow-up also implements per-child medicine cards, custom medicine definitions, PN, daily reminder times, administration selection, and encrypted backup of medicine plans. Broader symptom logging and the remaining Stage 7 acceptance criteria are still pending.
 
 ---
 
@@ -552,6 +552,24 @@ Completion of Stage 10 produces the planned **offline-first public beta**.
 
 When Stage 15 and every non-removed prerequisite stage are complete, the planned application is considered **done and ready for production release**.
 
+## September 2026 — Requested tracking and daily-use follow-up
+
+**Status:** Implemented; final verification is recorded in [the test checklist](docs/TEST-SEPTEMBER-2026.md).
+
+- Diaper observation dropdown and full diaper editing; cancel creates no saved record.
+- Consistent notes and editable fields for bottle, pumping, sleep, health and activities.
+- Optional pumping method (hand/machine/manual pump), editable ml, and preservation of pauses on note-only edits.
+- Explicit timer drafts and cancellation; top-bar timer, lock-screen notification controls and keep-screen-on toggle.
+- Expandable daily overview with registration counts and combined minutes/ml.
+- All quick actions configurable by category; floating manual-registration button.
+- Journal filters placed below expansion controls, including feeding and health groups.
+- Per-child medicine cards with reusable entries, dose/instructions, PN, daily times, notifications and backup.
+- Solid-food records with dedicated quick card, editing, notes, and Journal filtering.
+- Orientation-aware photo import, crop/zoom/position/rotate preview for every profile type.
+- New adaptive baby-bear icon.
+
+This is an explicitly requested follow-up, not completion of the full later stages. The unfinished sentence “Tilføj desuden til …” in the request has no defined scope and is not interpreted as an extra feature.
+
 ## Scope change log
 
 Use this table whenever a requested feature changes the agreed plan.
@@ -609,3 +627,9 @@ Use this table whenever a requested feature changes the agreed plan.
 - “Remove cloud sharing from the final product.”
 
 For any scope change, update the feature descriptions, affected stages, acceptance criteria, and scope change log before or alongside implementation.
+
+### Quick registration adjustments — 2026-09-27
+
+- Pumping method is optional (including manual entry), with Hånd, Maskine and Manuel pumpe options; an existing selection can be cleared.
+- Breastfeeding has direct left/right start buttons; diapers have direct type buttons.
+- Quick registration categories have bordered, elevated cards. Customize supports moving cards up/down and persists the order, including hidden categories.

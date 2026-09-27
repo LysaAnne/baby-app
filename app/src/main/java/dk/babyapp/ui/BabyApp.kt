@@ -20,12 +20,15 @@ import dk.babyapp.ui.theme.BabyAppTheme
 @Composable
 fun BabyApp(viewModel: AppViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
-    val activeTimer = state.activeChild?.let { child -> state.careEvents.firstOrNull { it.childId == child.id && it.endedAt == null } }
+    val activeTimer = state.careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
     LaunchedEffect(activeTimer?.id) { viewModel.restoreTimerNotification(activeTimer) }
     LaunchedEffect(state.loaded, state.preferences.languageTag) {
         if (state.loaded && AppCompatDelegate.getApplicationLocales().toLanguageTags() != "da") {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("da"))
         }
+    }
+    LaunchedEffect(state.loaded, state.preferences.dailyReminderEnabled, state.preferences.dailyReminderHour, state.preferences.dailyReminderMinute) {
+        if (state.loaded) viewModel.syncDailyReminder()
     }
     val activeColorProfile = state.activeChild?.colorTheme?.let { id -> state.colorProfiles.firstOrNull { it.id == id } }
         ?: state.colorProfiles.firstOrNull()
@@ -73,6 +76,13 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onDeleteCareEvent = viewModel::deleteCareEvent,
                     onUpdateQuickActions = viewModel::updateQuickActions,
                     onUpdateDashboardMetrics = viewModel::updateDashboardMetrics,
+                    onUpdateQuickActionCategoryOrder = viewModel::updateQuickActionCategoryOrder,
+                    onUpdateHiddenQuickActions = viewModel::updateHiddenQuickActions,
+                    onUpdateMedicines = viewModel::updateMedicines,
+                    onUpdateDailyReminder = viewModel::updateDailyReminder,
+                    createEncryptedBackup = viewModel::createEncryptedBackup,
+                    restoreEncryptedBackup = viewModel::restoreEncryptedBackup,
+                    onUpdateInsightDashboardMetrics = viewModel::updateInsightDashboardMetrics,
                     onCreateDeveloperTestFamily = viewModel::createDeveloperTestFamily,
                     onCreateDeveloperPaletteChildren = viewModel::createDeveloperPaletteChildren,
                     onSaveColorProfile = { viewModel.saveColorProfile(it) },

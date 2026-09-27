@@ -23,20 +23,10 @@ class ProfilePhotoStore @Inject constructor(
     override fun import(uri: Uri): String {
         val fileName = "${UUID.randomUUID()}.jpg"
         val target = File(directory, fileName)
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) { "Unable to open selected image" }
-            BitmapFactory.decodeStream(input, null, bounds)
-        }
-        var sampleSize = 1
-        while (bounds.outWidth / sampleSize > MAX_IMAGE_EDGE || bounds.outHeight / sampleSize > MAX_IMAGE_EDGE) {
-            sampleSize *= 2
-        }
-        val bitmap = context.contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) { "Unable to open selected image" }
-            BitmapFactory.decodeStream(input, null, BitmapFactory.Options().apply { inSampleSize = sampleSize })
-        }
-        requireNotNull(bitmap) { "Unable to decode selected image" }
+        val decoded = decodeProfileImage(context, uri)
+        val scale = minOf(1f, MAX_IMAGE_EDGE.toFloat() / maxOf(decoded.width, decoded.height))
+        val bitmap = android.graphics.Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)
+        if (bitmap !== decoded) decoded.recycle()
         target.outputStream().use { output ->
             bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, JPEG_QUALITY, output)
         }

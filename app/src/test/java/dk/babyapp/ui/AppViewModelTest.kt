@@ -21,6 +21,7 @@ import dk.babyapp.data.profile.BiologicalSex
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
 import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.tracking.TimerNotificationController
 import dk.babyapp.ui.profile.ProfileDraft
@@ -38,6 +39,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -101,7 +103,10 @@ class AppViewModelTest {
         assertEquals(ChildColorTheme.BoyLight.name, profiles.items.value.first { it.name == "Hector" }.colorTheme)
         assertEquals(4, parents.parents.value.size)
         assertEquals(8, parents.links.value.size)
-        assertEquals(4, events.items.value.size)
+        assertTrue(events.items.value.size > 600)
+        assertTrue(events.items.value.all { it.childId == "developer-test-child-freja" })
+        assertEquals(8, events.items.value.count { it.measurementType == MeasurementType.Weight })
+        assertEquals(4, events.items.value.count { it.measurementType == MeasurementType.Height })
         assertEquals("developer-test-child-freja", preferences.items.value.activeChildId)
     }
 
@@ -190,6 +195,30 @@ class AppViewModelTest {
     }
 
     @Test
+    fun `stopped timer stays a draft until saved and cancellation removes it`() = runTest(dispatcher) {
+        val events = FakeCareEventRepository()
+        val viewModel = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        viewModel.startSleep("child-1", SleepType.Nap)
+        advanceUntilIdle()
+        viewModel.stopTimer(events.items.value.single())
+        advanceUntilIdle()
+        val draft = events.items.value.single()
+        assertTrue(draft.isDraft)
+        viewModel.deleteCareEvent(draft)
+        advanceUntilIdle()
+        assertTrue(events.items.value.isEmpty())
+
+        viewModel.startSleep("child-1", SleepType.Nap)
+        advanceUntilIdle()
+        viewModel.stopTimer(events.items.value.single())
+        advanceUntilIdle()
+        viewModel.updateCareEvent(events.items.value.single().copy(notes = "Sov godt"))
+        advanceUntilIdle()
+        assertEquals(false, events.items.value.single().isDraft)
+        assertEquals("Sov godt", events.items.value.single().notes)
+    }
+
+    @Test
     fun `manual sleep rejects an overlapping interval`() = runTest(dispatcher) {
         val existing = CareEventEntity(childId = "child-1", type = CareEventType.Sleep, sleepType = SleepType.Nap, startedAt = 1_000, endedAt = 5_000, leftSeconds = 4)
         val events = FakeCareEventRepository().also { it.items.value = listOf(existing) }
@@ -251,6 +280,13 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
     override suspend fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) {
         items.value = items.value.copy(dashboardMetrics = metrics)
     }
+    override suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
+        items.value = items.value.copy(dailyReminderEnabled = enabled, dailyReminderHour = hour, dailyReminderMinute = minute)
+    }
+    override suspend fun updateInsightDashboardMetrics(metrics: List<String>) { items.value = items.value.copy(insightDashboardMetrics = metrics) }
+    override suspend fun updateQuickActionCategoryOrder(order: List<String>) { items.value = items.value.copy(quickActionCategoryOrder = order) }
+    override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }
+    override suspend fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>) { items.value = items.value.copy(medicines = medicines) }
     override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }
 }
 

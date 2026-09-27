@@ -99,6 +99,9 @@ import kotlin.math.abs
 import android.app.ActivityManager
 import dk.babyapp.BuildConfig
 import dk.babyapp.ui.theme.ColorProfileManagerDialog
+import dk.babyapp.data.tracking.CareEventEntity
+import dk.babyapp.ui.settings.DataManagementDialog
+import dk.babyapp.ui.settings.ReminderSettingsDialog
 
 @Composable
 fun FamilyScreen(
@@ -299,6 +302,11 @@ fun FamilyScreen(
 @Composable
 fun SettingsDialog(
     preferences: AppPreferences,
+    activeChild: ChildProfile?,
+    careEvents: List<CareEventEntity>,
+    onUpdateDailyReminder: (Boolean, Int, Int) -> Unit,
+    createEncryptedBackup: suspend (CharArray) -> ByteArray,
+    restoreEncryptedBackup: suspend (ByteArray, CharArray) -> Unit,
     onUpdate: (OnboardingSettings) -> Unit,
     onCreateDeveloperTestFamily: (() -> Unit) -> Unit,
     onCreateDeveloperPaletteChildren: (() -> Unit) -> Unit,
@@ -319,6 +327,8 @@ fun SettingsDialog(
     var creatingPaletteChildren by remember { mutableStateOf(false) }
     var palettePreviewOpen by remember { mutableStateOf(false) }
     var developerToolsOpen by remember { mutableStateOf(false) }
+    var reminderSettingsOpen by remember { mutableStateOf(false) }
+    var dataManagementOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     fun update(value: OnboardingSettings) { settings = value; onUpdate(value) }
     AlertDialog(
@@ -330,6 +340,8 @@ fun SettingsDialog(
                 MeasurementUnits.entries.forEach { units ->
                     FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
                 }
+                OutlinedButton(onClick = { reminderSettingsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Daglig påmindelse") }
+                OutlinedButton(onClick = { dataManagementOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Eksport og backup") }
                 if (BuildConfig.DEBUG) {
                     OutlinedButton(onClick = { developerToolsOpen = true }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.developer_tools))
@@ -395,6 +407,8 @@ fun SettingsDialog(
         onImport = importColorProfiles,
         onDismiss = { palettePreviewOpen = false },
     )
+    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder) { reminderSettingsOpen = false }
+    if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup) { dataManagementOpen = false }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -790,7 +804,7 @@ private fun ParentEditorDialog(
     var missingChildError by remember { mutableStateOf(false) }
     var photoName by remember(existing?.id) { mutableStateOf(existing?.photoFileName) }
     val photoScope = rememberCoroutineScope()
-    val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) photoScope.launch { photoName = onPhotoSelected(uri) } }
+    val selectPhoto = dk.babyapp.ui.profile.rememberProfilePhotoPicker(onPhotoSelected) { photoName = it }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -798,7 +812,7 @@ private fun ParentEditorDialog(
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.choose_avatar), style = MaterialTheme.typography.labelLarge)
             photoFile(photoName)?.let { file -> BitmapFactory.decodeFile(file.path)?.asImageBitmap()?.let { bitmap -> Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(72.dp).clip(CircleShape), contentScale = ContentScale.Crop) } }
-            TextButton(onClick = { photoLauncher.launch("image/*") }) { Text(stringResource(R.string.choose_photo)) }
+            TextButton(onClick = { selectPhoto() }) { Text(stringResource(R.string.choose_photo)) }
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { dk.babyapp.data.profile.ProfileAvatar.entries.forEach { option -> FilterChip(avatar == option, { avatar = option }, label = { Text(option.symbol) }) } }
             androidx.compose.material3.OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.parent_name)) })
             androidx.compose.material3.OutlinedTextField(phone, { phone = it }, label = { Text(stringResource(R.string.phone_number)) })

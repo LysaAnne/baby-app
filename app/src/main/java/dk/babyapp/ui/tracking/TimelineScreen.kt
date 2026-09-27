@@ -1,6 +1,8 @@
 package dk.babyapp.ui.tracking
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -62,7 +64,7 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Date
 
 private enum class CalendarView { Day, Week }
-private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity }
+private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity, SolidFood, Medicine, HealthVisit, Vaccination }
 
 @Composable
 fun TimelineScreen(
@@ -78,8 +80,9 @@ fun TimelineScreen(
     onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
+    medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
 ) {
-    var typeFilters by remember { mutableStateOf(emptySet<CareEventType>()) }
+    var typeFilters by remember { mutableStateOf(emptySet<String>()) }
     var calendarView by remember { mutableStateOf(CalendarView.Week) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var filtersOpen by remember { mutableStateOf(false) }
@@ -95,8 +98,8 @@ fun TimelineScreen(
     val firstDate = if (calendarView == CalendarView.Day) selectedDate else selectedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val lastDate = if (calendarView == CalendarView.Day) selectedDate else firstDate.plusDays(6)
     val filtered = events.asSequence()
-        .filter { it.childId == activeChildId }
-        .filter { typeFilters.isEmpty() || it.type in typeFilters }
+        .filter { it.childId == activeChildId && !it.isDraft && it.deletedAt == null }
+        .filter { typeFilters.isEmpty() || journalFilters.any { filter -> filter.label in typeFilters && filter.matches(it) } }
         .filter { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() in firstDate..lastDate }
         .toList()
     val groups = filtered.groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }.toSortedMap(compareByDescending { it })
@@ -115,10 +118,7 @@ fun TimelineScreen(
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Journal", style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = { filtersOpen = true }) {
-                        Icon(Icons.Outlined.FilterList, null)
-                        Text(if (typeFilters.isEmpty()) "Filtre" else "Filtre (${typeFilters.size})")
-                    }
+
                 }
             }
             item {
@@ -150,6 +150,12 @@ fun TimelineScreen(
                     }
                 }
             }
+            item {
+                OutlinedButton(onClick = { filtersOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.FilterList, null)
+                    Text(if (typeFilters.isEmpty()) "Filtre · Alle registreringer" else "Filtre (${typeFilters.size})")
+                }
+            }
             if (groups.isEmpty()) item { BabyEmptyState(Icons.Outlined.History, "Ingen registreringer fundet", "Prøv at nulstille filtrene, eller tilføj en ny registrering.") }
             groups.forEach { (date, dayEvents) ->
                 item(key = "day-$date") {
@@ -166,12 +172,12 @@ fun TimelineScreen(
     if (filtersOpen) AlertDialog(
         onDismissRequest = { filtersOpen = false },
         title = { Text("Filtrér journalen") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Registreringstyper", style = MaterialTheme.typography.titleSmall)
-            CareEventType.entries.forEach { type ->
+            journalFilters.forEach { filter ->
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    androidx.compose.material3.Checkbox(type in typeFilters, { selected -> typeFilters = if (selected) typeFilters + type else typeFilters - type })
-                    Text(type.displayLabel())
+                    androidx.compose.material3.Checkbox(filter.label in typeFilters, { selected -> typeFilters = if (selected) typeFilters + filter.label else typeFilters - filter.label })
+                    Text(filter.label)
                 }
             }
             TextButton(onClick = { typeFilters = emptySet() }) { Text("Nulstil filtre") }
@@ -181,7 +187,7 @@ fun TimelineScreen(
     if (addMenu) AlertDialog(
         onDismissRequest = { addMenu = false }, title = { Text("Tilføj registrering") },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 AddKind.entries.forEach { kind ->
                     TextButton(onClick = { addMenu = false; addKind = kind }) {
                         Text(when (kind) {
@@ -192,6 +198,10 @@ fun TimelineScreen(
                             AddKind.Sleep -> "Søvn"
                             AddKind.Measurement -> "Mål"
                             AddKind.Activity -> "Diverse"
+                            AddKind.SolidFood -> "Fast føde"
+                            AddKind.Medicine -> "Medicin"
+                            AddKind.HealthVisit -> "Sundhedsbesøg"
+                            AddKind.Vaccination -> "Vaccination"
                         })
                     }
                 }
@@ -199,6 +209,12 @@ fun TimelineScreen(
         },
         confirmButton = {}, dismissButton = { TextButton(onClick = { addMenu = false }) { Text("Annuller") } },
     )
+    fun saveAdded(event: CareEventEntity) { onUpdate(event) { success -> if (success) addKind = null else overlapError = true } }
+    activeChildId?.let { id ->
+        if (addKind == AddKind.SolidFood) SolidFoodDialog(id, null, { addKind = null }, ::saveAdded)
+        if (addKind == AddKind.Medicine) MedicineDialog(id, null, { addKind = null }, medicines, ::saveAdded)
+        if (addKind == AddKind.HealthVisit || addKind == AddKind.Vaccination) HealthRecordDialog(id, addKind == AddKind.Vaccination, careProviders, onDismiss = { addKind = null }, onSave = ::saveAdded)
+    }
     if (addKind == AddKind.Sleep) SleepDialog(onDismiss = { addKind = null }) { start, end, type, location, settling, awakenings, quality, notes ->
         val childId = activeChildId
         if (childId != null) onAddSleep(childId, start, end, type, location, settling, awakenings, quality, notes) { success -> overlapError = !success }
@@ -207,7 +223,7 @@ fun TimelineScreen(
     if (addKind == AddKind.Bottle) BottleDialog({ addKind = null }) { time, content, offered, consumed, notes -> activeChildId?.let { onAddBottle(it, time, content, offered, consumed, notes) }; addKind = null }
     if (addKind == AddKind.Diaper) DiaperDialog({ addKind = null }) { time, type, color, consistency, observation, notes -> activeChildId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; addKind = null }
     if (addKind == AddKind.Breastfeeding) ManualTimerDialog(CareEventType.Breastfeeding, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
-    if (addKind == AddKind.Pumping) ManualTimerDialog(CareEventType.Pumping, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
+    if (addKind == AddKind.Pumping && activeChildId != null) { val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = activeChildId, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, pumpingMethod = "Maskine") }, { addKind = null }, ::saveAdded) }
     if (addKind == AddKind.Measurement) MeasurementDialog(MeasurementType.Weight, { addKind = null }) { time, timeSpecified, type, value, unit, notes -> activeChildId?.let { onAddMeasurement(it, time, timeSpecified, type, value, unit, notes) }; addKind = null }
     if (addKind == AddKind.Activity) ActivityDialog(null, { addKind = null }) { start, end, type, notes -> activeChildId?.let { onAddActivity(it, start, end, type, notes) }; addKind = null }
     editing?.let { event ->
@@ -215,7 +231,8 @@ fun TimelineScreen(
             HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, { editing = null }) { updated ->
                 onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
             }
-        } else EditEventDialog(event, { editing = null }) { updated ->
+        } else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, { editing = null }, medicines) { updated -> onUpdate(updated) { success -> if (success) editing = null } }
+        else EditEventDialog(event, { editing = null }) { updated ->
             onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
         }
     }

@@ -7,7 +7,24 @@ The app will help parents quickly record everyday care such as feeding, diaper c
 The product should feel simple, modern, calm, and cute. It must be useful during a tired 03:00 feeding, but structured well enough to follow a child for years.
 
 > [!IMPORTANT]
-> This repository is currently in the planning stage. Implementation is divided into explicit stages in [ROADMAP.md](ROADMAP.md). A stage is only implemented when the project owner asks for that specific stage.
+> This repository contains the working Android app. Implementation follows the explicit stages in [ROADMAP.md](ROADMAP.md), with additional features implemented when requested by the project owner.
+
+## September 2026 tracking improvements
+
+- Diaper observations use a dropdown, and editing includes diaper type, colour, consistency and notes.
+- New diaper forms save only after **Gem**. Stopped timers remain drafts until saved; cancelling discards the draft. Cancelling an edit of an existing record preserves that record.
+- Bottle and pumping notes appear in Journal. Pumping supports an optional **Hånd / Maskine / Manuel pumpe** method and editable ml. Editing notes preserves accumulated active time and pause intervals.
+- Active timers appear in the app's top bar and in Android notifications, with pause/resume, stop, and breast-side controls. **Hold skærmen tændt** applies while the selected timer is running and the app is visible.
+- All quick registration types can be hidden or shown, grouped by category. Manual registration is the fixed floating **+** button.
+- Journal filters are below the expand/collapse controls and support grouped feeding/health categories and individual registration types.
+- **Medicinkort** under Health stores each child's medicine, dose, instructions, daily times or PN (as needed), reminders and active/finished status. Administrations can select an entry from the card. PN has no scheduled reminders. No dose is calculated or recommended.
+- **Fast føde** has its own card and records food/ingredients, texture, amount, experience/reaction and notes, with editing and Journal filters.
+- All profile photo uploads use orientation correction and a shared crop preview with zoom, position and rotation controls.
+- The adaptive Android icon is a sleeping baby bear in sage colours.
+
+Medicine plans are local, survive restarts, are included in encrypted backup, and reschedule after reboot or clock/timezone changes. Android notification permission is required; precise reminders additionally use the user-granted alarms permission, with a clearly explained inexact fallback. Lock-screen display follows the phone's notification settings.
+
+Database version 18 migrates existing records without clearing data. See [the phone test checklist](docs/TEST-SEPTEMBER-2026.md) for this update. Later roadmap stages remain separate.
 
 ## Product vision
 
@@ -375,7 +392,7 @@ Debug builds include a visual editor at **Settings → Developer tools → Edit 
 
 The initial app ships with four closely related light profiles: **Salvie** (the default), **Solgul**, **Lyserød**, and **Lyseblå**. The developer editor remains available for experimentation and later additions.
 
-The Family screen provides direct view and edit actions on each child card. **Review relationships** presents every child and reusable family member in one place, making missing links easy to add after a new child is created. The developer test family contains siblings Freja and Hector, linked to the same parents and grandparents, using the pink and light-blue profiles respectively.
+The Family screen provides direct view and edit actions on each child card. **Review relationships** presents every child and reusable family member in one place, making missing links easy to add after a new child is created. The developer test family contains siblings Freja and Hector, linked to the same parents and grandparents, using the pink and light-blue profiles respectively. Freja also receives 60 days of varied sample registrations for feeding, sleep, diapers, tummy time, weight, height, head circumference, and temperature so charts and period comparisons can be tested immediately.
 
 Children and family members have independently persisted manual ordering, edited from the drag-handle action beside each section heading. Child cards are passive: only their eye and pencil actions open view and edit, while changing the active child is reserved for the app-wide child selector.
 
@@ -639,14 +656,16 @@ The project owner should run these commands only after reviewing and testing the
 - Product plan: complete
 - Technical direction: planned
 - Android project: created and verified
-- Implementation: Stages 1–2 complete
+- Implementation: Stages 1–5 complete, plus the explicitly requested follow-ups listed above
 - Android baseline: minimum API 26, compile and target API 37
-- Current roadmap stage: Stage 4 implemented; awaiting instruction for Stage 5
+- Current roadmap stage: Stage 5 implemented; awaiting instruction for Stage 6
 
-Stage 4 follow-up behavior: paused timers remain visible and retain every active time interval. Today has a compact four-field overview whose metrics and order can be customized and saved. It also shows five collapsed recent records with a direct route to Journal. Journal is scoped to the globally selected child, supports navigation by a chosen day or week, includes a shortcut back to today or the current week, and can expand or collapse all dates and records. Completing a quick diaper or timed record opens its editor immediately for details. Feeding discomforts, diaper colour and consistency, growth measurements, temperature, tummy time, and other everyday activities can also be recorded.
+Stage 4 follow-up behavior: paused timers remain visible and retain every active time interval. Today starts with four compact overview fields. Fields can be added, removed, reordered by replacement, and saved; each shows the daily registration count, and feeding shows both breastfeeding minutes and bottle ml when present. It also shows five collapsed recent records with a direct route to Journal. Journal is scoped to the globally selected child, supports navigation by a chosen day or week, includes a shortcut back to today or the current week, and can expand or collapse all dates and records. Completing a quick diaper or timed record opens its editor immediately for details. Feeding discomforts, diaper colour and consistency, growth measurements, temperature, tummy time, and other everyday activities can also be recorded.
 
 Tummy time, bath, outdoor time, play, and other activities can be tracked with the same start, pause, resume, and stop flow as sleep. Health shortcuts are grouped separately from timed everyday activities.
 Medicine is recorded as a single administration rather than a duration, with a date, optional time, common medicine categories, custom medicine name, dose, and notes. Time is also optional for health visits, vaccinations, health notes, temperature, and other measurements. The Health quick section contains visits, vaccinations, medicine, and health notes; temperature remains under Measurements.
+
+Stage 5 provides a visual Insights dashboard with selectable 7-, 14-, or 30-day and custom date ranges. Its Overblik, Madning, Søvn, and Ble og sundhed tabs include a 24-hour rhythm, daily bar and line charts, period comparisons, data-quality context, configurable key metrics, temperature and weight history, medicine counts, and neutral non-diagnostic explanations. Daily reminder controls and all export/backup actions live in Settings rather than Insights. Settings exports child- and range-labelled CSV or a PDF conversation summary and requires a privacy warning before every sensitive export. Password-protected AES-GCM backups contain all child, family, provider, tracking, and profile-photo data and can restore those records locally; passwords are never stored and cannot be recovered.
 
 An initial Stage 7 health module is available under **Manual entry**. Parents can record preventive examinations, GP and hospital visits, health-visitor or midwife visits, specialist and dental visits, other care, and vaccinations. Existing child care providers can be reused. Danish preventive examinations and national childhood vaccinations are optional templates inside the individual registration form; choosing one fills its title and dose but never creates future appointments. Every item remains an editable local parent record and the UI explicitly states that there is no connection to sundhed.dk, MinSundhed, a GP, or a hospital. Schedule content was reviewed against Sundhedsstyrelsen, Statens Serum Institut, and sundhed.dk on 17 August 2026.
 
@@ -655,3 +674,9 @@ The highlighted **Manuel registrering** card is the common entry point for past 
 The first visual-cleanup pass establishes a calmer shared hierarchy across the app. Today uses a scannable 2-by-2 daily overview, consistent quick-action cards, a fully clickable manual-registration entry, and compact expandable recent records. Timeline filters are collected in a dedicated multi-select view, family cards use consistent view/edit actions, long profile and health forms use full-screen editors, and debug-only tools live on their own developer screen.
 
 The first technical-cleanup pass separates event-card presentation, shared tracking labels, reusable UI components, and tracking rules from the main screens and `AppViewModel`. UI state aggregation is now type-safe instead of relying on unchecked flow casts. Room database version 15 removes obsolete duplicate care-provider columns from child profiles; provider contact data remains in the dedicated care-provider table, while birth place remains part of the child profile. Migration coverage verifies that existing profile data survives the cleanup.
+
+### Quick registration adjustments — 2026-09-27
+
+- Pumping method is optional (including manual entry), with Hånd, Maskine and Manuel pumpe options; an existing selection can be cleared.
+- Breastfeeding has direct left/right start buttons; diapers have direct type buttons.
+- Quick registration categories have bordered, elevated cards. Customize supports moving cards up/down and persists the order, including hidden categories.

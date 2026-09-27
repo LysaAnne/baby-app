@@ -73,6 +73,33 @@ class Migration14To15Test {
         }
     }
 
+    @Test
+    fun migration17To18PreservesRecordsAndAddsDraftAndFoodFields() {
+        val name = "migration-17-18-test"
+        helper.createDatabase(name, 17).use { db ->
+            val values = android.content.ContentValues()
+            db.query("PRAGMA table_info(care_events)").use { cursor ->
+                while (cursor.moveToNext()) {
+                    if (cursor.getInt(cursor.getColumnIndexOrThrow("notnull")) == 1) {
+                        val column = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                        if (cursor.getString(cursor.getColumnIndexOrThrow("type")) == "TEXT") values.put(column, "") else values.put(column, 0)
+                    }
+                }
+            }
+            values.put("id", "saved"); values.put("childId", "freja"); values.put("type", "Pumping"); values.put("notes", "Bevar min note")
+            db.insert("care_events", android.database.sqlite.SQLiteDatabase.CONFLICT_ABORT, values)
+        }
+        helper.runMigrationsAndValidate(name, 18, true, CoreModule.MIGRATION_17_18).use { db ->
+            db.query("SELECT notes, isDraft, pumpingMethod, foodName FROM care_events WHERE id = 'saved'").use { cursor ->
+                org.junit.Assert.assertTrue(cursor.moveToFirst())
+                assertEquals("Bevar min note", cursor.getString(0))
+                assertEquals(0, cursor.getInt(1))
+                assertEquals("", cursor.getString(2))
+                assertEquals("", cursor.getString(3))
+            }
+        }
+    }
+
     private fun insertProfile(database: SupportSQLiteDatabase) {
         database.execSQL(
             """INSERT INTO child_profiles (

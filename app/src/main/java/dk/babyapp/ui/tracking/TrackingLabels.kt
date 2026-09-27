@@ -13,6 +13,7 @@ import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.data.tracking.ActivityType
 
 internal fun CareEventType.displayLabel() = when (this) {
+    CareEventType.SolidFood -> "Fast føde"
     CareEventType.Breastfeeding -> "Amning"
     CareEventType.Bottle -> "Flaske"
     CareEventType.Pumping -> "Pumpning"

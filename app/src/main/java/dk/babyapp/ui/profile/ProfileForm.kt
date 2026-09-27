@@ -95,13 +95,7 @@ fun ProfileForm(
     var providerMenuOpen by remember { mutableStateOf(false) }
     var editingProvider by remember { mutableStateOf<CareProvider?>(null) }
     var providerToDelete by remember { mutableStateOf<CareProvider?>(null) }
-    val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            scope.launch {
-                onDraftChange(draft.copy(photoFileName = onPhotoSelected(uri)))
-            }
-        }
-    }
+    val selectPhoto = rememberProfilePhotoPicker(onPhotoSelected) { fileName -> onDraftChange(draft.copy(photoFileName = fileName)) }
 
     LazyColumn(
         modifier = modifier,
@@ -130,7 +124,7 @@ fun ProfileForm(
                     Text(draft.avatar.symbol, style = MaterialTheme.typography.displayMedium)
                 }
                 Column {
-                    TextButton(onClick = { photoLauncher.launch("image/*") }) {
+                    TextButton(onClick = { selectPhoto() }) {
                         Text(stringResource(R.string.choose_photo))
                     }
                     if (draft.photoFileName != null) {

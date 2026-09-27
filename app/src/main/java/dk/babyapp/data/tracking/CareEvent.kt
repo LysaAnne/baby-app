@@ -5,7 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity, HealthVisit, Vaccination }
+enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity, HealthVisit, Vaccination, SolidFood }
 enum class BreastSide { Left, Right }
 enum class BreastfeedingIssue { PainfulLatch, SoreNipples, CrackedNipples, Engorgement, BlockedDuct, MastitisSymptoms, Other }
 enum class BottleContent { BreastMilk, Formula, Water, Other }
@@ -73,6 +73,13 @@ data class CareEventEntity(
     val officialScheduleKey: String? = null,
     val observation: String = "",
     val notes: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "0") val isDraft: Boolean = false,
+    @androidx.room.ColumnInfo(defaultValue = "''") val pumpingMethod: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val foodName: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val foodTexture: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val foodAmount: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val foodReaction: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val medicineId: String = "",
     val deletedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),

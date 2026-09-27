@@ -55,7 +55,7 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
                     intervals.forEach { (start, end) -> Text("${formatClock(start)} – ${end?.let(::formatClock) ?: "kører"}", style = MaterialTheme.typography.bodySmall) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Rediger") }
+                    if (event.endedAt != null) TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Rediger") }
                     TextButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null); Text("Slet", color = MaterialTheme.colorScheme.error) }
                 }
             }
@@ -64,6 +64,7 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
 }
 
 internal fun eventTitle(event: CareEventEntity) = when (event.type) {
+    CareEventType.SolidFood -> "Fast føde – ${event.foodName}"
     CareEventType.Diaper -> "Ble – ${event.diaperType.displayLabel()}"
     CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"
     CareEventType.Measurement -> event.measurementType?.displayLabel() ?: event.type.displayLabel()
@@ -73,19 +74,21 @@ internal fun eventTitle(event: CareEventEntity) = when (event.type) {
     else -> event.type.displayLabel()
 }
 
-private fun CareEventEntity.details() = when (type) {
+internal fun CareEventEntity.details() = when (type) {
+    CareEventType.SolidFood -> listOf(foodName, foodTexture, foodAmount, foodReaction, notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Breastfeeding -> listOf("${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}", breastfeedingIssue?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.Bottle -> "${amountConsumedMl ?: 0} af ${amountOfferedMl ?: 0} ml · ${bottleContent.displayLabel()}"
-    CareEventType.Pumping -> "${formatDuration(elapsedSeconds())}${pumpedAmountMl?.let { " · $it ml" } ?: ""}"
+    CareEventType.Bottle -> listOf("${amountConsumedMl ?: 0} af ${amountOfferedMl ?: 0} ml · ${bottleContent.displayLabel()}", notes).filter(String::isNotBlank).joinToString(" · ")
+    CareEventType.Pumping -> listOf(formatDuration(elapsedSeconds()), pumpedAmountMl?.let { "$it ml" }, pumpingMethod, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Diaper -> listOf(diaperColor?.displayLabel(), diaperConsistency?.displayLabel(), observation, notes).filter { !it.isNullOrBlank() }.joinToString(" · ").ifBlank { "Registreret" }
-    CareEventType.Sleep -> listOf(formatDuration(elapsedSeconds()), sleepLocation, sleepQuality?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Sleep -> listOf(formatDuration(elapsedSeconds()), sleepLocation, settlingMethod, awakenings?.let { "$it opvågninger" }, sleepQuality?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Measurement -> listOf(measurementValue?.let { "$it $measurementUnit" }, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Activity -> if (activityType == dk.babyapp.data.tracking.ActivityType.Medicine) listOf(medicationName, medicationDose, notes).filter { it.isNotBlank() }.joinToString(" · ") else listOf(activityDurationSeconds?.let(::formatDuration), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.HealthVisit -> listOf(healthStatus?.displayLabel(), providerDisplayName, healthReason, healthObservations, healthAdvice, followUp, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.Vaccination -> listOf(healthStatus?.displayLabel(), vaccineDose, vaccineBatchNumber, injectionSite, reactionNotes, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.HealthVisit -> listOf(healthStatus?.displayLabel(), providerDisplayName, healthReason, healthObservations, healthAdvice, healthQuestions, followUp, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Vaccination -> listOf(healthStatus?.displayLabel(), providerDisplayName, vaccineDose, vaccineBatchNumber, injectionSite, reactionNotes, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
 }
 
 private fun CareEventEntity.summary() = when (type) {
+    CareEventType.SolidFood -> foodAmount.ifBlank { foodTexture.ifBlank { "Måltid" } }
     CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep -> formatDuration(elapsedSeconds())
     CareEventType.Bottle -> amountConsumedMl?.let { "$it ml" } ?: bottleContent.displayLabel()
     CareEventType.Diaper -> diaperType.displayLabel()
@@ -102,6 +105,7 @@ private fun CareEventEntity.recordedAt(): String = if (!timeSpecified) {
 }
 
 private fun CareEventEntity.icon() = when (type) {
+    CareEventType.SolidFood -> "🥣"
     CareEventType.Breastfeeding -> "🤱"
     CareEventType.Bottle -> "🍼"
     CareEventType.Pumping -> "🥛"
