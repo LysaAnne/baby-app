@@ -18,6 +18,7 @@ data class AppPreferences(
     val dailyReminderMinute: Int = 0,
     val insightDashboardMetrics: List<String> = listOf("Sleep", "Feedings", "Diapers", "TummyTime"),
     val quickActionCategoryOrder: List<String> = emptyList(),
+    val journalQuickFilters: List<String> = listOf("Madning · alle", "Ble", "Søvn", "Sundhed · alle"),
     val hiddenQuickActions: Set<String> = emptySet(),
     val medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
 )

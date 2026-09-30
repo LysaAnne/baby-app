@@ -112,6 +112,7 @@ fun BabyAppNavigation(
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
     onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit = {},
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
+    onUpdateJournalQuickFilters: (List<String>) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onUpdateMedicines: (List<dk.babyapp.data.medicine.MedicinePlan>) -> Unit = {},
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit = { _, _, _ -> },
@@ -258,6 +259,8 @@ fun BabyAppNavigation(
             }
             composable<AppDestination.Timeline> {
                 TimelineScreen(
+                    quickFilters = preferences.journalQuickFilters,
+                    onUpdateQuickFilters = onUpdateJournalQuickFilters,
                     activeChildId = activeChild?.id,
                     medicines = preferences.medicines,
                     events = visibleEvents,

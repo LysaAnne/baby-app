@@ -143,6 +143,7 @@ fun TodayScreen(
     val today = LocalDate.now()
     val todayEvents = childEvents.filter { Instant.ofEpochMilli(it.startedAt).atZone(ZoneId.systemDefault()).toLocalDate() == today }
     var dialog by remember { mutableStateOf<EditorKind?>(null) }
+    var selectedDiaperType by remember { mutableStateOf(DiaperType.Wet) }
     var editing by remember { mutableStateOf<CareEventEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<CareEventEntity?>(null) }
     var customizeOpen by remember { mutableStateOf(false) }
@@ -182,7 +183,9 @@ fun TodayScreen(
         item {
             val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
             val bottleMl = todayEvents.filter { it.type == CareEventType.Bottle }.sumOf { it.amountConsumedMl ?: 0 }
-            val diapers = todayEvents.count { it.type == CareEventType.Diaper }
+            val diapers = todayEvents.filter { it.type == CareEventType.Diaper }
+            val wetDiapers = diapers.count { it.diaperType == DiaperType.Wet || it.diaperType == DiaperType.Both }
+            val dirtyDiapers = diapers.count { it.diaperType == DiaperType.Dirty || it.diaperType == DiaperType.Both }
             val sleepMinutes = todayEvents.filter { it.type == CareEventType.Sleep }.sumOf { it.elapsedSeconds() } / 60
             val tummyEvents = todayEvents.filter { it.type == CareEventType.Activity && it.activityType == ActivityType.TummyTime }
             val tummyMinutes = tummyEvents.sumOf { it.activityDurationSeconds ?: 0 } / 60
@@ -192,7 +195,7 @@ fun TodayScreen(
             val overviewItems = preferences.dashboardMetrics.map { metric ->
                 when (metric) {
                     DashboardMetric.Feeding -> OverviewItem(metric.displayLabel(), if (lastFeeding == null) "-" else listOfNotNull("$breastMinutes min".takeIf { todayEvents.any { it.type == CareEventType.Breastfeeding } }, "$bottleMl ml".takeIf { todayEvents.any { it.type == CareEventType.Bottle } }).joinToString(" · "), lastFeeding)
-                    DashboardMetric.Diapers -> OverviewItem(metric.displayLabel(), if (lastDiaper == null) "-" else diapers.toString(), lastDiaper)
+                    DashboardMetric.Diapers -> OverviewItem(metric.displayLabel(), "", lastDiaper)
                     DashboardMetric.Sleep -> OverviewItem(metric.displayLabel(), if (lastSleep == null) "-" else formatMinutes(sleepMinutes), lastSleep)
                     DashboardMetric.TummyTime -> OverviewItem(metric.displayLabel(), if (tummyEvents.isEmpty()) "-" else formatMinutes(tummyMinutes), tummyEvents.maxByOrNull { it.startedAt })
                     DashboardMetric.Pumping, DashboardMetric.SolidFood, DashboardMetric.Medicine, DashboardMetric.HealthVisits, DashboardMetric.Vaccinations, DashboardMetric.Activities -> {
@@ -235,7 +238,11 @@ fun TodayScreen(
                                     DashboardMetric.TummyTime -> event.type == CareEventType.Activity && event.activityType == ActivityType.TummyTime
                                     else -> metric.matches(event)
                                 } }
-                                SummaryMetric(item.label, item.value, item.event?.let { timeAgo(it.startedAt) }, Modifier.weight(1f), count)
+                                SummaryMetric(item.label, item.value, item.event?.let { timeAgo(it.startedAt) }, Modifier.weight(1f), count, when (metric) {
+                                    DashboardMetric.Diapers -> listOf(Triple(dk.babyapp.R.drawable.ic_diaper_wet, "Våd", wetDiapers.toString()), Triple(dk.babyapp.R.drawable.ic_diaper_stool, "Afføring", dirtyDiapers.toString()))
+                                    DashboardMetric.Feeding -> listOf(Triple(dk.babyapp.R.drawable.ic_feeding_bottle, "Flaske", "$bottleMl ml"), Triple(dk.babyapp.R.drawable.ic_feeding_breast, "Amning", "$breastMinutes min"))
+                                    else -> null
+                                })
                             }
                             if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                         }
@@ -262,7 +269,7 @@ fun TodayScreen(
                         Text("Amning", style = MaterialTheme.typography.titleSmall)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BreastSide.entries.forEach { side ->
-                                QuickButton(sideLabel(side), Modifier.weight(1f), childId != null && active == null) {
+                                QuickButton(sideLabel(side).replaceFirstChar { it.uppercase() }, Modifier.weight(1f), childId != null && active == null) {
                                     childId?.let { onStartBreastfeeding(it, side) }
                                 }
                             }
@@ -273,7 +280,8 @@ fun TodayScreen(
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 types.forEach { type ->
                                     QuickButton(type.displayLabel(), Modifier.weight(1f), childId != null) {
-                                        childId?.let { onAddDiaper(it, System.currentTimeMillis(), type, null, null, "", "") {} }
+                                        selectedDiaperType = type
+                                        dialog = EditorKind.Diaper
                                     }
                                 }
                             }
@@ -343,10 +351,10 @@ fun TodayScreen(
     )
     when (dialog) {
         EditorKind.StartBreast -> AlertDialog(onDismissRequest = { dialog = null }, title = { Text("Start amning") },
-            text = { Row { BreastSide.entries.forEach { side -> TextButton(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }) { Text(sideLabel(side)) } } } },
+            text = { Row { BreastSide.entries.forEach { side -> TextButton(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }) { Text(sideLabel(side).replaceFirstChar { it.uppercase() }) } } } },
             confirmButton = {}, dismissButton = { TextButton(onClick = { dialog = null }) { Text("Annuller") } })
         EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes) }; dialog = null }
-        EditorKind.Diaper -> DiaperDialog(onDismiss = { dialog = null }) { time, type, color, consistency, observation, notes -> childId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; dialog = null }
+        EditorKind.Diaper -> DiaperDialog(initialType = selectedDiaperType, onDismiss = { dialog = null; selectedDiaperType = DiaperType.Wet }) { time, type, color, consistency, observation, notes -> childId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; dialog = null; selectedDiaperType = DiaperType.Wet }
         EditorKind.ManualBreastfeeding -> ManualTimerDialog(CareEventType.Breastfeeding, onDismiss = { dialog = null }) { type, start, end, side, amount, notes -> childId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; dialog = null }
         EditorKind.ManualPumping -> childId?.let { id -> val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600) }, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartPump -> SelectionStartPumpDialog({ dialog = null }) { method -> childId?.let { id -> onStartPumping(id); pendingPumpMethod = method }; dialog = null }
@@ -397,14 +405,22 @@ private enum class EditorKind { StartBreast, SolidFood, Bottle, Diaper, ManualBr
 private data class OverviewItem(val label: String, val value: String, val event: CareEventEntity?)
 
 @Composable
-private fun SummaryMetric(label: String, value: String, detail: String? = null, modifier: Modifier = Modifier, count: Int = 0) {
+private fun SummaryMetric(label: String, value: String, detail: String? = null, modifier: Modifier = Modifier, count: Int = 0, iconValues: List<Triple<Int, String, String>>? = null) {
     Card(
         modifier.heightIn(min = 108.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleMedium)
+            if (iconValues == null) Text(value, style = MaterialTheme.typography.titleMedium)
+            else androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                iconValues.forEach { (icon, description, total) ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(androidx.compose.ui.res.painterResource(icon), description, Modifier.height(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text(total.toString(), style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
             Text(if (count == 1) "1 registrering" else "$count registreringer", style = MaterialTheme.typography.labelSmall)
             Text("Sidst: ${detail?.let { "$it siden" } ?: "-"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -453,7 +469,7 @@ private fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () 
         onDismissRequest = onDismiss,
         title = { Text("Tilpas Dagens overblik") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Vælg felter. Du kan tilføje flere eller fjerne dem igen.")
+            Text("Vælg felter, og flyt dem op eller ned for at ændre rækkefølgen.")
             selected.forEachIndexed { index, metric ->
                 SelectionDropdown("Felt ${index + 1}", metric.displayLabel(), DashboardMetric.entries.map { it to it.displayLabel() }) { replacement ->
                     selected = selected.toMutableList().also { updated ->
@@ -461,6 +477,10 @@ private fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () 
                         if (otherIndex >= 0) updated[otherIndex] = metric
                         updated[index] = replacement
                     }
+                }
+                Row {
+                    TextButton(enabled = index > 0, onClick = { selected = selected.toMutableList().apply { add(index - 1, removeAt(index)) } }) { Text("Flyt op") }
+                    TextButton(enabled = index < selected.lastIndex, onClick = { selected = selected.toMutableList().apply { add(index + 1, removeAt(index)) } }) { Text("Flyt ned") }
                 }
                 if (selected.size > 1) TextButton(onClick = { selected = selected.filterIndexed { position, _ -> position != index } }) { Text("Fjern felt ${index + 1}") }
             }
@@ -567,8 +587,8 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
     } }, confirmButton = { Button(onClick = { onSave(time, content, offered.toIntOrNull(), consumed.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
-@Composable internal fun DiaperDialog(onDismiss: () -> Unit, onSave: (Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String) -> Unit) {
-    var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var type by remember { mutableStateOf(DiaperType.Wet) }; var color by remember { mutableStateOf<DiaperColor?>(null) }; var consistency by remember { mutableStateOf<DiaperConsistency?>(null) }; var observation by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
+@Composable internal fun DiaperDialog(onDismiss: () -> Unit, initialType: DiaperType = DiaperType.Wet, onSave: (Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String) -> Unit) {
+    var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var type by remember { mutableStateOf(initialType) }; var color by remember { mutableStateOf<DiaperColor?>(null) }; var consistency by remember { mutableStateOf<DiaperConsistency?>(null) }; var observation by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilføj ble") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeFields(time) { time = it }; SelectionDropdown("Type *", type.displayLabel(), DiaperType.entries.map { it to it.displayLabel() }) { type = it }
         SelectionDropdown("Farve", color?.displayLabel() ?: "Ikke angivet", listOf<DiaperColor?>(null).map { it to "Ikke angivet" } + DiaperColor.entries.map { it as DiaperColor? to it.displayLabel() }) { color = it }

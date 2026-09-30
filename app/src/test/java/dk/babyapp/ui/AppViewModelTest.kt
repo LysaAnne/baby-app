@@ -285,6 +285,7 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
     }
     override suspend fun updateInsightDashboardMetrics(metrics: List<String>) { items.value = items.value.copy(insightDashboardMetrics = metrics) }
     override suspend fun updateQuickActionCategoryOrder(order: List<String>) { items.value = items.value.copy(quickActionCategoryOrder = order) }
+    override suspend fun updateJournalQuickFilters(filters: List<String>) { items.value = items.value.copy(journalQuickFilters = filters) }
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }
     override suspend fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>) { items.value = items.value.copy(medicines = medicines) }
     override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }

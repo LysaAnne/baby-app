@@ -1,6 +1,5 @@
 package dk.babyapp.ui.tracking
 
-import android.app.DatePickerDialog
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +38,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
@@ -59,11 +57,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.DayOfWeek
-import java.time.temporal.TemporalAdjusters
 import java.util.Date
 
-private enum class CalendarView { Day, Week }
 private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity, SolidFood, Medicine, HealthVisit, Vaccination }
 
 @Composable
@@ -80,11 +75,12 @@ fun TimelineScreen(
     onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
+    quickFilters: List<String> = dk.babyapp.data.preferences.AppPreferences().journalQuickFilters,
+    onUpdateQuickFilters: (List<String>) -> Unit = {},
     medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
 ) {
     var typeFilters by remember { mutableStateOf(emptySet<String>()) }
-    var calendarView by remember { mutableStateOf(CalendarView.Week) }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var editQuickFilters by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
     var addKind by remember { mutableStateOf<AddKind?>(null) }
@@ -92,22 +88,22 @@ fun TimelineScreen(
     var deleting by remember { mutableStateOf<CareEventEntity?>(null) }
     var overlapError by remember { mutableStateOf(false) }
     var selectChildError by remember { mutableStateOf(false) }
-    var expandedDays by remember { mutableStateOf(setOf(LocalDate.now())) }
+    var collapsedDays by remember(activeChildId) { mutableStateOf(emptySet<LocalDate>()) }
     var expandAllRecords by remember { mutableStateOf<Boolean?>(null) }
     val zone = ZoneId.systemDefault()
-    val firstDate = if (calendarView == CalendarView.Day) selectedDate else selectedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    val lastDate = if (calendarView == CalendarView.Day) selectedDate else firstDate.plusDays(6)
-    val filtered = events.asSequence()
+    val groups = remember(events, activeChildId, typeFilters, zone) {
+        events.asSequence()
         .filter { it.childId == activeChildId && !it.isDraft && it.deletedAt == null }
         .filter { typeFilters.isEmpty() || journalFilters.any { filter -> filter.label in typeFilters && filter.matches(it) } }
-        .filter { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() in firstDate..lastDate }
-        .toList()
-    val groups = filtered.groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }.toSortedMap(compareByDescending { it })
+        .sortedByDescending { it.startedAt }
+        .groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }
+        .toSortedMap(compareByDescending { it })
+    }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { if (activeChildId != null) addMenu = true else selectChildError = true }) {
-                Icon(Icons.Outlined.Add, "Tilføj søvn")
+                Icon(Icons.Outlined.Add, "Tilføj registrering")
             }
         },
     ) { inner ->
@@ -122,48 +118,36 @@ fun TimelineScreen(
                 }
             }
             item {
-                val context = LocalContext.current
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Udfold alle", style = MaterialTheme.typography.labelMedium)
+                    val allDaysExpanded = groups.isNotEmpty() && groups.keys.none { it in collapsedDays }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(calendarView == CalendarView.Day, { calendarView = CalendarView.Day }, { Text("Dag") })
-                        FilterChip(calendarView == CalendarView.Week, { calendarView = CalendarView.Week }, { Text("Uge") })
-                        OutlinedButton(onClick = {
-                            DatePickerDialog(context, { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day) }, selectedDate.year, selectedDate.monthValue - 1, selectedDate.dayOfMonth).show()
-                        }) { Text(if (calendarView == CalendarView.Day) selectedDate.format(DateTimeFormatter.ofPattern("d. MMM")) else "Uge ${selectedDate.format(DateTimeFormatter.ofPattern("w"))}") }
+                        OutlinedButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp), enabled = groups.isNotEmpty(), onClick = { collapsedDays = if (allDaysExpanded) groups.keys.toSet() else emptySet() }) {
+                            Icon(if (allDaysExpanded) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, if (allDaysExpanded) "Fold datoer sammen" else "Udfold datoer")
+                            Text("Datoer")
+                        }
+                        OutlinedButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp), enabled = groups.isNotEmpty(), onClick = { expandAllRecords = expandAllRecords != true; if (expandAllRecords == true) collapsedDays = emptySet() }) {
+                            Icon(if (expandAllRecords == true) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, if (expandAllRecords == true) "Fold registreringer sammen" else "Udfold registreringer")
+                            Text("Registreringer", maxLines = 1)
+                        }
                     }
-                    FilledTonalButton(onClick = { selectedDate = LocalDate.now() }, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Outlined.Today, null)
-                        Text(if (calendarView == CalendarView.Day) "Gå til i dag" else "Gå til denne uge")
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        quickFilters.forEach { label ->
+                            FilterChip(label in typeFilters, { typeFilters = if (label in typeFilters) typeFilters - label else typeFilters + label }, { Text(journalFilterLabel(label)) })
+                        }
+                        OutlinedButton(onClick = { filtersOpen = true }) { Text(if (typeFilters.isEmpty()) "Flere filtre" else "Flere filtre (${typeFilters.size})") }
+                        if (typeFilters.isNotEmpty()) TextButton(onClick = { typeFilters = emptySet() }) { Text("Nulstil") }
                     }
-                }
-            }
-            item {
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val allDaysExpanded = groups.isNotEmpty() && groups.keys.all { it in expandedDays }
-                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { expandedDays = if (allDaysExpanded) emptySet() else groups.keys }) {
-                        Icon(if (allDaysExpanded) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, null)
-                        Text(if (allDaysExpanded) "Fold alle datoer sammen" else "Udfold alle datoer")
-                    }
-                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { expandAllRecords = expandAllRecords != true }) {
-                        Icon(if (expandAllRecords == true) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, null)
-                        Text(if (expandAllRecords == true) "Fold alle registreringer sammen" else "Udfold alle registreringer")
-                    }
-                }
-            }
-            item {
-                OutlinedButton(onClick = { filtersOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.FilterList, null)
-                    Text(if (typeFilters.isEmpty()) "Filtre · Alle registreringer" else "Filtre (${typeFilters.size})")
                 }
             }
             if (groups.isEmpty()) item { BabyEmptyState(Icons.Outlined.History, "Ingen registreringer fundet", "Prøv at nulstille filtrene, eller tilføj en ny registrering.") }
             groups.forEach { (date, dayEvents) ->
                 item(key = "day-$date") {
-                    TextButton(onClick = { expandedDays = if (date in expandedDays) expandedDays - date else expandedDays + date }) {
-                        Text("${if (date in expandedDays) "▾" else "▸"} ${date.format(DateTimeFormatter.ofPattern("EEEE d. MMMM"))}", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { collapsedDays = if (date in collapsedDays) collapsedDays - date else collapsedDays + date }) {
+                        Text("${if (date !in collapsedDays) "▾" else "▸"} ${date.format(DateTimeFormatter.ofPattern("EEEE d. MMMM yyyy"))}", style = MaterialTheme.typography.titleMedium)
                     }
                 }
-                if (date in expandedDays) items(dayEvents, key = { it.id }) { event ->
+                if (date !in collapsedDays) items(dayEvents, key = { it.id }) { event ->
                     EventCard(event, expandAll = expandAllRecords, onEdit = { editing = event }, onDelete = { deleting = event })
                 }
             }
@@ -173,17 +157,21 @@ fun TimelineScreen(
         onDismissRequest = { filtersOpen = false },
         title = { Text("Filtrér journalen") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { editQuickFilters = true; filtersOpen = false }) { Text("Rediger hurtigfiltre") }
             Text("Registreringstyper", style = MaterialTheme.typography.titleSmall)
             journalFilters.forEach { filter ->
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     androidx.compose.material3.Checkbox(filter.label in typeFilters, { selected -> typeFilters = if (selected) typeFilters + filter.label else typeFilters - filter.label })
-                    Text(filter.label)
+                    Text(journalFilterLabel(filter.label))
                 }
             }
             TextButton(onClick = { typeFilters = emptySet() }) { Text("Nulstil filtre") }
         } },
         confirmButton = { Button(onClick = { filtersOpen = false }) { Text("Vis resultater") } },
     )
+    if (editQuickFilters) JournalQuickFiltersDialog(quickFilters, { editQuickFilters = false; filtersOpen = true }) {
+        onUpdateQuickFilters(it); editQuickFilters = false; filtersOpen = true
+    }
     if (addMenu) AlertDialog(
         onDismissRequest = { addMenu = false }, title = { Text("Tilføj registrering") },
         text = {
@@ -252,4 +240,30 @@ fun TimelineScreen(
         text = { Text("Vælg først det barn, registreringen skal tilføjes til.") },
         confirmButton = { Button(onClick = { selectChildError = false }) { Text("OK") } },
     )
+}
+
+private fun journalFilterLabel(label: String) = when (label) {
+    "Madning · alle" -> "Madning"
+    "Sundhed · alle" -> "Sundhed"
+    "Ble" -> "Bleer"
+    else -> label
+}
+
+@Composable
+private fun JournalQuickFiltersDialog(current: List<String>, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
+    var selected by remember { mutableStateOf(current) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Rediger hurtigfiltre") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Vælg de fire filtre, der vises i Journal.")
+            selected.forEachIndexed { index, label ->
+                SelectionDropdown("Filter ${index + 1}", journalFilterLabel(label), journalFilters.map { it.label to journalFilterLabel(it.label) }) { replacement ->
+                    selected = selected.toMutableList().apply {
+                        val other = indexOf(replacement)
+                        if (other >= 0) this[other] = label
+                        this[index] = replacement
+                    }
+                }
+            }
+        }
+    }, confirmButton = { Button(onClick = { onSave(selected) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }

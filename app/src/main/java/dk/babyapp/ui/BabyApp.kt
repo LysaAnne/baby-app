@@ -77,6 +77,7 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onUpdateQuickActions = viewModel::updateQuickActions,
                     onUpdateDashboardMetrics = viewModel::updateDashboardMetrics,
                     onUpdateQuickActionCategoryOrder = viewModel::updateQuickActionCategoryOrder,
+                    onUpdateJournalQuickFilters = viewModel::updateJournalQuickFilters,
                     onUpdateHiddenQuickActions = viewModel::updateHiddenQuickActions,
                     onUpdateMedicines = viewModel::updateMedicines,
                     onUpdateDailyReminder = viewModel::updateDailyReminder,

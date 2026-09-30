@@ -27,6 +27,7 @@ data class ParentProfile(
 enum class FamilyMemberRole {
     Mother, Father, CoMother, CoFather, Parent, ParentNotSpecified,
     Grandmother, Grandfather, Grandparent,
+    MaternalGrandmother, MaternalGrandfather, PaternalGrandmother, PaternalGrandfather,
     BonusMother, BonusFather, BonusParent,
     Sister, Brother, Sibling, BonusSibling,
     Aunt, Uncle, MaternalAunt, PaternalAunt, MaternalUncle, PaternalUncle,

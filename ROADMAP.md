@@ -633,3 +633,26 @@ For any scope change, update the feature descriptions, affected stages, acceptan
 - Pumping method is optional (including manual entry), with Hånd, Maskine and Manuel pumpe options; an existing selection can be cleared.
 - Breastfeeding has direct left/right start buttons; diapers have direct type buttons.
 - Quick registration categories have bordered, elevated cards. Customize supports moving cards up/down and persists the order, including hidden categories.
+
+### Daily diaper overview and family — 2026-09-27
+
+- Daily overview shows wet and stool counts with monochrome silhouette icons in the app theme. Both increments each; dry only increments the total registrations.
+- Family roles include maternal/paternal grandmother and grandfather. Existing roles remain available.
+- Tap a family member photo in the list, details or editor to view the full image in a large, dismissible dialog.
+
+- Quick diaper buttons open the registration dialog with the chosen type preselected. Save creates the record; Cancel leaves data unchanged.
+
+### Overview refinements — 2026-09-29
+
+- Breastfeeding start buttons show VENSTRE/HØJRE.
+- Feeding overview uses theme-colored bottle (ml) and breast (minutes) silhouettes.
+- Customize daily overview supports moving fields up/down; Save persists the order.
+
+### Journal simplification — 2026-09-29
+
+- Journal shows the full history for the active child, newest first, without day/week controls. Dates include the year.
+- Compact Date/Registration expand controls share one row. All date groups start open; record details remain individually expandable.
+- Default quick filters: Madning, Bleer, Søvn, Sundhed. More filters includes a saved four-filter editor and reset.
+- Breastfeeding buttons use Venstre/Højre.
+- Code-based design review: clarified the Journal add action, made filter reset visible, preserved theme icons and consistent button text size, and cached history grouping during UI interactions. Phone visual QA remains pending.
+- Further design follow-up: unify hard-coded Danish UI text with localized resources and check long labels/large system fonts across forms and charts on device.

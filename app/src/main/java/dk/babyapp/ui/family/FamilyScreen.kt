@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -188,7 +189,7 @@ fun FamilyScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         val memberBitmap = photoFile(member.photoFileName)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
-                        if (memberBitmap != null) Image(memberBitmap, null, Modifier.size(44.dp).clip(CircleShape), contentScale = ContentScale.Crop) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
+                        if (memberBitmap != null) ExpandableFamilyPhoto(memberBitmap, member.name, Modifier.size(44.dp)) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
                         Column(Modifier.weight(1f)) { Text(member.name); Text(roleLabel(member.role), style = MaterialTheme.typography.bodySmall) }
                         IconButton(onClick = { viewingMember = member }) { Icon(Icons.Outlined.Visibility, "Se ${member.name}") }
                         IconButton(onClick = { editingMember = member }) { Icon(Icons.Outlined.Edit, "Rediger ${member.name}") }
@@ -662,11 +663,26 @@ private val LocalChildAccent = staticCompositionLocalOf { Color(0xFFF5CAD2) }
 }
 @Composable private fun ViewValue(label: Int, value: String) { Column { Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value) } }
 
+@Composable
+private fun ExpandableFamilyPhoto(bitmap: androidx.compose.ui.graphics.ImageBitmap, name: String, modifier: Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    Image(bitmap, stringResource(R.string.profile_photo_description), modifier.clip(CircleShape).clickable(onClickLabel = stringResource(R.string.view_large_photo)) { expanded = true }, contentScale = ContentScale.Crop)
+    if (expanded) Dialog(onDismissRequest = { expanded = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        androidx.compose.material3.Surface(Modifier.fillMaxWidth().padding(16.dp), shape = MaterialTheme.shapes.large) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(name, style = MaterialTheme.typography.titleLarge)
+                Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.fillMaxWidth().heightIn(max = 480.dp).weight(1f, fill = false), contentScale = ContentScale.Fit)
+                TextButton(onClick = { expanded = false }) { Text(stringResource(R.string.close)) }
+            }
+        }
+    }
+}
+
 @Composable private fun FamilyMemberView(member: ParentProfile, photoFile: File?) {
     Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             val bitmap = remember(photoFile?.path, photoFile?.lastModified()) { photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-            if (bitmap != null) Image(bitmap, null, Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
+            if (bitmap != null) ExpandableFamilyPhoto(bitmap, member.name, Modifier.size(48.dp)) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
             Column { Text(roleLabel(member.role), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Text(member.name, style = MaterialTheme.typography.titleMedium); if (member.phone.isNotBlank()) Text(member.phone); if (member.email.isNotBlank()) Text(member.email) }
         }
     }
@@ -682,6 +698,10 @@ private val LocalChildAccent = staticCompositionLocalOf { Color(0xFFF5CAD2) }
     FamilyMemberRole.Grandmother -> R.string.role_grandmother
     FamilyMemberRole.Grandfather -> R.string.role_grandfather
     FamilyMemberRole.Grandparent -> R.string.role_grandparent
+    FamilyMemberRole.MaternalGrandmother -> R.string.role_maternal_grandmother
+    FamilyMemberRole.MaternalGrandfather -> R.string.role_maternal_grandfather
+    FamilyMemberRole.PaternalGrandmother -> R.string.role_paternal_grandmother
+    FamilyMemberRole.PaternalGrandfather -> R.string.role_paternal_grandfather
     FamilyMemberRole.BonusMother -> R.string.role_bonus_mother
     FamilyMemberRole.BonusFather -> R.string.role_bonus_father
     FamilyMemberRole.BonusParent -> R.string.role_bonus_parent
@@ -811,7 +831,7 @@ private fun ParentEditorDialog(
             Text(stringResource(if (role.isParent) (if (existing == null) R.string.add_parent else R.string.edit_parent) else (if (existing == null) R.string.add_family_profile else R.string.edit_family_profile)), style = MaterialTheme.typography.headlineSmall)
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.choose_avatar), style = MaterialTheme.typography.labelLarge)
-            photoFile(photoName)?.let { file -> BitmapFactory.decodeFile(file.path)?.asImageBitmap()?.let { bitmap -> Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(72.dp).clip(CircleShape), contentScale = ContentScale.Crop) } }
+            photoFile(photoName)?.let { file -> BitmapFactory.decodeFile(file.path)?.asImageBitmap()?.let { bitmap -> ExpandableFamilyPhoto(bitmap, name, Modifier.size(72.dp)) } }
             TextButton(onClick = { selectPhoto() }) { Text(stringResource(R.string.choose_photo)) }
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { dk.babyapp.data.profile.ProfileAvatar.entries.forEach { option -> FilterChip(avatar == option, { avatar = option }, label = { Text(option.symbol) }) } }
             androidx.compose.material3.OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.parent_name)) })

@@ -42,6 +42,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             dailyReminderMinute = values[DAILY_REMINDER_MINUTE] ?: 0,
             insightDashboardMetrics = values[INSIGHT_DASHBOARD_METRICS]?.split(',')?.filter(String::isNotBlank)?.takeIf { it.size in 3..6 } ?: listOf("Sleep", "Feedings", "Diapers", "TummyTime"),
             quickActionCategoryOrder = values[QUICK_ACTION_CATEGORY_ORDER]?.split(',') ?: emptyList(),
+            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',') ?: AppPreferences().journalQuickFilters,
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
             medicines = values[MEDICINES]?.let { runCatching { Json.decodeFromString<List<MedicinePlan>>(it) }.getOrNull() } ?: emptyList(),
         )
@@ -122,6 +123,11 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[QUICK_ACTION_CATEGORY_ORDER] = order.joinToString(",") }
     }
 
+    override suspend fun updateJournalQuickFilters(filters: List<String>) {
+        require(filters.size == 4 && filters.distinct().size == 4)
+        context.appPreferencesDataStore.edit { it[JOURNAL_QUICK_FILTERS] = filters.joinToString(",") }
+    }
+
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) {
         context.appPreferencesDataStore.edit { it[HIDDEN_QUICK_ACTIONS] = hidden.joinToString(",") }
     }
@@ -149,6 +155,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val DAILY_REMINDER_MINUTE = intPreferencesKey("daily_reminder_minute")
         val INSIGHT_DASHBOARD_METRICS = stringPreferencesKey("insight_dashboard_metrics")
         val QUICK_ACTION_CATEGORY_ORDER = stringPreferencesKey("quick_action_category_order")
+        val JOURNAL_QUICK_FILTERS = stringPreferencesKey("journal_quick_filters")
         val HIDDEN_QUICK_ACTIONS = stringPreferencesKey("hidden_quick_actions")
         val MEDICINES = stringPreferencesKey("medicines")
     }

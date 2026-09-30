@@ -127,4 +127,9 @@
     <string name="basic_information">Basic information</string><string name="child_not_born_yet">The child has not been born yet</string><string name="birth_place">Place of birth</string><string name="registry_information">Official information</string><string name="full_name">Full name</string><string name="registered_address">Registered address</string><string name="nationality">Nationality</string>
     <string name="edit_provider">Edit care provider</string><string name="delete_provider">Delete care provider</string><string name="delete_provider_title">Delete care provider?</string><string name="delete_provider_message">The care provider will be removed from the child profile when you save the changes.</string>
     <string name="getting_started_title">Getting started</string><string name="getting_started_message">Create your first child under Family to start recording feeding, diapers, and other activities. You can also close this message and look around first.</string><string name="create_first_child">Create first child</string>
+    <string name="role_maternal_grandmother">Maternal grandmother</string>
+    <string name="role_maternal_grandfather">Maternal grandfather</string>
+    <string name="role_paternal_grandmother">Paternal grandmother</string>
+    <string name="role_paternal_grandfather">Paternal grandfather</string>
+    <string name="view_large_photo">View large photo</string>
 </resources>

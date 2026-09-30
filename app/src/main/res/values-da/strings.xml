@@ -127,4 +127,9 @@
     <string name="basic_information">Grundoplysninger</string><string name="child_not_born_yet">Barnet er ikke født endnu</string><string name="birth_place">Fødested</string><string name="registry_information">Stamoplysninger</string><string name="full_name">Fulde navn</string><string name="registered_address">Folkeregisteradresse</string><string name="nationality">Statsborgerskab</string>
     <string name="edit_provider">Rediger behandler</string><string name="delete_provider">Slet behandler</string><string name="delete_provider_title">Slet behandler?</string><string name="delete_provider_message">Behandleren fjernes fra barnets profil, når du gemmer ændringerne.</string>
     <string name="getting_started_title">Sådan kommer du i gang</string><string name="getting_started_message">Opret dit første barn under Familie for at begynde at registrere madning, bleer og andre aktiviteter. Du kan også lukke denne besked og kigge rundt først.</string><string name="create_first_child">Opret første barn</string>
+    <string name="role_maternal_grandmother">Mormor</string>
+    <string name="role_maternal_grandfather">Morfar</string>
+    <string name="role_paternal_grandmother">Farmor</string>
+    <string name="role_paternal_grandfather">Farfar</string>
+    <string name="view_large_photo">Se stort billede</string>
 </resources>
