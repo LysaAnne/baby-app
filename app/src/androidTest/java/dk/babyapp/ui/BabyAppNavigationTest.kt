@@ -1,5 +1,8 @@
 package dk.babyapp.ui
 
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.filter
 import androidx.compose.ui.test.hasClickAction
@@ -40,7 +43,7 @@ class BabyAppNavigationTest {
             )
         }
 
-        composeRule.onAllNodesWithText(context.getString(R.string.nav_today)).assertCountEquals(1)
+        composeRule.onAllNodesWithText(context.getString(R.string.nav_today)).filter(isSelectable()).assertCountEquals(1)
         composeRule.onAllNodesWithText("Dagens overblik").assertCountEquals(1)
 
         listOf(R.string.nav_timeline, R.string.nav_insights, R.string.nav_guide).forEach { navigationLabel ->
@@ -86,5 +89,34 @@ class BabyAppNavigationTest {
 
         composeRule.onAllNodesWithText("Dagens overblik").assertCountEquals(1)
         composeRule.onAllNodesWithText(context.getString(R.string.child_profiles)).assertCountEquals(0)
+    }
+    @Test fun previousDayOverviewMatchesJournalDateOverview() {
+        val child = ChildProfile(id = "child", name = "Freja")
+        val yesterday = LocalDate.now().minusDays(1)
+        val at = yesterday.atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val event = dk.babyapp.data.tracking.CareEventEntity(childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Bottle, startedAt = at, endedAt = at, amountConsumedMl = 125)
+        composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(event), preferences = AppPreferences(hasSeenGettingStarted = true, dashboardMetrics = listOf(dk.babyapp.data.preferences.DashboardMetric.Feeding))) }
+        composeRule.onNodeWithText("0 ml").assertExists()
+        composeRule.onNodeWithContentDescription("Forrige dags overblik").performClick()
+        composeRule.onNodeWithText("125 ml").assertExists()
+        composeRule.onNodeWithContentDescription("Næste dags overblik").performClick()
+        composeRule.onNodeWithText("0 ml").assertExists()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(hasClickAction()).onFirst().performClick()
+        composeRule.onNodeWithText("Vis dagsoversigt").performClick()
+        composeRule.onNodeWithText("125 ml").assertExists()
+    }
+
+    @Test fun tappingTodayScrollsBackToTop() {
+        val child = ChildProfile(id = "child", name = "Freja")
+        composeRule.setContent {
+            BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {},
+                onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" },
+                preferences = AppPreferences(hasSeenGettingStarted = true))
+        }
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(3)
+        composeRule.onNodeWithText("Dagens overblik").assertIsNotDisplayed()
+        composeRule.onAllNodesWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.nav_today)).filter(isSelectable()).onFirst().performClick()
+        composeRule.onNodeWithText("Dagens overblik").assertIsDisplayed()
     }
 }

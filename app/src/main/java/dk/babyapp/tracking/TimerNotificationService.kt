@@ -17,6 +17,7 @@ import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
 import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.domain.switchNursingSide
 import dk.babyapp.data.tracking.closeSegment
 import dk.babyapp.data.tracking.startSegment
 import javax.inject.Inject
@@ -72,11 +73,11 @@ class TimerNotificationService : Service() {
             when (intent?.action) {
                 ACTION_PAUSE -> { val now = System.currentTimeMillis(); repository.save(accrue(event).closeSegment(now).copy(runningSince = null)) }
                 ACTION_RESUME -> if (event.runningSince == null) { val now = System.currentTimeMillis(); repository.save(event.startSegment(now).copy(runningSince = now)) }
-                ACTION_SWITCH -> repository.save(accrue(event).copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = if (event.runningSince != null) System.currentTimeMillis() else null))
+                ACTION_SWITCH -> repository.save(event.switchNursingSide(System.currentTimeMillis()))
                 ACTION_STOP -> {
                     val now = System.currentTimeMillis()
                     val accrued = accrue(event).closeSegment(now)
-                    repository.save(accrued.copy(isDraft = true, endedAt = now, runningSince = null, activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds))
+                    repository.save(accrued.copy(isDraft = !event.nursingContinued, endedAt = now, runningSince = null, activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds))
                     // Reconcile all active timers below, including other children.
                 }
             }

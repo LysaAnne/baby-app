@@ -1,5 +1,10 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import dk.babyapp.domain.changeNippleShield
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.layout.Arrangement
@@ -125,9 +130,11 @@ fun TodayScreen(
     onDelete: (CareEventEntity) -> Unit,
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit,
+    scrollToTopRequest: Int = 0,
     keepTimerAwake: Boolean = false,
     onKeepTimerAwake: (Boolean) -> Unit = {},
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
+    onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
 ) {
@@ -140,8 +147,11 @@ fun TodayScreen(
         QuickAction.Diaper -> preferences.showDiaperQuickAction
         else -> true
     }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(scrollToTopRequest) { if (scrollToTopRequest > 0) listState.scrollToItem(0) }
+    var timerMinimized by androidx.compose.runtime.saveable.rememberSaveable(active?.id) { mutableStateOf(false) }
     val today = LocalDate.now()
-    val todayEvents = childEvents.filter { Instant.ofEpochMilli(it.startedAt).atZone(ZoneId.systemDefault()).toLocalDate() == today }
+    var overviewDate by remember(childId) { mutableStateOf(today) }
     var dialog by remember { mutableStateOf<EditorKind?>(null) }
     var selectedDiaperType by remember { mutableStateOf(DiaperType.Wet) }
     var editing by remember { mutableStateOf<CareEventEntity?>(null) }
@@ -159,7 +169,8 @@ fun TodayScreen(
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
-            contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 16.dp, bottom = contentPadding.calculateBottomPadding() + if (active == null) 100.dp else 300.dp, start = 16.dp, end = 16.dp),
+            state = listState,
+            contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 16.dp, bottom = contentPadding.calculateBottomPadding() + if (active == null) 100.dp else if (timerMinimized) 270.dp else 440.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
         if (overdueDueDate != null) item {
@@ -181,74 +192,12 @@ fun TodayScreen(
             }
         }
         item {
-            val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
-            val bottleMl = todayEvents.filter { it.type == CareEventType.Bottle }.sumOf { it.amountConsumedMl ?: 0 }
-            val diapers = todayEvents.filter { it.type == CareEventType.Diaper }
-            val wetDiapers = diapers.count { it.diaperType == DiaperType.Wet || it.diaperType == DiaperType.Both }
-            val dirtyDiapers = diapers.count { it.diaperType == DiaperType.Dirty || it.diaperType == DiaperType.Both }
-            val sleepMinutes = todayEvents.filter { it.type == CareEventType.Sleep }.sumOf { it.elapsedSeconds() } / 60
-            val tummyEvents = todayEvents.filter { it.type == CareEventType.Activity && it.activityType == ActivityType.TummyTime }
-            val tummyMinutes = tummyEvents.sumOf { it.activityDurationSeconds ?: 0 } / 60
-            val lastFeeding = todayEvents.filter { it.type == CareEventType.Breastfeeding || it.type == CareEventType.Bottle }.maxByOrNull { it.startedAt }
-            val lastDiaper = todayEvents.filter { it.type == CareEventType.Diaper }.maxByOrNull { it.startedAt }
-            val lastSleep = todayEvents.filter { it.type == CareEventType.Sleep }.maxByOrNull { it.startedAt }
-            val overviewItems = preferences.dashboardMetrics.map { metric ->
-                when (metric) {
-                    DashboardMetric.Feeding -> OverviewItem(metric.displayLabel(), if (lastFeeding == null) "-" else listOfNotNull("$breastMinutes min".takeIf { todayEvents.any { it.type == CareEventType.Breastfeeding } }, "$bottleMl ml".takeIf { todayEvents.any { it.type == CareEventType.Bottle } }).joinToString(" · "), lastFeeding)
-                    DashboardMetric.Diapers -> OverviewItem(metric.displayLabel(), "", lastDiaper)
-                    DashboardMetric.Sleep -> OverviewItem(metric.displayLabel(), if (lastSleep == null) "-" else formatMinutes(sleepMinutes), lastSleep)
-                    DashboardMetric.TummyTime -> OverviewItem(metric.displayLabel(), if (tummyEvents.isEmpty()) "-" else formatMinutes(tummyMinutes), tummyEvents.maxByOrNull { it.startedAt })
-                    DashboardMetric.Pumping, DashboardMetric.SolidFood, DashboardMetric.Medicine, DashboardMetric.HealthVisits, DashboardMetric.Vaccinations, DashboardMetric.Activities -> {
-                        val records = todayEvents.filter { metric.matches(it) }
-                        val value = when {
-                            records.isEmpty() -> "-"
-                            metric == DashboardMetric.Pumping -> "${records.sumOf { it.pumpedAmountMl ?: 0 }} ml"
-                            metric == DashboardMetric.Activities -> formatMinutes(records.sumOf { it.activityDurationSeconds ?: 0 } / 60)
-                            else -> records.size.toString()
-                        }
-                        OverviewItem(metric.displayLabel(), value, records.maxByOrNull { it.startedAt })
-                    }
-                    DashboardMetric.Weight, DashboardMetric.Height, DashboardMetric.HeadCircumference, DashboardMetric.Temperature -> {
-                        val type = metric.measurementType()
-                        val latest = todayEvents.filter { it.type == CareEventType.Measurement && it.measurementType == type }.maxByOrNull { it.startedAt }
-                        OverviewItem(metric.displayLabel(), latest?.measurementValue?.let { "$it ${latest.measurementUnit}" } ?: "-", latest)
-                    }
-                }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { overviewDate = overviewDate.minusDays(1) }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Forrige dags overblik") }
+                TextButton(enabled = overviewDate != today, onClick = { overviewDate = today }) { Text(if (overviewDate == today) "I dag" else "Tilbage til i dag") }
+                IconButton(enabled = overviewDate < today, onClick = { overviewDate = overviewDate.plusDays(1) }) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Næste dags overblik") }
             }
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-            ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Dagens overblik", style = MaterialTheme.typography.titleLarge)
-                        IconButton(onClick = { dashboardCustomizeOpen = true }) { Icon(Icons.Outlined.Tune, "Tilpas Dagens overblik") }
-                    }
-                    overviewItems.chunked(2).forEachIndexed { rowIndex, row ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEachIndexed { columnIndex, item ->
-                                val metric = preferences.dashboardMetrics[rowIndex * 2 + columnIndex]
-                                val count = todayEvents.count { event -> when (metric) {
-                                    DashboardMetric.Feeding -> event.type in setOf(CareEventType.Breastfeeding, CareEventType.Bottle)
-                                    DashboardMetric.Diapers -> event.type == CareEventType.Diaper
-                                    DashboardMetric.Sleep -> event.type == CareEventType.Sleep
-                                    DashboardMetric.TummyTime -> event.type == CareEventType.Activity && event.activityType == ActivityType.TummyTime
-                                    else -> metric.matches(event)
-                                } }
-                                SummaryMetric(item.label, item.value, item.event?.let { timeAgo(it.startedAt) }, Modifier.weight(1f), count, when (metric) {
-                                    DashboardMetric.Diapers -> listOf(Triple(dk.babyapp.R.drawable.ic_diaper_wet, "Våd", wetDiapers.toString()), Triple(dk.babyapp.R.drawable.ic_diaper_stool, "Afføring", dirtyDiapers.toString()))
-                                    DashboardMetric.Feeding -> listOf(Triple(dk.babyapp.R.drawable.ic_feeding_bottle, "Flaske", "$bottleMl ml"), Triple(dk.babyapp.R.drawable.ic_feeding_breast, "Amning", "$breastMinutes min"))
-                                    else -> null
-                                })
-                            }
-                            if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
+            DailyOverview(dk.babyapp.domain.eventsForDay(childEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true })
         }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
@@ -266,7 +215,10 @@ fun TodayScreen(
                     else -> Icons.Outlined.Restaurant
                 }, category) {
                     if (QuickAction.Breastfeeding in actions) {
-                        Text("Amning", style = MaterialTheme.typography.titleSmall)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(preferences.defaultNippleShield, onUpdateDefaultNippleShield, modifier = Modifier.semantics { contentDescription = "Ammebrik ved ny amning" })
+                            Text("Ammebrik", style = MaterialTheme.typography.bodySmall)
+                        }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BreastSide.entries.forEach { side ->
                                 QuickButton(sideLabel(side).replaceFirstChar { it.uppercase() }, Modifier.weight(1f), childId != null && active == null) {
@@ -325,12 +277,16 @@ fun TodayScreen(
         if (childId != null) FloatingActionButton(onClick = { manualMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = contentPadding.calculateBottomPadding() + 16.dp)) { Icon(Icons.Outlined.Add, "Manuel registrering") }
         active?.let { event ->
             ActiveTimerCard(
+                minimized = timerMinimized,
+                onMinimizedChange = { timerMinimized = it },
                 event = event,
                 onToggle = onToggleTimer,
                 onSwitch = onSwitchSide,
                 onStop = { running ->
                     onStopTimer(running, null) { editing = it }
                 },
+                onShield = { current, enabled -> onUpdate(current.changeNippleShield(enabled, System.currentTimeMillis())) { success -> sleepError = !success } },
+                onEdit = { editing = it },
                 onCancel = onDelete,
                 keepAwake = keepTimerAwake, onKeepAwake = onKeepTimerAwake,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = contentPadding.calculateBottomPadding() + 82.dp),
@@ -355,7 +311,10 @@ fun TodayScreen(
             confirmButton = {}, dismissButton = { TextButton(onClick = { dialog = null }) { Text("Annuller") } })
         EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes) }; dialog = null }
         EditorKind.Diaper -> DiaperDialog(initialType = selectedDiaperType, onDismiss = { dialog = null; selectedDiaperType = DiaperType.Wet }) { time, type, color, consistency, observation, notes -> childId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; dialog = null; selectedDiaperType = DiaperType.Wet }
-        EditorKind.ManualBreastfeeding -> ManualTimerDialog(CareEventType.Breastfeeding, onDismiss = { dialog = null }) { type, start, end, side, amount, notes -> childId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; dialog = null }
+        EditorKind.ManualBreastfeeding -> childId?.let { id ->
+            val now = remember { System.currentTimeMillis() }
+            EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Breastfeeding, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, activeSide = BreastSide.Left, timerSegments = "${now - 600_000}-$now", timerSegmentSides = "Left") }, { dialog = null }) { onSaveHealthRecord(it); dialog = null }
+        }
         EditorKind.ManualPumping -> childId?.let { id -> val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600) }, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartPump -> SelectionStartPumpDialog({ dialog = null }) { method -> childId?.let { id -> onStartPumping(id); pendingPumpMethod = method }; dialog = null }
         EditorKind.Sleep -> SleepDialog(onDismiss = { dialog = null }) { start, end, type, location, settling, awakenings, quality, notes ->
@@ -395,7 +354,7 @@ fun TodayScreen(
     if (sleepError) AlertDialog(
         onDismissRequest = { sleepError = false },
         title = { Text("Registreringen kan ikke startes") },
-        text = { Text("Der findes allerede en aktiv tæller eller en overlappende søvnregistrering. Stop den aktive tæller eller ret tidsrummet først.") },
+        text = { Text("Der er en aktiv tæller, overlappende søvn eller en amning, som er ændret imens. Kontrollér tiderne, eller luk redigeringen og åbn den igen.") },
         confirmButton = { Button(onClick = { sleepError = false }) { Text("OK") } },
     )
 }
@@ -422,7 +381,7 @@ private fun SummaryMetric(label: String, value: String, detail: String? = null, 
                 }
             }
             Text(if (count == 1) "1 registrering" else "$count registreringer", style = MaterialTheme.typography.labelSmall)
-            Text("Sidst: ${detail?.let { "$it siden" } ?: "-"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Sidst: ${detail ?: "-"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -509,17 +468,26 @@ private fun QuickActionCard(icon: ImageVector, title: String, content: @Composab
 @Composable private fun QuickButton(text: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) = FilledTonalButton(modifier = modifier, enabled = enabled, onClick = onClick) { Text(text) }
 
 @Composable
-private fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = false, onMinimizedChange: (Boolean) -> Unit = {}) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.runningSince) { while (event.runningSince != null) { now = System.currentTimeMillis(); delay(1_000) } }
     val elapsed = event.elapsedSeconds(now)
     Card(modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }, style = MaterialTheme.typography.titleLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            IconButton(onClick = { onMinimizedChange(!minimized) }) { Icon(if (minimized) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, if (minimized) "Udvid tæller" else "Minimer tæller") }
+        }
         Text(formatDuration(elapsed), style = MaterialTheme.typography.headlineMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(keepAwake, onKeepAwake); Text("Hold skærmen tændt", style = MaterialTheme.typography.bodySmall); TextButton(onClick = { onCancel(event) }) { Text("Annuller") } }
-        if (event.type == CareEventType.Breastfeeding) Text("Venstre ${formatDuration(event.leftSeconds)}  •  Højre ${formatDuration(event.rightSeconds)}")
+        if (!minimized) {
+            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(keepAwake, onKeepAwake); Text("Hold skærmen tændt", style = MaterialTheme.typography.bodySmall); if (event.type != CareEventType.Breastfeeding) TextButton(onClick = { onCancel(event) }) { Text("Annuller") } }
+            if (event.type == CareEventType.Breastfeeding) Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(event.nippleShield, { onShield(event, it) }, modifier = Modifier.semantics { contentDescription = "Ammebrik" }); Text("Ammebrik", style = MaterialTheme.typography.bodySmall)
+            }
+            if (event.type == CareEventType.Breastfeeding) OutlinedButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
+            if (event.type == CareEventType.Breastfeeding) Text("Venstre ${formatDuration(event.leftSeconds)}  •  Højre ${formatDuration(event.rightSeconds)}")
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onToggle(event) }) { Icon(if (event.runningSince == null) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, null); Text(if (event.runningSince == null) "Fortsæt" else "Pause") }
+            androidx.compose.material3.OutlinedIconButton(onClick = { onToggle(event) }) { Icon(if (event.runningSince == null) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, if (event.runningSince == null) "Fortsæt" else "Pause") }
             if (event.type == CareEventType.Breastfeeding) OutlinedButton(onClick = { onSwitch(event) }) { Text("Skift side") }
             Button(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, null); Text("Stop") }
         }
@@ -764,6 +732,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 }
 
 @Composable internal fun EditEventDialog(event: CareEventEntity, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
+    if (event.type == CareEventType.Breastfeeding) { NursingEditor(event, onDismiss, onSave); return }
     if (event.type == CareEventType.SolidFood) { SolidFoodDialog(event.childId, event, onDismiss, onSave); return }
     if (event.type == CareEventType.Activity && event.activityType == ActivityType.Medicine) {
         MedicineDialog(event.childId, event, onDismiss, onSave = onSave); return
@@ -786,13 +755,16 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
     var consumed by remember { mutableStateOf(event.amountConsumedMl?.toString().orEmpty()) }
     var pumped by remember { mutableStateOf(event.pumpedAmountMl?.toString().orEmpty()) }
     var value by remember { mutableStateOf(event.measurementValue?.toString().orEmpty()) }
+    val nursingHistory = event.type == CareEventType.Breastfeeding && event.timerSegments.isNotBlank()
     val timed = event.type in setOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Activity)
     val valid = (!timed || end >= start) && (event.type != CareEventType.Measurement || (value.toDoubleOrNull()?.let { it.isFinite() && it > 0 } == true)) &&
         (offered.isBlank() || offered.toIntOrNull() != null) && (consumed.isBlank() || consumed.toIntOrNull() != null) && (pumped.isBlank() || pumped.toIntOrNull() != null)
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Rediger registrering") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (event.type == CareEventType.Measurement) DateAndOptionalTimeFields(start, draft.timeSpecified, { start = it }, { draft = draft.copy(timeSpecified = it) })
-            else {
+            else if (nursingHistory) {
+                Text("Tidsintervaller og sideskift bevares. Brug Fortsæt amning i Journal for at tilføje mere amning.")
+            } else {
                 if (timed) Text("Start")
                 DateTimeFields(start) { start = it }
                 if (timed) { Text("Slut"); DateTimeFields(end) { end = it } }
@@ -838,7 +810,87 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
         onSave(draft.copy(startedAt = start, endedAt = if (timed) end else start, runningSince = null,
             leftSeconds = if (timed) left else event.leftSeconds, rightSeconds = if (timed) duration - left else event.rightSeconds,
             timerSegments = if (timed && changed) "$start-$end" else event.timerSegments,
+            timerSegmentSides = if (timed && changed) draft.activeSide?.name.orEmpty() else event.timerSegmentSides,
             amountOfferedMl = offered.toIntOrNull(), amountConsumedMl = consumed.toIntOrNull(), pumpedAmountMl = pumped.toIntOrNull(),
             measurementValue = value.toDoubleOrNull(), activityDurationSeconds = if (event.type == CareEventType.Activity) duration else event.activityDurationSeconds))
     }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+}
+
+@Composable
+internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null) {
+            val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
+            val lastNursing = dk.babyapp.domain.lastNursingInterval(todayEvents)
+            val lastSide = lastNursing?.second
+            val breastSummary = "$breastMinutes min"
+            val bottleMl = todayEvents.filter { it.type == CareEventType.Bottle }.sumOf { it.amountConsumedMl ?: 0 }
+            val diapers = todayEvents.filter { it.type == CareEventType.Diaper }
+            val wetDiapers = diapers.count { it.diaperType == DiaperType.Wet || it.diaperType == DiaperType.Both }
+            val dirtyDiapers = diapers.count { it.diaperType == DiaperType.Dirty || it.diaperType == DiaperType.Both }
+            val sleepMinutes = todayEvents.filter { it.type == CareEventType.Sleep }.sumOf { it.elapsedSeconds() } / 60
+            val tummyEvents = todayEvents.filter { it.type == CareEventType.Activity && it.activityType == ActivityType.TummyTime }
+            val tummyMinutes = tummyEvents.sumOf { it.activityDurationSeconds ?: 0 } / 60
+            val lastFeeding = todayEvents.filter { it.type == CareEventType.Breastfeeding || it.type == CareEventType.Bottle }.maxByOrNull { it.startedAt }
+            val lastDiaper = todayEvents.filter { it.type == CareEventType.Diaper }.maxByOrNull { it.startedAt }
+            val lastSleep = todayEvents.filter { it.type == CareEventType.Sleep }.maxByOrNull { it.startedAt }
+            val overviewItems = metrics.map { metric ->
+                when (metric) {
+                    DashboardMetric.Feeding -> OverviewItem(metric.displayLabel(), if (lastFeeding == null) "-" else listOfNotNull("$breastMinutes min".takeIf { todayEvents.any { it.type == CareEventType.Breastfeeding } }, "$bottleMl ml".takeIf { todayEvents.any { it.type == CareEventType.Bottle } }).joinToString(" · "), lastFeeding)
+                    DashboardMetric.Diapers -> OverviewItem(metric.displayLabel(), "", lastDiaper)
+                    DashboardMetric.Sleep -> OverviewItem(metric.displayLabel(), if (lastSleep == null) "-" else formatMinutes(sleepMinutes), lastSleep)
+                    DashboardMetric.TummyTime -> OverviewItem(metric.displayLabel(), if (tummyEvents.isEmpty()) "-" else formatMinutes(tummyMinutes), tummyEvents.maxByOrNull { it.startedAt })
+                    DashboardMetric.Pumping, DashboardMetric.SolidFood, DashboardMetric.Medicine, DashboardMetric.HealthVisits, DashboardMetric.Vaccinations, DashboardMetric.Activities -> {
+                        val records = todayEvents.filter { metric.matches(it) }
+                        val value = when {
+                            records.isEmpty() -> "-"
+                            metric == DashboardMetric.Pumping -> "${records.sumOf { it.pumpedAmountMl ?: 0 }} ml"
+                            metric == DashboardMetric.Activities -> formatMinutes(records.sumOf { it.activityDurationSeconds ?: 0 } / 60)
+                            else -> records.size.toString()
+                        }
+                        OverviewItem(metric.displayLabel(), value, records.maxByOrNull { it.startedAt })
+                    }
+                    DashboardMetric.Weight, DashboardMetric.Height, DashboardMetric.HeadCircumference, DashboardMetric.Temperature -> {
+                        val type = metric.measurementType()
+                        val latest = todayEvents.filter { it.type == CareEventType.Measurement && it.measurementType == type }.maxByOrNull { it.startedAt }
+                        OverviewItem(metric.displayLabel(), latest?.measurementValue?.let { "$it ${latest.measurementUnit}" } ?: "-", latest)
+                    }
+                }
+            }
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            ) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (date == LocalDate.now()) "Dagens overblik" else date.format(java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy")), style = MaterialTheme.typography.titleLarge)
+                        if (onCustomize != null) IconButton(onClick = onCustomize) { Icon(Icons.Outlined.Tune, "Tilpas Dagens overblik") }
+                    }
+                    overviewItems.chunked(2).forEachIndexed { rowIndex, row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEachIndexed { columnIndex, item ->
+                                val metric = metrics[rowIndex * 2 + columnIndex]
+                                val count = todayEvents.count { event -> when (metric) {
+                                    DashboardMetric.Feeding -> event.type in setOf(CareEventType.Breastfeeding, CareEventType.Bottle)
+                                    DashboardMetric.Diapers -> event.type == CareEventType.Diaper
+                                    DashboardMetric.Sleep -> event.type == CareEventType.Sleep
+                                    DashboardMetric.TummyTime -> event.type == CareEventType.Activity && event.activityType == ActivityType.TummyTime
+                                    else -> metric.matches(event)
+                                } }
+                                val lastTime = if (metric == DashboardMetric.Feeding && lastNursing != null) lastNursing.first else item.event?.startedAt
+                                val lastDetail = lastTime?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }?.let { time ->
+                                    time + if (metric == DashboardMetric.Feeding) when (lastSide) { BreastSide.Left -> " - V"; BreastSide.Right -> " - H"; null -> "" } else ""
+                                }
+                                SummaryMetric(item.label, item.value, lastDetail, Modifier.weight(1f), count, when (metric) {
+                                    DashboardMetric.Diapers -> listOf(Triple(dk.babyapp.R.drawable.ic_diaper_wet, "Våd", wetDiapers.toString()), Triple(dk.babyapp.R.drawable.ic_diaper_stool, "Afføring", dirtyDiapers.toString()))
+                                    DashboardMetric.Feeding -> listOf(Triple(dk.babyapp.R.drawable.ic_feeding_bottle, "Flaske", "$bottleMl ml"), Triple(dk.babyapp.R.drawable.ic_feeding_breast, "Amning", breastSummary))
+                                    else -> null
+                                })
+                            }
+                            if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
 }

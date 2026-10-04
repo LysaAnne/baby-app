@@ -37,6 +37,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -234,6 +235,43 @@ class AppViewModelTest {
         assertEquals(1, events.items.value.size)
         collector.cancel()
     }
+    @Test
+    fun `continued nursing remains saved after stopping and rejects active timers`() = runTest(dispatcher) {
+        val original = CareEventEntity(id = "saved", childId = "child", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 6000, leftSeconds = 5, notes = "Bevar mig", timerSegments = "1000-6000", timerSegmentSides = "Left")
+        val other = CareEventEntity(id = "other", childId = "child", type = CareEventType.Sleep, startedAt = 7000)
+        val events = FakeCareEventRepository().also { it.items.value = listOf(original, other) }
+        val viewModel = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        var success = true
+        viewModel.resumeBreastfeeding(original, dk.babyapp.data.tracking.BreastSide.Right) { success = it }
+        advanceUntilIdle()
+        assertFalse(success)
+        assertEquals(original, events.get("saved"))
+        events.softDelete(other)
+        viewModel.resumeBreastfeeding(original, dk.babyapp.data.tracking.BreastSide.Right) { success = it }
+        advanceUntilIdle()
+        assertTrue(success)
+        viewModel.stopTimer(requireNotNull(events.get("saved")))
+        advanceUntilIdle()
+        val stopped = requireNotNull(events.get("saved"))
+        assertFalse(stopped.isDraft)
+        assertEquals("Bevar mig", stopped.notes)
+        assertEquals("Left;Right", stopped.timerSegmentSides)
+        assertEquals(1, events.items.value.size)
+    }
+
+    @Test fun `new nursing uses saved shield preference`() = runTest(dispatcher) {
+        val preferences = FakePreferencesRepository()
+        val events = FakeCareEventRepository()
+        val vm = AppViewModel(FakeProfilesRepository(), preferences, FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        vm.updateDefaultNippleShield(true); advanceUntilIdle()
+        vm.startBreastfeeding("child", dk.babyapp.data.tracking.BreastSide.Left); advanceUntilIdle()
+        assertTrue(events.items.value.single().nippleShield)
+        assertEquals("true", events.items.value.single().timerSegmentShields)
+        vm.updateDefaultNippleShield(false); advanceUntilIdle()
+        vm.startBreastfeeding("other", dk.babyapp.data.tracking.BreastSide.Right); advanceUntilIdle()
+        assertFalse(events.items.value.first { it.childId == "other" }.nippleShield)
+    }
+
 }
 
 private class FakeProfilesRepository(initial: List<ChildProfile> = emptyList()) : ChildProfileRepository {
@@ -285,6 +323,7 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
     }
     override suspend fun updateInsightDashboardMetrics(metrics: List<String>) { items.value = items.value.copy(insightDashboardMetrics = metrics) }
     override suspend fun updateQuickActionCategoryOrder(order: List<String>) { items.value = items.value.copy(quickActionCategoryOrder = order) }
+    override suspend fun updateDefaultNippleShield(enabled: Boolean) { items.value = items.value.copy(defaultNippleShield = enabled) }
     override suspend fun updateJournalQuickFilters(filters: List<String>) { items.value = items.value.copy(journalQuickFilters = filters) }
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }
     override suspend fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>) { items.value = items.value.copy(medicines = medicines) }
@@ -319,7 +358,7 @@ private class FakeCareEventRepository : CareEventRepository {
     override val events: Flow<List<CareEventEntity>> = items
     override suspend fun save(event: CareEventEntity) { items.value = items.value.filterNot { it.id == event.id } + event }
     override suspend fun get(id: String) = items.value.firstOrNull { it.id == id }
-    override suspend fun activeForChild(childId: String) = items.value.firstOrNull { it.childId == childId && it.isRunning }
+    override suspend fun activeForChild(childId: String) = items.value.firstOrNull { it.childId == childId && it.endedAt == null && it.deletedAt == null }
     override suspend fun softDelete(event: CareEventEntity) { items.value = items.value.filterNot { it.id == event.id } }
 }
 private class FakeTimerNotifications : TimerNotificationController { override fun show(eventId: String) = Unit; override fun hide() = Unit }

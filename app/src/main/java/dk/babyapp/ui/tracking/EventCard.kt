@@ -28,12 +28,13 @@ import androidx.compose.ui.unit.dp
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.SleepType
+import dk.babyapp.data.tracking.shieldForInterval
 import dk.babyapp.data.tracking.segmentIntervals
 import java.text.DateFormat
 import java.util.Date
 
 @Composable
-internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdit: () -> Unit, onDelete: () -> Unit) {
+internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdit: () -> Unit, onDelete: () -> Unit, onResume: (() -> Unit)? = null) {
     var expanded by remember(event.id) { mutableStateOf(false) }
     LaunchedEffect(expandAll) { expandAll?.let { expanded = it } }
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
@@ -49,13 +50,18 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
             }
             if (expanded) {
                 Text(event.details(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val intervals = event.segmentIntervals()
+                val recordedIntervals = event.segmentIntervals()
+                val intervals = if (recordedIntervals.isEmpty() && event.type == CareEventType.Breastfeeding) listOf(event.startedAt to event.endedAt) else recordedIntervals
                 if (intervals.isNotEmpty()) {
                     Text("Tidsintervaller", style = MaterialTheme.typography.labelLarge)
-                    intervals.forEach { (start, end) -> Text("${formatClock(start)} – ${end?.let(::formatClock) ?: "kører"}", style = MaterialTheme.typography.bodySmall) }
+                    intervals.forEachIndexed { index, (start, end) ->
+                        val side = when ((if (recordedIntervals.isEmpty() && (event.leftSeconds == 0L || event.rightSeconds == 0L)) event.activeSide?.name else event.timerSegmentSides.split(';').getOrNull(index))) { "Left" -> "Venstre"; "Right" -> "Højre"; else -> "Side ikke registreret" }
+                        Text(compactInterval(start, end, anchor = event.startedAt) + if (event.type == CareEventType.Breastfeeding) (" · $side" + if (event.shieldForInterval(index)) " · Ammebrik" else "") else "", style = MaterialTheme.typography.bodySmall)
+                    }
                 }
+                if (onResume != null && event.type == CareEventType.Breastfeeding && event.endedAt != null) TextButton(onClick = onResume) { Text("Fortsæt amning") }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    if (event.endedAt != null) TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Rediger") }
+                    if (event.endedAt != null || event.type == CareEventType.Breastfeeding) TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Rediger") }
                     TextButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null); Text("Slet", color = MaterialTheme.colorScheme.error) }
                 }
             }
@@ -118,4 +124,15 @@ private fun CareEventEntity.icon() = when (type) {
 }
 
 internal fun formatDuration(seconds: Long) = "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60)
-private fun formatClock(value: Long) = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))
+private fun formatClock(value: Long) = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date(value))
+
+internal fun compactInterval(start: Long, end: Long?, now: Long = System.currentTimeMillis(), anchor: Long = start): String {
+    val zone = java.time.ZoneId.systemDefault()
+    fun date(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
+    val clock = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+    fun time(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(zone).format(clock)
+    val endText = end?.let { if (date(it) == date(start)) time(it) else "${date(it).format(java.time.format.DateTimeFormatter.ofPattern("d/M"))} ${time(it)}" } ?: "nu"
+    val minutes = ((end ?: now) - start).coerceAtLeast(0) / 60000.0
+    val startText = if (date(start) == date(anchor)) time(start) else "${date(start).format(java.time.format.DateTimeFormatter.ofPattern("d/M"))} ${time(start)}"
+    return "$startText–$endText · ${String.format(java.util.Locale.forLanguageTag("da"), "%.1f", minutes)} min"
+}

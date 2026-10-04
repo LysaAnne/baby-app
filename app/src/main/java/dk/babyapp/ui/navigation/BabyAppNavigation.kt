@@ -92,8 +92,11 @@ fun BabyAppNavigation(
     onReorderFamily: (List<String>) -> Unit = {},
     careProviders: List<CareProvider> = emptyList(),
     careEvents: List<CareEventEntity> = emptyList(),
+    bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
+    onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
     colorProfiles: List<ColorProfile> = emptyList(),
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
+    onResumeBreastfeeding: (CareEventEntity, BreastSide, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onStartPumping: (String) -> Unit = {},
     onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onStartActivity: (String, ActivityType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
@@ -113,6 +116,7 @@ fun BabyAppNavigation(
     onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit = {},
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
     onUpdateJournalQuickFilters: (List<String>) -> Unit = {},
+    onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onUpdateMedicines: (List<dk.babyapp.data.medicine.MedicinePlan>) -> Unit = {},
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit = { _, _, _ -> },
@@ -129,6 +133,7 @@ fun BabyAppNavigation(
     onDismissGettingStarted: () -> Unit = {},
 ) {
     val navController = rememberNavController()
+    var todayScrollRequest by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val activeTimer = careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
@@ -197,6 +202,7 @@ fun BabyAppNavigation(
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
+                            if (destination == AppDestination.Today) todayScrollRequest++
                             navController.navigate(destination) {
                                 popUpTo(AppDestination.Today) {
                                     saveState = false
@@ -223,6 +229,7 @@ fun BabyAppNavigation(
         ) {
             composable<AppDestination.Today> {
                 TodayScreen(
+                    scrollToTopRequest = todayScrollRequest,
                     childId = activeChild?.id, events = careEvents, contentPadding = contentPadding, preferences = preferences,
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
@@ -238,6 +245,7 @@ fun BabyAppNavigation(
                     keepTimerAwake = keepTimerAwake,
                     onKeepTimerAwake = { keepTimerAwake = it },
                     onUpdateQuickActionCategoryOrder = onUpdateQuickActionCategoryOrder,
+                    onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
                     onUpdateHiddenQuickActions = onUpdateHiddenQuickActions,
                     onUpdateMedicines = onUpdateMedicines,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
@@ -259,6 +267,8 @@ fun BabyAppNavigation(
             }
             composable<AppDestination.Timeline> {
                 TimelineScreen(
+                    dashboardMetrics = preferences.dashboardMetrics,
+                    onResumeBreastfeeding = onResumeBreastfeeding,
                     quickFilters = preferences.journalQuickFilters,
                     onUpdateQuickFilters = onUpdateJournalQuickFilters,
                     activeChildId = activeChild?.id,
@@ -286,11 +296,9 @@ fun BabyAppNavigation(
                 )
             }
             composable<AppDestination.Guide> {
-                PlaceholderScreen(
-                    title = stringResource(R.string.guide_title),
-                    description = stringResource(R.string.guide_description),
-                    contentPadding = contentPadding,
-                )
+                dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
+                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected)
+
             }
             composable<AppDestination.Family> {
                 FamilyScreen(

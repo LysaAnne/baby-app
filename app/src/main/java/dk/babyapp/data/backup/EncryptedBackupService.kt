@@ -53,13 +53,13 @@ class EncryptedBackupService @Inject constructor(
         require(root.getInt("format") == 1) { "Backupformatet understøttes ikke" }
         val medicines = Json.decodeFromString<List<MedicinePlan>>(root.optString("medicines", "[]"))
         val tables = root.getJSONObject("tables")
-        TABLES.forEach { require(tables.has(it)) { "Backupfilen mangler $it" } }
+        TABLES.filterNot { it == "baby_book_pages" }.forEach { require(tables.has(it)) { "Backupfilen mangler $it" } }
         val db = database.openHelper.writableDatabase
         db.beginTransaction()
         try {
             TABLES.asReversed().forEach { db.execSQL("DELETE FROM $it") }
             TABLES.forEach { table ->
-                val rows = tables.getJSONArray(table)
+                val rows = tables.optJSONArray(table) ?: JSONArray()
                 repeat(rows.length()) { index -> db.insert(table, SQLiteDatabase.CONFLICT_REPLACE, rows.getJSONObject(index).toContentValues()) }
             }
             db.setTransactionSuccessful()
@@ -73,7 +73,7 @@ class EncryptedBackupService @Inject constructor(
     }
 
     private companion object {
-        val TABLES = listOf("child_profiles", "parent_profiles", "child_parent_links", "care_providers", "care_events")
+        val TABLES = listOf("child_profiles", "parent_profiles", "child_parent_links", "care_providers", "care_events", "baby_book_pages")
         val MAGIC = byteArrayOf(0x42, 0x41, 0x42, 0x59, 0x42, 0x4B, 0x31)
     }
 }

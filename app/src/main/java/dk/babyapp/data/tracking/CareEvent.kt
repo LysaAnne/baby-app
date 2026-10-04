@@ -31,6 +31,7 @@ data class CareEventEntity(
     val endedAt: Long? = null,
     val runningSince: Long? = null,
     val activeSide: BreastSide? = null,
+    @androidx.room.ColumnInfo(defaultValue = "0") val nippleShield: Boolean = false,
     val breastfeedingIssue: BreastfeedingIssue? = null,
     val leftSeconds: Long = 0,
     val rightSeconds: Long = 0,
@@ -46,7 +47,10 @@ data class CareEventEntity(
     val settlingMethod: String = "",
     val awakenings: Int? = null,
     val sleepQuality: SleepQuality? = null,
+    @androidx.room.ColumnInfo(defaultValue = "0") val nursingContinued: Boolean = false,
+    @androidx.room.ColumnInfo(defaultValue = "''") val timerSegmentShields: String = "",
     val timerSegments: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val timerSegmentSides: String = "",
     val measurementType: MeasurementType? = null,
     val measurementValue: Double? = null,
     val measurementUnit: String = "",
@@ -93,6 +97,8 @@ data class CareEventEntity(
 }
 
 fun CareEventEntity.startSegment(at: Long): CareEventEntity = copy(
+    timerSegmentShields = (segmentIntervals().indices.map { shieldForInterval(it).toString() } + nippleShield.toString()).joinToString(";"),
+    timerSegmentSides = (segmentIntervals().indices.map { timerSegmentSides.split(';').getOrNull(it).orEmpty() } + if (type == CareEventType.Breastfeeding) activeSide?.name.orEmpty() else "").joinToString(";"),
     timerSegments = (timerSegments.takeIf { it.isNotBlank() }?.plus(";") ?: "") + "$at-",
 )
 
@@ -106,3 +112,5 @@ fun CareEventEntity.segmentIntervals(): List<Pair<Long, Long?>> = timerSegments.
     val start = parts.firstOrNull()?.toLongOrNull() ?: return@mapNotNull null
     start to parts.getOrNull(1)?.toLongOrNull()
 }
+
+fun CareEventEntity.shieldForInterval(index: Int): Boolean = timerSegmentShields.split(';').getOrNull(index)?.toBooleanStrictOrNull() ?: nippleShield

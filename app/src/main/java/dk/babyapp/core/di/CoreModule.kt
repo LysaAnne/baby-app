@@ -66,8 +66,24 @@ abstract class CoreModule {
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "baby_app.db")
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
-                .addMigrations(MIGRATION_17_18)
+                .addMigrations(MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                 .build()
+
+        internal val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE care_events ADD COLUMN timerSegmentShields TEXT NOT NULL DEFAULT ''") }
+        }
+
+        internal val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE care_events ADD COLUMN nippleShield INTEGER NOT NULL DEFAULT 0") }
+        }
+
+        internal val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE care_events ADD COLUMN nursingContinued INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE care_events ADD COLUMN timerSegmentSides TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE TABLE IF NOT EXISTS baby_book_pages (childId TEXT NOT NULL, pageId TEXT NOT NULL, answersJson TEXT NOT NULL, photosJson TEXT NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(childId, pageId), FOREIGN KEY(childId) REFERENCES child_profiles(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+            }
+        }
 
         internal val MIGRATION_17_18 = object : Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) {

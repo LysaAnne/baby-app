@@ -41,6 +41,8 @@ import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.data.tracking.ActivityType
 import dk.babyapp.data.tracking.closeSegment
 import dk.babyapp.data.tracking.startSegment
+import dk.babyapp.domain.switchNursingSide
+import dk.babyapp.domain.resumeNursing
 import dk.babyapp.domain.accrueUntil
 import dk.babyapp.domain.overlapsSleep
 import dk.babyapp.tracking.TimerNotificationController
@@ -73,6 +75,7 @@ data class AppUiState(
     val parentLinks: List<ChildParentLink> = emptyList(),
     val careProviders: List<CareProvider> = emptyList(),
     val careEvents: List<CareEventEntity> = emptyList(),
+    val bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     val colorProfiles: List<ColorProfile> = emptyList(),
 ) {
     val activeChild: ChildProfile?
@@ -96,6 +99,7 @@ class AppViewModel @Inject constructor(
     private val timerNotifications: TimerNotificationController,
     private val colorProfileRepository: ColorProfileRepository,
     private val backupService: EncryptedBackupService? = null,
+    private val bookRepository: dk.babyapp.data.book.BabyBookRepository? = null,
     private val reminderScheduler: DailyReminderScheduler? = null,
 ) : ViewModel() {
     private val colorProfileJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
@@ -113,9 +117,12 @@ class AppViewModel @Inject constructor(
         profilesRepository.careProviders,
         careEventRepository.events,
         colorProfileRepository.profiles,
-    ) { base, careProviders, careEvents, colorProfiles ->
-        base.copy(loaded = true, careProviders = careProviders, careEvents = careEvents, colorProfiles = colorProfiles)
+        bookRepository?.pages ?: kotlinx.coroutines.flow.flowOf(emptyList()),
+    ) { base, careProviders, careEvents, colorProfiles, bookPages ->
+        base.copy(loaded = true, bookPages = bookPages, careProviders = careProviders, careEvents = careEvents, colorProfiles = colorProfiles)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
+
+    suspend fun saveBookPage(page: dk.babyapp.data.book.BabyBookPage) { requireNotNull(bookRepository).save(page) }
 
     fun completeOnboarding(
         settings: OnboardingSettings,
@@ -188,10 +195,12 @@ class AppViewModel @Inject constructor(
 
     fun photoFile(fileName: String?): File? = fileName?.let(photoStore::file)?.takeIf(File::exists)
 
+    fun updateDefaultNippleShield(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateDefaultNippleShield(enabled) }
+
     fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch {
         stopExistingTimer(childId)
         val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side).startSegment(now)
+        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side, nippleShield = preferencesRepository.preferences.first().defaultNippleShield).startSegment(now)
         careEventRepository.save(event); timerNotifications.show(event.id)
     }
 
@@ -237,15 +246,26 @@ class AppViewModel @Inject constructor(
 
     fun switchBreastSide(event: CareEventEntity) = viewModelScope.launch {
         val now = System.currentTimeMillis()
-        val accrued = event.accrueUntil(now)
-        careEventRepository.save(accrued.copy(activeSide = if (event.activeSide == BreastSide.Left) BreastSide.Right else BreastSide.Left, runningSince = if (event.runningSince != null) now else null))
+        careEventRepository.save(event.switchNursingSide(now))
+    }
+
+    fun resumeBreastfeeding(event: CareEventEntity, side: BreastSide, onResult: (Boolean) -> Unit) = viewModelScope.launch {
+        val saved = careEventRepository.get(event.id)
+        val now = System.currentTimeMillis()
+        if (saved == null || saved.type != CareEventType.Breastfeeding || saved.deletedAt != null || saved.endedAt == null || saved.endedAt > now || careEventRepository.activeForChild(saved.childId) != null) {
+            onResult(false)
+        } else {
+            careEventRepository.save(saved.resumeNursing(side, now))
+            timerNotifications.show(saved.id)
+            onResult(true)
+        }
     }
 
     fun stopTimer(event: CareEventEntity, amountMl: Int? = null, onComplete: (CareEventEntity) -> Unit = {}) = viewModelScope.launch {
         val now = System.currentTimeMillis()
         val accrued = event.accrueUntil(now).closeSegment(now)
         val completed = accrued.copy(
-            isDraft = true,
+            isDraft = !event.nursingContinued,
             endedAt = now,
             runningSince = null,
             pumpedAmountMl = amountMl ?: event.pumpedAmountMl,
@@ -253,7 +273,7 @@ class AppViewModel @Inject constructor(
         )
         careEventRepository.save(completed)
         timerNotifications.hide()
-        onComplete(completed)
+        onComplete(careEventRepository.get(completed.id) ?: completed)
     }
 
     fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String) =
@@ -307,8 +327,10 @@ class AppViewModel @Inject constructor(
     }
 
     fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
+        val current = careEventRepository.get(event.id)
+        val changedDuringEdit = event.type == CareEventType.Breastfeeding && current != null && current.updatedAt != event.updatedAt
         val overlaps = overlapsSleep(event, state.value.careEvents)
-        if (overlaps) onResult(false) else { careEventRepository.save(event.copy(isDraft = false)); onResult(true) }
+        if (overlaps || changedDuringEdit) onResult(false) else { careEventRepository.save(event.copy(isDraft = false)); onResult(true) }
     }
     fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch {
         careEventRepository.softDelete(event)

@@ -75,12 +75,18 @@ fun TimelineScreen(
     onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
+    onResumeBreastfeeding: (CareEventEntity, BreastSide, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
+    dashboardMetrics: List<dk.babyapp.data.preferences.DashboardMetric> = dk.babyapp.data.preferences.DashboardMetric.defaults,
     quickFilters: List<String> = dk.babyapp.data.preferences.AppPreferences().journalQuickFilters,
     onUpdateQuickFilters: (List<String>) -> Unit = {},
     medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
 ) {
     var typeFilters by remember { mutableStateOf(emptySet<String>()) }
     var editQuickFilters by remember { mutableStateOf(false) }
+    var resumeEvent by remember { mutableStateOf<CareEventEntity?>(null) }
+    var resumeError by remember { mutableStateOf(false) }
+    var resuming by remember { mutableStateOf(false) }
+    var overviewDate by remember { mutableStateOf<LocalDate?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
     var addKind by remember { mutableStateOf<AddKind?>(null) }
@@ -147,12 +153,27 @@ fun TimelineScreen(
                         Text("${if (date !in collapsedDays) "▾" else "▸"} ${date.format(DateTimeFormatter.ofPattern("EEEE d. MMMM yyyy"))}", style = MaterialTheme.typography.titleMedium)
                     }
                 }
+                item(key = "overview-$date") { TextButton(onClick = { overviewDate = date }) { Text("Vis dagsoversigt") } }
                 if (date !in collapsedDays) items(dayEvents, key = { it.id }) { event ->
-                    EventCard(event, expandAll = expandAllRecords, onEdit = { editing = event }, onDelete = { deleting = event })
+                    EventCard(event, expandAll = expandAllRecords, onEdit = { editing = event }, onDelete = { deleting = event }, onResume = { resumeEvent = event })
                 }
             }
         }
     }
+    resumeEvent?.let { event -> AlertDialog(onDismissRequest = { if (!resuming) resumeEvent = null }, title = { Text("Fortsæt amning") }, text = {
+        Column { Text("Et nyt interval starter nu på samme registrering. Pausen tæller ikke med.")
+            Row { BreastSide.entries.forEach { side -> TextButton(enabled = !resuming, onClick = {
+                resuming = true
+                onResumeBreastfeeding(event, side) { success -> resuming = false; resumeEvent = null; resumeError = !success }
+            }) { Text(if (side == BreastSide.Left) "Venstre" else "Højre") } } }
+        }
+    }, confirmButton = {}, dismissButton = { TextButton(enabled = !resuming, onClick = { resumeEvent = null }) { Text("Annuller") } }) }
+    if (resumeError) AlertDialog(onDismissRequest = { resumeError = false }, title = { Text("Amningen kunne ikke fortsættes") }, text = { Text("Afslut først en eventuel aktiv timer for barnet, og prøv igen.") }, confirmButton = { TextButton(onClick = { resumeError = false }) { Text("OK") } })
+    overviewDate?.let { date -> AlertDialog(onDismissRequest = { overviewDate = null }, title = { Text("Dagsoversigt") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            DailyOverview(dk.babyapp.domain.eventsForDay(events.filter { it.childId == activeChildId }, date), dashboardMetrics, date)
+        }
+    }, confirmButton = { TextButton(onClick = { overviewDate = null }) { Text("Luk") } }) }
     if (filtersOpen) AlertDialog(
         onDismissRequest = { filtersOpen = false },
         title = { Text("Filtrér journalen") },
@@ -210,7 +231,10 @@ fun TimelineScreen(
     }
     if (addKind == AddKind.Bottle) BottleDialog({ addKind = null }) { time, content, offered, consumed, notes -> activeChildId?.let { onAddBottle(it, time, content, offered, consumed, notes) }; addKind = null }
     if (addKind == AddKind.Diaper) DiaperDialog({ addKind = null }) { time, type, color, consistency, observation, notes -> activeChildId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; addKind = null }
-    if (addKind == AddKind.Breastfeeding) ManualTimerDialog(CareEventType.Breastfeeding, { addKind = null }) { type, start, end, side, amount, notes -> activeChildId?.let { onAddManualTimer(it, type, start, end, side, amount, notes) }; addKind = null }
+    if (addKind == AddKind.Breastfeeding && activeChildId != null) {
+        val now = remember { System.currentTimeMillis() }
+        EditEventDialog(remember { CareEventEntity(childId = activeChildId, type = CareEventType.Breastfeeding, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, activeSide = BreastSide.Left, timerSegments = "${now - 600_000}-$now", timerSegmentSides = "Left") }, { addKind = null }, ::saveAdded)
+    }
     if (addKind == AddKind.Pumping && activeChildId != null) { val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = activeChildId, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, pumpingMethod = "Maskine") }, { addKind = null }, ::saveAdded) }
     if (addKind == AddKind.Measurement) MeasurementDialog(MeasurementType.Weight, { addKind = null }) { time, timeSpecified, type, value, unit, notes -> activeChildId?.let { onAddMeasurement(it, time, timeSpecified, type, value, unit, notes) }; addKind = null }
     if (addKind == AddKind.Activity) ActivityDialog(null, { addKind = null }) { start, end, type, notes -> activeChildId?.let { onAddActivity(it, start, end, type, notes) }; addKind = null }
@@ -231,8 +255,8 @@ fun TimelineScreen(
         dismissButton = { TextButton(onClick = { deleting = null }) { Text("Annuller") } },
     ) }
     if (overlapError) AlertDialog(
-        onDismissRequest = { overlapError = false }, title = { Text("Søvnen overlapper") },
-        text = { Text("Der findes allerede søvn i dette tidsrum.") },
+        onDismissRequest = { overlapError = false }, title = { Text("Registreringen kunne ikke gemmes") },
+        text = { Text("Søvntider må ikke overlappe. Hvis ammetimeren er ændret imens, skal du lukke redigeringen og åbne den igen.") },
         confirmButton = { Button(onClick = { overlapError = false }) { Text("OK") } },
     )
     if (selectChildError) AlertDialog(

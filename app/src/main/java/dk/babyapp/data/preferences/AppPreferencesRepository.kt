@@ -20,6 +20,7 @@ interface AppPreferencesRepository {
     suspend fun updateInsightDashboardMetrics(metrics: List<String>)
     suspend fun markGettingStartedSeen()
     suspend fun updateQuickActionCategoryOrder(order: List<String>)
+    suspend fun updateDefaultNippleShield(enabled: Boolean)
     suspend fun updateJournalQuickFilters(filters: List<String>)
     suspend fun updateHiddenQuickActions(hidden: Set<String>)
     suspend fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>)

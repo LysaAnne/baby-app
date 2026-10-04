@@ -13,11 +13,12 @@ import dk.babyapp.data.tracking.CareEventDao
 import dk.babyapp.data.tracking.CareEventEntity
 
 @Database(
-    entities = [ChildProfileEntity::class, ParentProfileEntity::class, ChildParentLink::class, CareProviderEntity::class, CareEventEntity::class],
-    version = 18,
+    entities = [ChildProfileEntity::class, ParentProfileEntity::class, ChildParentLink::class, CareProviderEntity::class, CareEventEntity::class, dk.babyapp.data.book.BabyBookPage::class],
+    version = 21,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun babyBookDao(): dk.babyapp.data.book.BabyBookDao
     abstract fun childProfileDao(): ChildProfileDao
     abstract fun parentProfileDao(): ParentProfileDao
     abstract fun careProviderDao(): CareProviderDao

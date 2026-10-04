@@ -297,9 +297,9 @@ Implemented ahead of the full stage: reusable-provider health visits, vaccinatio
 
 ---
 
-## Stage 8 — Danish information guide and urgent help
+## Stage 8 — Danish information guide and urgent help (deferred)
 
-**Status:** `[ ] Not started`
+**Status:** Deferred by the 2026-09-30 request to replace Guide with Barnets bog. The original proposed scope below remains unimplemented.
 
 **Outcome:** Parents receive reviewed, age-appropriate guidance and can quickly find the correct route to professional help.
 
@@ -656,3 +656,51 @@ For any scope change, update the feature descriptions, affected stages, acceptan
 - Breastfeeding buttons use Venstre/Højre.
 - Code-based design review: clarified the Journal add action, made filter reset visible, preserved theme icons and consistent button text size, and cached history grouping during UI interactions. Phone visual QA remains pending.
 - Further design follow-up: unify hard-coded Danish UI text with localized resources and check long labels/large system fonts across forms and charts on device.
+
+### Delivered follow-up — Barnets bog and nursing history (2026-09-30)
+
+- [x] Replace Guide with eight first-year book chapters, month 1–12 pages, editable texts/measurements and photos, per-child storage, explicit save/discard behavior and completion indicators.
+- [x] Export the entire saved book as editable UTF-8 text plus photos in a ZIP. Print-layout PDF is not part of this delivery; reduced app copies do not replace photo originals.
+- [x] Non-destructive Room 18→19 migration; book included in encrypted backup and old backups supported.
+- [x] Record/show side on each new breastfeeding interval, including switches via notifications. Preserve old intervals without inventing missing sides.
+- [x] Continue completed breastfeeding from Journal on the same record, exclude the gap, block conflicts and preserve existing history when closing the stopped-session editor.
+- [x] Refine the breast silhouette in the daily overview.
+- [x] Verification: debug build, 47 unit tests, 13 distinct targeted emulator tests; visual inspection of chapter and editor screens on Pixel_8.
+- [ ] Physical-phone acceptance check for long book entries, photo import/export, and continued feeding across lock/relaunch.
+
+### Delivered follow-up — 2026-10-03
+
+- [x] Topic-specific book questions and concrete writing ideas, preserving old answers and export content.
+- [x] Short nursing interval labels with minutes and necessary date context.
+- [x] Optional nipple shield, persisted through non-destructive migration 19→20.
+- [x] Per-interval time/side editing and removal, including correcting an active interval's start; recalculate totals and reject overlap/future times and stale saves.
+- [x] Shared daily summaries on the home screen with date arrows and per-date in Journal, including midnight splitting.
+- [x] Debug build, 54 unit tests, 18 distinct targeted emulator tests passed.
+- [ ] Physical-phone checks of active interval correction, large text in the new editor, and saved book prompts.
+
+### Ammebrik per interval — 2026-10-04
+
+- The active nursing timer has a direct Ammebrik checkbox, independent of Hold skærmen tændt. Changing it while running updates only the current interval; it no longer splits the interval (revised 2026-10-04). While paused, only the next interval's selection changes.
+- Journal shows med/uden ammebrik on each interval; the interval editor has a separate checkbox for each interval. Side switches and pause/resume retain the selected status.
+- Non-destructive Room 20→21 migration adds interval shield history. Existing session-wide shield settings are retained as the fallback for historical intervals. Editing only shield flags preserves legacy durations and unknown sides.
+- Verified: debug build, 57 unit tests and 12 distinct targeted emulator tests passed (migration and registration UI). Phone check: toggle during nursing, pause and toggle, resume, then inspect and edit individual interval flags in Journal.
+
+### Book navigation and nursing controls — 2026-10-04 follow-up
+
+- Filled Alle kapitler buttons appear at the top and bottom of chapter lists and page editors. Returning resets the chapter list to the top; unsaved page edits still require confirmation before discarding.
+- Removed Annuller from the nursing timer. Ret intervaller is a separate outlined button, apart from the Ammebrik checkbox.
+- Toggling Ammebrik updates the current running interval without changing its times, duration or side, and without creating a new interval. Completed intervals remain unchanged; toggling while paused changes the next interval's setting.
+- The quick-registration breastfeeding card has a persistent Ammebrik preference. New nursing timers read this saved default, including their first interval. The preference is stored in DataStore; this follow-up requires no new database migration.
+- Verification: debug build, 58 unit tests and 9 distinct targeted emulator tests passed. Includes no-split shield changes, saved default selection and both book buttons protecting unsaved text. Physical-phone testing remains pending.
+
+### Compact feeding labels — 2026-10-04
+
+- Daily feeding summaries show the latest nursing interval time and side on the small last-record line, e.g. `Sidst: 11:09 - V`, including historical dates. Minutes remain separate. Unknown sides are omitted.
+- Journal intervals show Ammebrik only when used. Removed the redundant Amning heading above quick-registration controls.
+
+### Compact active timer and Today navigation — 2026-10-04
+
+- Active timers can be collapsed to their heading, elapsed time and essential controls, then expanded again. The choice is retained for the active timer.
+- Pause/resume uses accessible icon-only buttons. Nursing keeps side switching available while collapsed.
+- Tapping the Today navigation tab scrolls the daily screen to the top. Existing records and timer data are unchanged.
+- Verified: debug build and 10 targeted emulator UI tests passed (6 registration controls, 4 navigation). Physical-phone checks remain manual: collapse/expand a running timer, pause/resume and switch side, then scroll Today down and tap its tab to return to the top.

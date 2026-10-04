@@ -85,7 +85,7 @@ The main app uses five destinations:
 1. **Today** — current status, running timers, quick actions, recent events, totals, and reminders.
 2. **Timeline** — a chronological record with filtering, editing, deletion, and manual entry.
 3. **Insights** — feeding, sleep, diaper, health, and growth summaries.
-4. **Guide** — age-specific information, Danish healthcare milestones, safety guidance, and official sources.
+4. **Barnets bog** — per-child chapters, first-year monthly pages, milestones, stories, measurements, pictures, and editable text/image export.
 5. **Family** — child profiles, caregivers, customization, privacy, export, backup, and app settings.
 
 A persistent add action provides access to all record types. The selected child must always be clearly visible.
@@ -276,9 +276,9 @@ The app should include the Danish preventive child examinations at approximately
 
 The app must not imply synchronization with MinSundhed, sundhed.dk, a GP, or a hospital unless an official integration is implemented.
 
-### Information guide
+### Information guide (deferred)
 
-The guide will be organized by age and situation instead of being one large encyclopedia.
+The Guide tab was replaced by Barnets bog on 2026-09-30. The following information-guide ideas are deferred and are not implemented in the book. A future guide would be organized by age and situation.
 
 Topics may include:
 
@@ -703,3 +703,55 @@ The first technical-cleanup pass separates event-card presentation, shared track
 - Breastfeeding buttons use Venstre/Højre.
 - Code-based design review: clarified the Journal add action, made filter reset visible, preserved theme icons and consistent button text size, and cached history grouping during UI interactions. Phone visual QA remains pending.
 - Further design follow-up: unify hard-coded Danish UI text with localized resources and check long labels/large system fonts across forms and charts on device.
+
+### Barnets bog and nursing history — 2026-09-30
+
+- Barnets bog replaces Guide. Eight chapters cover pregnancy, birth, homecoming, months 1–12, first milestones, personality/family, the world at birth, and the first birthday. Each child has an independent book.
+- Pages accept optional multiline text, dates, measurements/descriptions and up to 12 pictures. Birth facts can fill empty fields from the child profile. Save persists a page; leaving an edited page asks before discarding changes.
+- Export creates a ZIP containing UTF-8 `Barnets bog.txt` and referenced images, suitable for copying into a photo-book tool. This is editable content, not a print-layout PDF. Stored pictures are reduced JPEG copies (up to 1024 px); retain originals for printing.
+- Room migration 18→19 adds the book table (child-delete cascade), per-interval nursing sides, and a continued-session flag without replacing existing records. The book is included in encrypted backup; older backups without book/side fields still restore.
+- Every new nursing side switch closes the previous interval and opens the next, including notification controls. Journal details show each date/time interval and side. Old intervals whose side was never stored are explicitly marked unknown.
+- Journal → expand a completed nursing record → Fortsæt amning → choose side: starts a new interval on the same record. The gap is excluded from active time. An active/paused timer for that child blocks continuation. Stopping a continued session keeps it saved even if the details editor is cancelled.
+- Recorded nursing intervals are preserved when editing metadata. Since 2026-10-03, each interval can also be edited separately, including its breast side, or removed; an active interval can have its start corrected.
+- Verification: debug build, 47 unit tests, and 13 distinct targeted emulator tests passed (migration, backup including legacy files, registration editing, book save/cancel and journal sides/resume). Chapter list and editor visually checked on Pixel_8. Physical-phone testing is pending.
+
+Phone checks: switch breast twice, pause/resume and inspect intervals; stop/save then continue from Journal and confirm the gap is excluded; fill/reopen a book page, switch child, and export/unzip the book.
+
+### Book prompts, editable nursing and historical summaries — 2026-10-03
+
+- Story pages now use topic-specific questions (family, pregnancy, birth, homecoming, milestones, memories and letters), with extra fields for concrete details. Existing answers, including old generic story fields, remain visible and included in export.
+- Nursing intervals use compact clock ranges with minutes and side. Dates appear when an interval crosses midnight or belongs to another day than the registration.
+- Nursing records have an optional Ammebrik checkbox in the shared manual/stopped/active editor. Room migration 19→20 adds `nippleShield` with a false default without replacing existing data.
+- Edit each interval's start/end and side or delete it. Active start times can move backwards; the clock keeps running. Saved side totals are recalculated from the remaining intervals, excluding pauses. Invalid/future/overlapping times are rejected. Changed legacy intervals require known sides; unchanged legacy totals are retained. Removing the running interval pauses the timer; removing all intervals keeps a zero-duration record until explicitly deleted.
+- An active card has Ret intervaller / ammebrik; Journal permits editing active nursing too. Saving rejects stale edits if another action changed the nursing record while the editor was open.
+- Daily overview has previous/next-day arrows and a return-to-today action. Each Journal date has Vis dagsoversigt, showing the complete day's totals independently of journal filters. Both views share the same component and selected dashboard fields. Timer intervals spanning midnight are split at local-day boundaries; pauses and drafts are excluded.
+- Verification: debug build, 54 unit tests and 18 distinct targeted emulator tests passed, including interval edits/deletion, ammebrik, data migrations, backup, book save/cancel and matching values between previous-day and Journal summaries. Physical-phone checks remain pending.
+
+Phone checks: correct an active nursing start; stop and edit/delete a side interval; select Ammebrik and reopen the record; compare yesterday's summary with Journal; open an existing book page and confirm both older text and the new questions are available.
+
+### Ammebrik per interval — 2026-10-04
+
+- The active nursing timer has a direct Ammebrik checkbox, independent of Hold skærmen tændt. Changing it while running updates only the current interval; it no longer splits the interval (revised 2026-10-04). While paused, only the next interval's selection changes.
+- Journal shows med/uden ammebrik on each interval; the interval editor has a separate checkbox for each interval. Side switches and pause/resume retain the selected status.
+- Non-destructive Room 20→21 migration adds interval shield history. Existing session-wide shield settings are retained as the fallback for historical intervals. Editing only shield flags preserves legacy durations and unknown sides.
+- Verified: debug build, 57 unit tests and 12 distinct targeted emulator tests passed (migration and registration UI). Phone check: toggle during nursing, pause and toggle, resume, then inspect and edit individual interval flags in Journal.
+
+### Book navigation and nursing controls — 2026-10-04 follow-up
+
+- Filled Alle kapitler buttons appear at the top and bottom of chapter lists and page editors. Returning resets the chapter list to the top; unsaved page edits still require confirmation before discarding.
+- Removed Annuller from the nursing timer. Ret intervaller is a separate outlined button, apart from the Ammebrik checkbox.
+- Toggling Ammebrik updates the current running interval without changing its times, duration or side, and without creating a new interval. Completed intervals remain unchanged; toggling while paused changes the next interval's setting.
+- The quick-registration breastfeeding card has a persistent Ammebrik preference. New nursing timers read this saved default, including their first interval. The preference is stored in DataStore; this follow-up requires no new database migration.
+- Verification: debug build, 58 unit tests and 9 distinct targeted emulator tests passed. Includes no-split shield changes, saved default selection and both book buttons protecting unsaved text. Physical-phone testing remains pending.
+
+### Compact feeding labels — 2026-10-04
+
+- Daily feeding summaries show the latest nursing interval time and side on the small last-record line, e.g. `Sidst: 11:09 - V`, including historical dates. Minutes remain separate. Unknown sides are omitted.
+- Journal intervals show Ammebrik only when used. Removed the redundant Amning heading above quick-registration controls.
+
+### Compact active timer and Today navigation — 2026-10-04
+
+- Active timers can be collapsed to their heading, elapsed time and essential controls, then expanded again. The choice is retained for the active timer.
+- Pause/resume uses accessible icon-only buttons. Nursing keeps side switching available while collapsed.
+- Tapping the Today navigation tab scrolls the daily screen to the top. Existing records and timer data are unchanged.
+- Verified: debug build and 10 targeted emulator UI tests passed (6 registration controls, 4 navigation). Physical-phone checks remain manual: collapse/expand a running timer, pause/resume and switch side, then scroll Today down and tap its tab to return to the top.
