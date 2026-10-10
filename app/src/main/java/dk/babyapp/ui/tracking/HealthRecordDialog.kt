@@ -86,11 +86,11 @@ fun HealthRecordDialog(
                     officialKey = key
                     danishVaccinationTemplates.firstOrNull { it.key == key }?.let { template -> vaccine = template.vaccineName; dose = template.dose }
                 }
-                OutlinedTextField(vaccine, { vaccine = it }, label = { Text("Vaccine *") })
-                OutlinedTextField(dose, { dose = it }, label = { Text("Dosis") })
-                OutlinedTextField(batch, { batch = it }, label = { Text("Batchnummer") })
-                OutlinedTextField(site, { site = it }, label = { Text("Injektionssted") })
-                OutlinedTextField(reactions, { reactions = it }, label = { Text("Reaktioner") })
+                RegistrationTextField(vaccine, { vaccine = it }, label = { Text("Vaccine *") })
+                RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
+                RegistrationTextField(batch, { batch = it }, label = { Text("Batchnummer") })
+                RegistrationTextField(site, { site = it }, label = { Text("Injektionssted") })
+                RegistrationTextField(reactions, { reactions = it }, label = { Text("Reaktioner") })
             } else {
                 val selectedTemplate = danishPreventiveExaminationTemplates.firstOrNull { it.key == officialKey }
                 SelectionDropdown(
@@ -109,15 +109,15 @@ fun HealthRecordDialog(
                         listOf<String?>(null).map { it to "Ingen valgt" } + providers.map { it.id as String? to it.name },
                     ) { id -> providerId = id; providerName = providers.firstOrNull { it.id == id }?.name.orEmpty() }
                 }
-                OutlinedTextField(providerName, { providerName = it; providerId = null }, label = { Text("Behandler") })
-                OutlinedTextField(title, { title = it }, label = { Text("Titel") })
-                OutlinedTextField(reason, { reason = it }, label = { Text("Årsag til besøget") })
-                OutlinedTextField(observations, { observations = it }, label = { Text("Observationer og målinger") })
-                OutlinedTextField(advice, { advice = it }, label = { Text("Råd og aftaler") })
-                OutlinedTextField(questions, { questions = it }, label = { Text("Spørgsmål") })
-                OutlinedTextField(followUp, { followUp = it }, label = { Text("Opfølgning") })
+                RegistrationTextField(providerName, { providerName = it; providerId = null }, label = { Text("Behandler") })
+                RegistrationTextField(title, { title = it }, label = { Text("Titel") })
+                RegistrationTextField(reason, { reason = it }, label = { Text("Årsag til besøget") })
+                RegistrationTextField(observations, { observations = it }, label = { Text("Observationer og målinger") })
+                RegistrationTextField(advice, { advice = it }, label = { Text("Råd og aftaler") })
+                RegistrationTextField(questions, { questions = it }, label = { Text("Spørgsmål") })
+                RegistrationTextField(followUp, { followUp = it }, label = { Text("Opfølgning") })
             }
-            OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = onDismiss) { Text("Annuller") }
@@ -141,7 +141,7 @@ fun HealthRecordDialog(
 internal fun <T> SelectionDropdown(label: String, value: String, options: List<Pair<T, String>>, onSelected: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
+        RegistrationTextField(
             value = value,
             onValueChange = {},
             readOnly = true,

@@ -13,6 +13,7 @@ data class AppPreferences(
     val showDiaperQuickAction: Boolean = true,
     val hasSeenGettingStarted: Boolean = false,
     val dashboardMetrics: List<DashboardMetric> = DashboardMetric.defaults,
+    val bookRemindersEnabled: Boolean = true,
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderHour: Int = 20,
     val dailyReminderMinute: Int = 0,
@@ -29,7 +30,7 @@ enum class QuickAction(val label: String, val category: String) {
     Diaper("Ble", "Ble"), Nap("Lur", "Søvn"), Night("Nattesøvn", "Søvn"),
     Weight("Vægt", "Mål"), Height("Højde", "Mål"), HeadCircumference("Hovedomkreds", "Mål"), Temperature("Temperatur", "Mål"),
     HealthVisit("Sundhedsbesøg", "Sundhed"), Vaccination("Vaccination", "Sundhed"), Medicine("Medicin", "Sundhed"), HealthNote("Helbredsnotat", "Sundhed"),
-    SolidFood("Måltid / smagsprøve", "Fast føde"), TummyTime("Mavetid", "Diverse"), Activity("Anden aktivitet", "Diverse"),
+    SolidFood("Måltid / smagsprøve", "Fast føde"), TummyTime("Mavetid", "Diverse"), Bath("Bad", "Diverse"), Play("Leg", "Diverse"), OutdoorTime("Udetid", "Diverse"), Activity("Andet", "Diverse"),
 }
 
 fun orderedQuickActionCategories(saved: List<String>): List<String> {

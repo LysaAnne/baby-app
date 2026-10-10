@@ -1,5 +1,9 @@
 package dk.babyapp.ui.navigation
 
+import androidx.navigation.toRoute
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Modifier
+
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
@@ -58,13 +62,13 @@ import dk.babyapp.data.tracking.DiaperColor
 import dk.babyapp.data.tracking.DiaperConsistency
 import dk.babyapp.ui.tracking.TodayScreen
 import dk.babyapp.ui.tracking.TimelineScreen
-import dk.babyapp.ui.insights.InsightsScreen
 import dk.babyapp.data.tracking.SleepQuality
 import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.data.tracking.ActivityType
 import java.time.LocalDate
 import dk.babyapp.domain.shouldShowDueDateReminder
+import dk.babyapp.domain.ageLabel
 
 internal fun shouldReturnToTodayAfterProfileSave(
     profilesWereEmpty: Boolean,
@@ -75,6 +79,8 @@ internal fun shouldReturnToTodayAfterProfileSave(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BabyAppNavigation(
+    bookTarget: dk.babyapp.reminders.BookNotificationTarget? = null,
+    onBookTargetHandled: () -> Unit = {},
     profiles: List<ChildProfile>,
     activeChild: ChildProfile?,
     onSelectChild: (String) -> Unit,
@@ -97,13 +103,13 @@ fun BabyAppNavigation(
     colorProfiles: List<ColorProfile> = emptyList(),
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
     onResumeBreastfeeding: (CareEventEntity, BreastSide, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
-    onStartPumping: (String) -> Unit = {},
+    onStartPumping: (String, String) -> Unit = { _, _ -> },
     onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onStartActivity: (String, ActivityType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onToggleTimer: (CareEventEntity) -> Unit = {},
     onSwitchSide: (CareEventEntity) -> Unit = {},
     onStopTimer: (CareEventEntity, Int?, (CareEventEntity) -> Unit) -> Unit = { _, _, _ -> },
-    onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit = { _, _, _, _, _, _ -> },
+    onAddBottle: (String, Long, BottleContent, Int?, Int?, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
@@ -119,10 +125,10 @@ fun BabyAppNavigation(
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onUpdateMedicines: (List<dk.babyapp.data.medicine.MedicinePlan>) -> Unit = {},
+    onUpdateBookReminders: (Boolean) -> Unit = {},
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit = { _, _, _ -> },
     createEncryptedBackup: suspend (CharArray) -> ByteArray = { byteArrayOf() },
     restoreEncryptedBackup: suspend (ByteArray, CharArray) -> Unit = { _, _ -> },
-    onUpdateInsightDashboardMetrics: (List<String>) -> Unit = {},
     onCreateDeveloperTestFamily: (() -> Unit) -> Unit = { it() },
     onCreateDeveloperPaletteChildren: (() -> Unit) -> Unit = { it() },
     onSaveColorProfile: (ColorProfile) -> Unit = {},
@@ -136,11 +142,20 @@ fun BabyAppNavigation(
     var todayScrollRequest by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
-    val activeTimer = careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
-    var keepTimerAwake by androidx.compose.runtime.saveable.rememberSaveable(activeTimer?.id) { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(bookTarget, profiles) {
+        bookTarget?.let { target ->
+            if (profiles.any { it.id == target.childId } && dk.babyapp.data.book.babyBookTemplates.any { it.id == target.pageId }) {
+                onSelectChild(target.childId)
+                navController.navigate(BookPageDestination(target.childId, target.pageId))
+            }
+            onBookTargetHandled()
+        }
+    }
+    val activeTimers = careEvents.filter { it.endedAt == null && it.deletedAt == null }
+    var keepTimerAwake by androidx.compose.runtime.saveable.rememberSaveable(activeTimers.isNotEmpty()) { androidx.compose.runtime.mutableStateOf(false) }
     val timerView = androidx.compose.ui.platform.LocalView.current
-    androidx.compose.runtime.DisposableEffect(timerView, activeTimer?.runningSince, keepTimerAwake) {
-        timerView.keepScreenOn = keepTimerAwake && activeTimer?.runningSince != null
+    androidx.compose.runtime.DisposableEffect(timerView, activeTimers.any { it.runningSince != null }, keepTimerAwake) {
+        timerView.keepScreenOn = keepTimerAwake && activeTimers.any { it.runningSince != null }
         onDispose { timerView.keepScreenOn = false }
     }
     val visibleEvents = careEvents.filterNot { it.isDraft || it.deletedAt != null }
@@ -161,11 +176,17 @@ fun BabyAppNavigation(
                                 contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
                             ),
                         ) {
-                            Column {
+                            Row(modifier = Modifier.weight(1f), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
                                 Text(
+                                    modifier = Modifier.weight(1f),
                                     text = activeChild?.let { "${it.avatar.symbol} ${it.name}" } ?: stringResource(R.string.no_active_child),
                                     style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 )
+                                activeChild?.let { child ->
+                                    Text(child.ageLabel(), modifier = Modifier.weight(1.2f), style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+                                }
                             }
                             Icon(Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.switch_child))
                         }
@@ -198,7 +219,7 @@ fun BabyAppNavigation(
         bottomBar = {
             NavigationBar {
                 AppDestination.topLevel.forEach { destination ->
-                    val selected = currentDestination?.hasRoute(destination::class) == true
+                    val selected = currentDestination?.hasRoute(destination::class) == true || (destination == AppDestination.Guide && currentDestination?.hasRoute<BookPageDestination>() == true)
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
@@ -286,14 +307,10 @@ fun BabyAppNavigation(
                     onDelete = onDeleteCareEvent,
                 )
             }
-            composable<AppDestination.Insights> {
-                InsightsScreen(
-                    child = activeChild,
-                    events = visibleEvents,
-                    preferences = preferences,
-                    onUpdateDashboardMetrics = onUpdateInsightDashboardMetrics,
-                    contentPadding = contentPadding,
-                )
+            composable<BookPageDestination> { entry ->
+                val target = entry.toRoute<BookPageDestination>()
+                dk.babyapp.ui.book.BabyBookScreen(child = profiles.firstOrNull { it.id == target.childId }, pages = bookPages, contentPadding = contentPadding,
+                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected, initialPageId = target.pageId)
             }
             composable<AppDestination.Guide> {
                 dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
@@ -340,6 +357,7 @@ fun BabyAppNavigation(
         preferences = preferences,
         activeChild = activeChild,
         careEvents = careEvents,
+        onUpdateBookReminders = onUpdateBookReminders,
         onUpdateDailyReminder = onUpdateDailyReminder,
         createEncryptedBackup = createEncryptedBackup,
         restoreEncryptedBackup = restoreEncryptedBackup,

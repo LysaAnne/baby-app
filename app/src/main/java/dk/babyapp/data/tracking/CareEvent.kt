@@ -8,7 +8,7 @@ import java.util.UUID
 enum class CareEventType { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Measurement, Activity, HealthVisit, Vaccination, SolidFood }
 enum class BreastSide { Left, Right }
 enum class BreastfeedingIssue { PainfulLatch, SoreNipples, CrackedNipples, Engorgement, BlockedDuct, MastitisSymptoms, Other }
-enum class BottleContent { BreastMilk, Formula, Water, Other }
+enum class BottleContent { BreastMilk, Formula, Mixed, Water, Other }
 enum class DiaperType { Wet, Dirty, Both, Dry }
 enum class DiaperColor { Yellow, Brown, Green, Black, Red, White, Other }
 enum class DiaperConsistency { Watery, Loose, Soft, Formed, Hard, Mucous }
@@ -39,6 +39,7 @@ data class CareEventEntity(
     val amountConsumedMl: Int? = null,
     val pumpedAmountMl: Int? = null,
     val bottleContent: BottleContent? = null,
+    @androidx.room.ColumnInfo(defaultValue = "''") val bottleMixRatio: String = "",
     val diaperType: DiaperType? = null,
     val diaperColor: DiaperColor? = null,
     val diaperConsistency: DiaperConsistency? = null,

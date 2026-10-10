@@ -305,6 +305,7 @@ fun SettingsDialog(
     preferences: AppPreferences,
     activeChild: ChildProfile?,
     careEvents: List<CareEventEntity>,
+    onUpdateBookReminders: (Boolean) -> Unit,
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit,
     createEncryptedBackup: suspend (CharArray) -> ByteArray,
     restoreEncryptedBackup: suspend (ByteArray, CharArray) -> Unit,
@@ -341,7 +342,7 @@ fun SettingsDialog(
                 MeasurementUnits.entries.forEach { units ->
                     FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
                 }
-                OutlinedButton(onClick = { reminderSettingsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Daglig påmindelse") }
+                OutlinedButton(onClick = { reminderSettingsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Notifikationer") }
                 OutlinedButton(onClick = { dataManagementOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Eksport og backup") }
                 if (BuildConfig.DEBUG) {
                     OutlinedButton(onClick = { developerToolsOpen = true }, modifier = Modifier.fillMaxWidth()) {
@@ -408,7 +409,7 @@ fun SettingsDialog(
         onImport = importColorProfiles,
         onDismiss = { palettePreviewOpen = false },
     )
-    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder) { reminderSettingsOpen = false }
+    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders) { reminderSettingsOpen = false }
     if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup) { dataManagementOpen = false }
 }
 

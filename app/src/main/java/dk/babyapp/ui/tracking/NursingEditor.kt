@@ -16,6 +16,8 @@ import dk.babyapp.domain.*
 
 @Composable
 internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(event.id) { while (event.endedAt == null) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
     var intervals by remember(event.id) { mutableStateOf(event.nursingIntervals()) }
     var notes by remember(event.id) { mutableStateOf(event.notes) }
     var issue by remember(event.id) { mutableStateOf(event.breastfeedingIssue) }
@@ -28,7 +30,7 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                     Text("Ret tid og brystside for hvert interval. Pauser tæller ikke med. Et igangværende interval fortsætter, mens du redigerer.")
                     intervals.forEachIndexed { index, interval ->
                         Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Interval ${index + 1}${if (interval.end == null) " · kører" else ""}", style = MaterialTheme.typography.titleMedium)
+                            Text("Interval ${index + 1} · ${((interval.end ?: now) - interval.start).coerceAtLeast(0) / 60000} min${if (interval.end == null) " · kører" else ""}", style = MaterialTheme.typography.titleMedium)
                             Text("Start")
                             DateTimeFields(interval.start) { time -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(start = time) }; error = null }
                             if (interval.end != null) { Text("Slut"); DateTimeFields(interval.end) { time -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(end = time) }; error = null } }
@@ -39,7 +41,7 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                     }
                     if (intervals.isEmpty()) Text("Alle intervaller er fjernet. Gem giver 0 minutters amning. Du kan annullere for at beholde dem.")
                     SelectionDropdown("Gener", issue?.displayLabel() ?: "Ingen angivet", listOf<BreastfeedingIssue?>(null).map { it to "Ingen angivet" } + BreastfeedingIssue.entries.map { it as BreastfeedingIssue? to it.displayLabel() }) { issue = it }
-                    OutlinedTextField(notes, { notes = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Noter") })
+                    RegistrationTextField(notes, { notes = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Noter") })
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

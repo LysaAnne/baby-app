@@ -37,3 +37,14 @@ fun lastNursingInterval(events: List<CareEventEntity>): Pair<Long, BreastSide?>?
     }.maxByOrNull { it.first }
 
 fun lastNursingSide(events: List<CareEventEntity>): BreastSide? = lastNursingInterval(events)?.second
+
+/** Side totals for an already day-sliced event; unknown historical sides are not guessed. */
+fun nursingSideSeconds(event: CareEventEntity, side: BreastSide): Long {
+    val intervals = event.segmentIntervals()
+    if (intervals.isEmpty()) return if (side == BreastSide.Left) event.leftSeconds else event.rightSeconds
+    val sides = event.timerSegmentSides.split(';')
+    return intervals.mapIndexed { index, (start, end) ->
+        if (sides.getOrNull(index) != side.name) 0L
+        else (minOf(end ?: System.currentTimeMillis(), event.endedAt ?: System.currentTimeMillis()) - maxOf(start, event.startedAt)).coerceAtLeast(0) / 1000
+    }.sum()
+}

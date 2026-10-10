@@ -56,3 +56,9 @@ fun CareEventEntity.changeNippleShield(enabled: Boolean, now: Long): CareEventEn
     if (flags.isNotEmpty()) flags[flags.lastIndex] = enabled
     return copy(nippleShield = enabled, timerSegmentShields = flags.joinToString(";"))
 }
+
+/** At most two independent timer types per child; paused timers still occupy a slot. */
+fun canStartTimer(events: List<CareEventEntity>, childId: String, type: CareEventType): Boolean {
+    val active = events.filter { it.childId == childId && it.endedAt == null && it.deletedAt == null && !it.isDraft }
+    return active.size < 2 && active.none { it.type == type }
+}

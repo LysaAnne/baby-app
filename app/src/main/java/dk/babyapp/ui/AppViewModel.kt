@@ -1,5 +1,6 @@
 package dk.babyapp.ui
 
+import kotlinx.coroutines.sync.withLock
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -195,24 +196,31 @@ class AppViewModel @Inject constructor(
 
     fun photoFile(fileName: String?): File? = fileName?.let(photoStore::file)?.takeIf(File::exists)
 
+    fun updateBookReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateBookReminders(enabled) }
+
     fun updateDefaultNippleShield(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateDefaultNippleShield(enabled) }
 
-    fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch {
-        stopExistingTimer(childId)
+    private val timerStartMutex = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun canStartTimer(childId: String, type: CareEventType) =
+        dk.babyapp.domain.canStartTimer(careEventRepository.events.first(), childId, type)
+
+    fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch { timerStartMutex.withLock {
+        if (!canStartTimer(childId, CareEventType.Breastfeeding)) return@withLock
         val now = System.currentTimeMillis()
         val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side, nippleShield = preferencesRepository.preferences.first().defaultNippleShield).startSegment(now)
         careEventRepository.save(event); timerNotifications.show(event.id)
-    }
+    } }
 
-    fun startPumping(childId: String) = viewModelScope.launch {
-        stopExistingTimer(childId)
+    fun startPumping(childId: String, method: String = "") = viewModelScope.launch { timerStartMutex.withLock {
+        if (!canStartTimer(childId, CareEventType.Pumping)) return@withLock
         val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = now, runningSince = now).startSegment(now)
+        val event = CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = now, runningSince = now, pumpingMethod = method).startSegment(now)
         careEventRepository.save(event); timerNotifications.show(event.id)
-    }
+    } }
 
-    fun startSleep(childId: String, sleepType: SleepType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
-        if (careEventRepository.activeForChild(childId) != null) {
+    fun startSleep(childId: String, sleepType: SleepType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch { timerStartMutex.withLock {
+        if (!canStartTimer(childId, CareEventType.Sleep)) {
             onResult(false)
         } else {
             val now = System.currentTimeMillis()
@@ -221,10 +229,10 @@ class AppViewModel @Inject constructor(
             timerNotifications.show(event.id)
             onResult(true)
         }
-    }
+    } }
 
-    fun startActivity(childId: String, activityType: ActivityType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
-        if (careEventRepository.activeForChild(childId) != null) {
+    fun startActivity(childId: String, activityType: ActivityType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch { timerStartMutex.withLock {
+        if (!canStartTimer(childId, CareEventType.Activity)) {
             onResult(false)
         } else {
             val now = System.currentTimeMillis()
@@ -233,7 +241,7 @@ class AppViewModel @Inject constructor(
             timerNotifications.show(event.id)
             onResult(true)
         }
-    }
+    } }
 
     fun toggleTimer(event: CareEventEntity) = viewModelScope.launch {
         val now = System.currentTimeMillis()
@@ -249,17 +257,17 @@ class AppViewModel @Inject constructor(
         careEventRepository.save(event.switchNursingSide(now))
     }
 
-    fun resumeBreastfeeding(event: CareEventEntity, side: BreastSide, onResult: (Boolean) -> Unit) = viewModelScope.launch {
+    fun resumeBreastfeeding(event: CareEventEntity, side: BreastSide, onResult: (Boolean) -> Unit) = viewModelScope.launch { timerStartMutex.withLock {
         val saved = careEventRepository.get(event.id)
         val now = System.currentTimeMillis()
-        if (saved == null || saved.type != CareEventType.Breastfeeding || saved.deletedAt != null || saved.endedAt == null || saved.endedAt > now || careEventRepository.activeForChild(saved.childId) != null) {
+        if (saved == null || saved.type != CareEventType.Breastfeeding || saved.deletedAt != null || saved.endedAt == null || saved.endedAt > now || !canStartTimer(saved.childId, CareEventType.Breastfeeding)) {
             onResult(false)
         } else {
             careEventRepository.save(saved.resumeNursing(side, now))
             timerNotifications.show(saved.id)
             onResult(true)
         }
-    }
+    } }
 
     fun stopTimer(event: CareEventEntity, amountMl: Int? = null, onComplete: (CareEventEntity) -> Unit = {}) = viewModelScope.launch {
         val now = System.currentTimeMillis()
@@ -276,8 +284,8 @@ class AppViewModel @Inject constructor(
         onComplete(careEventRepository.get(completed.id) ?: completed)
     }
 
-    fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String) =
-        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = offered, amountConsumedMl = consumed, notes = notes)) }
+    fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String, ratio: String = "") =
+        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = offered ?: consumed, amountConsumedMl = consumed, notes = notes, bottleMixRatio = if (content == BottleContent.Mixed) ratio.trim() else "")) }
 
     fun addDiaper(childId: String, time: Long, type: DiaperType, color: DiaperColor?, consistency: DiaperConsistency?, observation: String, notes: String, onComplete: (CareEventEntity) -> Unit = {}) =
         viewModelScope.launch {
@@ -531,10 +539,5 @@ class AppViewModel @Inject constructor(
         onComplete()
     }
 
-    private suspend fun stopExistingTimer(childId: String) {
-        careEventRepository.activeForChild(childId)?.let { current ->
-            val now = System.currentTimeMillis()
-            careEventRepository.save(current.accrueUntil(now).closeSegment(now).copy(endedAt = now, runningSince = null))
-        }
-    }
+
 }

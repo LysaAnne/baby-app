@@ -749,9 +749,67 @@ Phone checks: correct an active nursing start; stop and edit/delete a side inter
 - Daily feeding summaries show the latest nursing interval time and side on the small last-record line, e.g. `Sidst: 11:09 - V`, including historical dates. Minutes remain separate. Unknown sides are omitted.
 - Journal intervals show Ammebrik only when used. Removed the redundant Amning heading above quick-registration controls.
 
+### Compact timer defaults and child age — 2026-10-06
+
+- Every new timer starts minimized. Keep-screen-on is available beside elapsed time in both compact and expanded mode, for all timer types.
+- The active child's age appears under their name: days before 14 days, whole weeks until 3 calendar months, whole months until 2 years, then years and whole weeks since their birthday. Expected children show `Ikke født endnu`.
+- No stored tracking data or profile data is changed.
+
 ### Compact active timer and Today navigation — 2026-10-04
 
 - Active timers can be collapsed to their heading, elapsed time and essential controls, then expanded again. The choice is retained for the active timer.
 - Pause/resume uses accessible icon-only buttons. Nursing keeps side switching available while collapsed.
 - Tapping the Today navigation tab scrolls the daily screen to the top. Existing records and timer data are unchanged.
 - Verified: debug build and 10 targeted emulator UI tests passed (6 registration controls, 4 navigation). Physical-phone checks remain manual: collapse/expand a running timer, pause/resume and switch side, then scroll Today down and tap its tab to return to the top.
+
+### Concurrent timers and registration details — 2026-10-10
+
+- Up to two timer types can remain active per child, including paused nursing alongside tummy time. Each timer has independent controls and collapse state; starting another never silently stops an existing timer. Duplicate active types are blocked, and start requests are serialized.
+- Pump selection defaults to the child's latest retained pumping record and is saved when starting, rather than through a delayed UI update.
+- Nursing interval editors display each interval's duration in minutes, updating when times change and while an open interval runs.
+- Bottles support breast milk + formula with an optional free-text ratio (breast milk : formula). Missing offered volume defaults to consumed volume on creation and edit. Journal details retain the ratio.
+- Journal dates have a small Opsummer dag button opening a table of counts and relevant minutes, amounts and details across all registration types, independent of quick filters and dashboard preferences.
+- Room 21→22 adds only the optional bottleMixRatio column with an empty default. Existing records and nursing intervals are preserved; the generic encrypted backup includes the new field.
+- Verification: 64 unit tests and 22 targeted Pixel_8 emulator tests passed, covering independent timer controls, bottle ratio/default amount, interval duration, pump selection, journal summary and migration preservation. Phone check: pause nursing, start/stop tummy time, resume nursing; then check a mixed bottle and Opsummer dag. Physical-phone upgrade and notification behavior remain manual.
+- Final debug build, checkCodeStyle and Android lint passed.
+
+### Journal layout and measured bottle mixtures — 2026-10-10
+
+- Mixed bottles have separate ml fields for breast milk and formula and automatically calculate the reduced ratio. Amounts and ratio are retained in the existing mixture field; older free-text ratios remain unchanged until the amounts are edited. No database migration is required.
+- Journal opens only the date nearest today, with records collapsed. Explicit Udfold/Kollaps controls replace the extra heading. Opsummer dag sits beside the date; quick filters and the More/Clear filter row share the full width. Removed duplicated top inset above Journal.
+- Verified: debug build, checkCodeStyle and 16 targeted emulator tests passed, including automatic 2:1/1:1 calculation, restoring ml fields, nearest-day expansion and collapsed records. Phone check: enter 60/30 ml, reopen the bottle, and check journal filters and date controls.
+
+### Journal polish and precise age — 2026-10-10
+
+- Day summaries include separate left/right nursing minutes, clipped to the selected day and excluding pauses. Unknown historical sides are not assigned to a breast.
+- Journal's manual-registration plus is positioned above bottom navigation. Date headings are left-aligned, larger and semibold; Opsummer dag is a discreet text button. Journal controls use theme colors and centered labels.
+- Child age appears beside the name: days for newborns, weeks/days before three months, years/months/weeks/days before two years, then years/months/days. Calendar boundaries and leap birthdays are preserved.
+- Removed recent entries from Today; all registration history remains in Journal.
+- Verified: debug build, checkCodeStyle, 65 unit tests and 7 navigation emulator tests passed. Includes side totals across midnight, calendar-age boundaries and the visible Journal plus opening manual registration. Phone check: inspect the name/age row, themed controls and side totals on a day with nursing on both sides.
+
+### Customization and Baby Book reminders — 2026-10-10
+
+- Dashboard customization uses separate outlined cards and accessible icon buttons for move/remove/add. Quick-registration sections have a one-tap hide/show button; hiding a section hides all its actions, including Health. Showing it restores all actions; individual actions can then be adjusted.
+- Removed the Overblik/Insights tab, navigation route and screen. Tracking data, export calculations and saved preferences remain available for future use.
+- Baby Book reminders run Monday/Wednesday/Friday at 20:00 local time, choosing a random empty age-eligible page across children and avoiding immediate repeats. Text or photos count as a started page and prevent reminders. A separate notification is scheduled on each monthly anniversary from months 1–12, with calendar month-end handling.
+- Birthday and year-retrospective pages wait until age one; first Christmas, New Year and Easter wait until the child's first occurrence. Post-birth pages wait for a recorded birth, and late-pregnancy prompts wait until four weeks before the due date. Other undated prompts are suggestions, not claims that a milestone has happened.
+- Uses inexact Android alarms, reschedules after reboot/time-zone/time changes and profile edits, deduplicates delivered slots and monthly milestones, and respects notification permission/channel settings. Android battery restrictions may delay delivery. Channel settings are accessible from Barnets bog.
+- Notifications deep-link to the correct child's exact page on cold or warm launch. Existing saved pages are untouched; opening a notification pushes a separate screen so prior unsaved editor state is not replaced.
+- Verification: 69 unit tests and 24 distinct targeted emulator tests passed after updating the removed-tab expectation and scoping the deep-link assertion to the editor dialog. Coverage includes date eligibility/month ends/holidays, hiding a whole section, dashboard reorder/removal, correct child/page navigation and existing editor safeguards. Real-device alarm delivery, reboot and battery restrictions still require a phone check.
+- Final debug build, checkCodeStyle and lint completed successfully; the Journal plus remained visible in its final targeted emulator check.
+
+### Measurement charts and registration consistency — 2026-10-10
+
+- Hidden quick-registration sections use short Vis/Skjul labels and a grey card. Manual registration uses shared, categorized cards matching quick-registration categories, with separate measurement choices.
+- Registration text/dropdown/date fields use white backgrounds and dark text, including with dark color profiles.
+- Measurement graphs open from the Mål quick-registration heading and measurement entries in Journal. Weight, height and head circumference are time-based line charts; temperature uses bars with a reference band and color legend. Shared week/month/6-month/year/all/custom filters apply to all four graphs. Details expose exact timestamps and values; drafts/deleted/other-child records are excluded, units normalized and unsupported units omitted.
+- Temperature reference: 36.5–37.5°C (rectal), up to 37.9°C in the evening; ≥38°C fever. Method is not stored, so colors are explicitly indicative rather than diagnostic. Source: https://www.sst.dk/-/media/Udgivelser/2020/Smitsomme-sygdomme-hos-boern-og-unge/Smitsomme-sygdomme-hos-boern-og-unge.ashx and https://www.sundhed.dk/borger/patienthaandbogen/boern/symptomer/feber-hos-smaaboern/
+- Removed the nipple-shield checkbox from quick registration. Changing it in the running timer saves the default for the next nursing session without splitting intervals.
+- Settings → Notifikationer now includes a persistent Baby Book switch. Disabling cancels scheduled book alarms and existing book notifications; reboot receivers respect the stored setting. The existing system-channel setting remains available from the book.
+- Measurements without a recorded time are plotted at the middle of their date and their detail labels show only the date. Verified: 74 unit tests and 24 distinct targeted emulator tests passed, including graph access from both screens, period/custom controls, notification setting, grouped manual menu and nursing-shield default updates without interval changes.
+
+### Individual activity buttons — 2026-10-10
+
+- Diverse has separate Mavetid, Bad, Leg, Udetid and Andet buttons in quick registration and both manual-registration menus. Quick buttons start the selected activity timer; manual buttons preselect the corresponding activity in the editor. Existing Activity preference identity is retained for Andet.
+
+- Validation: assembleDebug and checkCodeStyle passed; focused Pixel_8 test passed for all five quick-action callbacks (semantics invocation) and all five manual selections/saves from both Today and Journal. Physical-device touch behavior was not verified.

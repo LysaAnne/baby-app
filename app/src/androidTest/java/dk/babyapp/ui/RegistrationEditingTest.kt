@@ -15,6 +15,86 @@ import org.junit.Test
 class RegistrationEditingTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun bookRemindersCanBeDisabledInNotificationSettings() {
+        var enabled = true
+        compose.setContent { MaterialTheme { dk.babyapp.ui.settings.ReminderSettingsDialog(dk.babyapp.data.preferences.AppPreferences(bookRemindersEnabled = true), { _, _, _ -> }, { enabled = it }, {}) } }
+        compose.onNodeWithContentDescription("Bogpåmindelser").performClick()
+        compose.runOnIdle { assertFalse(enabled) }
+    }
+
+    @Test fun chartsOfferAllPeriodsAndCustomDates() {
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", {}) } }
+        compose.onNodeWithText("Vægt (kg)").assertIsDisplayed()
+        compose.onNodeWithText("En måned").performClick()
+        compose.onNodeWithText("Al tid").performClick()
+        compose.onNodeWithText("Al tid").performClick()
+        compose.onNodeWithText("Valgfri periode").performClick()
+        compose.onNodeWithText("Fra ", substring = true).assertIsDisplayed()
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(5)
+        compose.onNodeWithText("Temperatur (°C)").assertIsDisplayed()
+    }
+
+    @Test fun customizationCanHideWholeSectionAndReorderFields() {
+        var hidden = emptySet<String>()
+        compose.setContent { MaterialTheme {
+            dk.babyapp.ui.tracking.AllQuickActionsDialog(emptySet(), emptyList(), {}) { value, _ -> hidden = value }
+        } }
+        compose.onAllNodesWithText("Skjul").onFirst().performClick()
+        compose.onNodeWithContentDescription("Fjern Amning").assertDoesNotExist()
+        compose.onNodeWithText("Gem").performClick()
+        compose.runOnIdle { assertTrue(dk.babyapp.data.preferences.QuickAction.entries.filter { it.category == "Madning" }.all { it.name in hidden }) }
+    }
+
+    @Test fun dashboardIconButtonsReorderAndRemoveFields() {
+        var saved = emptyList<dk.babyapp.data.preferences.DashboardMetric>()
+        compose.setContent { MaterialTheme {
+            dk.babyapp.ui.tracking.DashboardMetricDialog(listOf(dk.babyapp.data.preferences.DashboardMetric.Feeding, dk.babyapp.data.preferences.DashboardMetric.Diapers), {}) { saved = it }
+        } }
+        compose.onNodeWithContentDescription("Flyt felt 1 ned").performClick()
+        compose.onNodeWithContentDescription("Fjern felt 2").performScrollTo().performClick()
+        compose.onNodeWithText("Gem").performClick()
+        compose.runOnIdle { assertEquals(listOf(dk.babyapp.data.preferences.DashboardMetric.Diapers), saved) }
+    }
+
+    @Test fun mixtureAmountsAreRestoredAndRecalculated() {
+        var ratio by androidx.compose.runtime.mutableStateOf("60 ml + 30 ml (2:1)")
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.BottleRatioField(ratio) { ratio = it } } }
+        compose.onNodeWithText("Modermælk (ml)").assertTextContains("60")
+        compose.onNodeWithText("Erstatning (ml)").performTextReplacement("60")
+        compose.runOnIdle { assertEquals("60 ml + 60 ml (1:1)", ratio) }
+    }
+
+    @Test fun bottleCanSaveMixtureAndDefaultOfferedAmount() {
+        var savedRatio = ""
+        var savedOffered: Int? = null
+        compose.setContent { MaterialTheme {
+            dk.babyapp.ui.tracking.BottleDialog({}) { _, content, offered, _, _, ratio ->
+                assertEquals(BottleContent.Mixed, content); savedRatio = ratio; savedOffered = offered
+            }
+        } }
+        compose.onNodeWithText("Modermælk").performClick()
+        compose.onNodeWithText("Modermælk + erstatning").performClick()
+        compose.onNodeWithText("Modermælk (ml)").performScrollTo().performTextInput("60")
+        compose.onNodeWithText("Erstatning (ml)").performScrollTo().performTextInput("30")
+        compose.onNodeWithText("Spist (ml)").performScrollTo().performTextInput("90")
+        compose.onNodeWithText("Gem").performClick()
+        compose.runOnIdle { assertEquals("60 ml + 30 ml (2:1)", savedRatio); assertEquals(90, savedOffered) }
+    }
+
+    @Test fun pumpDialogStartsWithLastMethod() {
+        var method = ""
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.SelectionStartPumpDialog({}, "Manuel pumpe") { method = it } } }
+        compose.onNodeWithText("Manuel pumpe").assertExists()
+        compose.onNodeWithText("Start").performClick()
+        compose.runOnIdle { assertEquals("Manuel pumpe", method) }
+    }
+
+    @Test fun nursingEditorShowsIntervalMinutes() {
+        val event = CareEventEntity(childId = "child", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 121000, timerSegments = "1000-121000", timerSegmentSides = "Left", leftSeconds = 120)
+        compose.setContent { MaterialTheme { EditEventDialog(event, {}) {} } }
+        compose.onNodeWithText("Interval 1 · 2 min").assertExists()
+    }
+
     @Test fun cancelDoesNotSaveDiaper() {
         var saves = 0
         var dismissed = false
@@ -62,21 +142,23 @@ class RegistrationEditingTest {
     @Test fun activeTimerHasDirectShieldToggleWithoutChangingKeepAwake() {
         var event by androidx.compose.runtime.mutableStateOf(CareEventEntity(childId = "freja", type = CareEventType.Breastfeeding, startedAt = 1000, runningSince = 1000, activeSide = BreastSide.Left).startSegment(1000))
         var awake by androidx.compose.runtime.mutableStateOf(false)
-        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.ActiveTimerCard(event, {}, {}, {}, {}, {}, { current, enabled -> event = current.changeNippleShield(enabled, 61000) }, awake, { awake = it }) } }
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.ActiveTimerCard(event, {}, {}, {}, {}, {}, { current, enabled -> event = current.changeNippleShield(enabled, 61000) }, awake, { awake = it }, minimized = false) } }
         compose.onNodeWithContentDescription("Ammebrik").performClick()
         compose.runOnIdle { assertTrue(event.nippleShield); assertFalse(awake); assertEquals("true", event.timerSegmentShields); assertEquals("1000-", event.timerSegments) }
     }
 
     @Test fun compactTimerKeepsEssentialControls() {
-        var minimized by androidx.compose.runtime.mutableStateOf(false)
+        var minimized by androidx.compose.runtime.mutableStateOf(true)
+        var awake by androidx.compose.runtime.mutableStateOf(false)
         var event by androidx.compose.runtime.mutableStateOf(CareEventEntity(childId = "freja", type = CareEventType.Breastfeeding, startedAt = 1000, activeSide = BreastSide.Left))
         var switches = 0
         var stops = 0
         compose.setContent { MaterialTheme {
-            dk.babyapp.ui.tracking.ActiveTimerCard(event, { event = it.copy(runningSince = System.currentTimeMillis()) }, { switches++ }, { stops++ }, {}, {}, { _, _ -> }, false, {}, minimized = minimized, onMinimizedChange = { minimized = it })
+            dk.babyapp.ui.tracking.ActiveTimerCard(event, { event = it.copy(runningSince = System.currentTimeMillis()) }, { switches++ }, { stops++ }, {}, {}, { _, _ -> }, awake, { awake = it }, minimized = minimized, onMinimizedChange = { minimized = it })
         } }
-        compose.onNodeWithContentDescription("Minimer tæller").performClick()
-        compose.onNodeWithText("Hold skærmen tændt").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Udvid tæller").assertExists()
+        compose.onNodeWithContentDescription("Hold skærmen tændt").performClick()
+        compose.runOnIdle { assertTrue(awake) }
         compose.onNodeWithText("Ret intervaller").assertDoesNotExist()
         compose.onNodeWithText("Fortsæt").assertDoesNotExist()
         compose.onNodeWithContentDescription("Fortsæt").performClick()
@@ -85,6 +167,6 @@ class RegistrationEditingTest {
         compose.onNodeWithText("Stop").performClick()
         compose.runOnIdle { assertEquals(1, switches); assertEquals(1, stops) }
         compose.onNodeWithContentDescription("Udvid tæller").performClick()
-        compose.onNodeWithText("Hold skærmen tændt").assertExists()
+        compose.onNodeWithContentDescription("Hold skærmen tændt").assertExists()
     }
 }

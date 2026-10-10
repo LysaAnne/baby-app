@@ -54,9 +54,9 @@ private fun MedicinePlanEditor(initial: MedicinePlan, onDismiss: () -> Unit, onS
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Medicin og påmindelser") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectionDropdown("Vælg type eller skriv eget navn", draft.name.ifBlank { "Vælg" }, listOf("D-vitamin", "Smertestillende/febernedsættende", "Antibiotika", "Allergimedicin", "Inhalationsmedicin").map { it to it }) { draft = draft.copy(name = it) }
-            OutlinedTextField(draft.name, { draft = draft.copy(name = it) }, label = { Text("Medicinens navn *") })
-            OutlinedTextField(draft.dose, { draft = draft.copy(dose = it) }, label = { Text("Dosis og styrke") })
-            OutlinedTextField(draft.instructions, { draft = draft.copy(instructions = it) }, label = { Text("Vejledning / noter") })
+            RegistrationTextField(draft.name, { draft = draft.copy(name = it) }, label = { Text("Medicinens navn *") })
+            RegistrationTextField(draft.dose, { draft = draft.copy(dose = it) }, label = { Text("Dosis og styrke") })
+            RegistrationTextField(draft.instructions, { draft = draft.copy(instructions = it) }, label = { Text("Vejledning / noter") })
             Row { Checkbox(draft.active, { draft = draft.copy(active = it) }); Text("Aktiv medicin", Modifier.padding(top = 12.dp)) }
             Row { Checkbox(draft.asNeeded, { draft = draft.copy(asNeeded = it, reminders = if (it) false else draft.reminders) }); Text("PN · efter behov", Modifier.padding(top = 12.dp)) }
             if (!draft.asNeeded) {

@@ -3,6 +3,7 @@ package dk.babyapp.ui.tracking
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import dk.babyapp.domain.changeNippleShield
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import android.app.DatePickerDialog
@@ -28,6 +29,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BabyChangingStation
 import androidx.compose.material.icons.outlined.Delete
@@ -112,13 +117,13 @@ fun TodayScreen(
     careProviders: List<CareProvider> = emptyList(),
     onOpenFamily: () -> Unit = {},
     onStartBreastfeeding: (String, BreastSide) -> Unit,
-    onStartPumping: (String) -> Unit,
+    onStartPumping: (String, String) -> Unit,
     onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit,
     onStartActivity: (String, ActivityType, (Boolean) -> Unit) -> Unit,
     onToggleTimer: (CareEventEntity) -> Unit,
     onSwitchSide: (CareEventEntity) -> Unit,
     onStopTimer: (CareEventEntity, Int?, (CareEventEntity) -> Unit) -> Unit,
-    onAddBottle: (String, Long, BottleContent, Int?, Int?, String) -> Unit,
+    onAddBottle: (String, Long, BottleContent, Int?, Int?, String, String) -> Unit,
     onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit,
     onOpenTimeline: () -> Unit,
     onSaveHealthRecord: (CareEventEntity) -> Unit,
@@ -139,7 +144,7 @@ fun TodayScreen(
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
 ) {
     val childEvents = childId?.let { id -> events.filter { it.childId == id && !it.isDraft && it.deletedAt == null } }.orEmpty()
-    val active = childEvents.firstOrNull { it.endedAt == null && it.type in listOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep, CareEventType.Activity) }
+    val active = childEvents.filter { it.endedAt == null && it.type in listOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep, CareEventType.Activity) }
     fun visible(action: QuickAction): Boolean = action.name !in preferences.hiddenQuickActions && when (action) {
         QuickAction.Breastfeeding -> preferences.showBreastfeedingQuickAction
         QuickAction.Bottle -> preferences.showBottleQuickAction
@@ -149,7 +154,9 @@ fun TodayScreen(
     }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(scrollToTopRequest) { if (scrollToTopRequest > 0) listState.scrollToItem(0) }
-    var timerMinimized by androidx.compose.runtime.saveable.rememberSaveable(active?.id) { mutableStateOf(false) }
+    var timerPanelHeight by remember { mutableIntStateOf(0) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val maxTimerHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.6f).dp
     val today = LocalDate.now()
     var overviewDate by remember(childId) { mutableStateOf(today) }
     var dialog by remember { mutableStateOf<EditorKind?>(null) }
@@ -158,10 +165,10 @@ fun TodayScreen(
     var deleteTarget by remember { mutableStateOf<CareEventEntity?>(null) }
     var customizeOpen by remember { mutableStateOf(false) }
     var dashboardCustomizeOpen by remember { mutableStateOf(false) }
+    var chartsOpen by remember { mutableStateOf(false) }
+    var manualActivityType by remember { mutableStateOf(ActivityType.Other) }
     var manualMenuOpen by remember { mutableStateOf(false) }
     var sleepError by remember { mutableStateOf(false) }
-    var pendingPumpMethod by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(active?.id, pendingPumpMethod) { if (active?.type == CareEventType.Pumping && pendingPumpMethod != null) { onSaveHealthRecord(active.copy(pumpingMethod = pendingPumpMethod!!)); pendingPumpMethod = null } }
     var medicineCardOpen by remember { mutableStateOf(false) }
     LaunchedEffect(childId, events) {
         if (editing == null) editing = events.firstOrNull { it.childId == childId && it.isDraft && it.deletedAt == null }
@@ -170,7 +177,7 @@ fun TodayScreen(
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 16.dp, bottom = contentPadding.calculateBottomPadding() + if (active == null) 100.dp else if (timerMinimized) 270.dp else 440.dp, start = 16.dp, end = 16.dp),
+            contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 16.dp, bottom = contentPadding.calculateBottomPadding() + if (active.isEmpty()) 100.dp else with(density) { timerPanelHeight.toDp() } + 94.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
         if (overdueDueDate != null) item {
@@ -213,15 +220,11 @@ fun TodayScreen(
                     "Sundhed" -> Icons.Outlined.HealthAndSafety
                     "Diverse" -> Icons.Outlined.ChildCare
                     else -> Icons.Outlined.Restaurant
-                }, category) {
+                }, category, onChart = if (category == "Mål") ({ chartsOpen = true }) else null) {
                     if (QuickAction.Breastfeeding in actions) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(preferences.defaultNippleShield, onUpdateDefaultNippleShield, modifier = Modifier.semantics { contentDescription = "Ammebrik ved ny amning" })
-                            Text("Ammebrik", style = MaterialTheme.typography.bodySmall)
-                        }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BreastSide.entries.forEach { side ->
-                                QuickButton(sideLabel(side).replaceFirstChar { it.uppercase() }, Modifier.weight(1f), childId != null && active == null) {
+                                QuickButton(sideLabel(side).replaceFirstChar { it.uppercase() }, Modifier.weight(1f), childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, CareEventType.Breastfeeding)) {
                                     childId?.let { onStartBreastfeeding(it, side) }
                                 }
                             }
@@ -242,8 +245,13 @@ fun TodayScreen(
                     actions.filterNot { it == QuickAction.Breastfeeding || it == QuickAction.Diaper }.chunked(2).forEach { row ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { action ->
-                                val timer = action in setOf(QuickAction.Breastfeeding, QuickAction.Pumping, QuickAction.Nap, QuickAction.Night, QuickAction.TummyTime, QuickAction.Activity)
-                                QuickButton(action.label, Modifier.weight(1f), childId != null && (!timer || active == null)) {
+                                val timer = action in setOf(QuickAction.Breastfeeding, QuickAction.Pumping, QuickAction.Nap, QuickAction.Night, QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity)
+                                QuickButton(action.label, Modifier.weight(1f), childId != null && (!timer || dk.babyapp.domain.canStartTimer(childEvents, childId, when (action) {
+                                    QuickAction.Pumping -> CareEventType.Pumping
+                                    QuickAction.Nap, QuickAction.Night -> CareEventType.Sleep
+                                    QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity -> CareEventType.Activity
+                                    else -> CareEventType.Breastfeeding
+                                }))) {
                                     val id = childId ?: return@QuickButton
                                     when (action) {
                                         QuickAction.Breastfeeding -> dialog = EditorKind.StartBreast
@@ -251,7 +259,10 @@ fun TodayScreen(
                                         QuickAction.Nap -> onStartSleep(id, SleepType.Nap) { sleepError = !it }
                                         QuickAction.Night -> onStartSleep(id, SleepType.Night) { sleepError = !it }
                                         QuickAction.TummyTime -> onStartActivity(id, ActivityType.TummyTime) { sleepError = !it }
-                                        QuickAction.Activity -> dialog = EditorKind.StartActivity
+                                        QuickAction.Bath -> onStartActivity(id, ActivityType.Bath) { sleepError = !it }
+                                        QuickAction.Play -> onStartActivity(id, ActivityType.Play) { sleepError = !it }
+                                        QuickAction.OutdoorTime -> onStartActivity(id, ActivityType.OutdoorTime) { sleepError = !it }
+                                        QuickAction.Activity -> onStartActivity(id, ActivityType.Other) { sleepError = !it }
                                         else -> dialog = EditorKind.valueOf(action.name)
                                     }
                                 }
@@ -262,20 +273,13 @@ fun TodayScreen(
                 }
             }
         }
-        if (QuickAction.entries.none { visible(it) && it.category == "Sundhed" }) item {
-            TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Medicinkort") }
-        }
-        item {
-            BabySectionHeader("Seneste", icon = Icons.Outlined.History)
-        }
-        if (childEvents.isEmpty()) item { BabyEmptyState(Icons.Outlined.History, "Ingen registreringer endnu", "Start en hurtig registrering ovenfor, eller tilføj en tidligere hændelse manuelt.") }
-        items(childEvents.take(5), key = { it.id }) { event ->
-            EventCard(event, onEdit = { editing = event }, onDelete = { deleteTarget = event })
-        }
-        if (childEvents.size > 5) item { TextButton(onClick = onOpenTimeline) { Text("Vis flere") } }
+
         }
         if (childId != null) FloatingActionButton(onClick = { manualMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = contentPadding.calculateBottomPadding() + 16.dp)) { Icon(Icons.Outlined.Add, "Manuel registrering") }
-        active?.let { event ->
+        Column(Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = contentPadding.calculateBottomPadding() + 82.dp)
+            .heightIn(max = maxTimerHeight).onSizeChanged { timerPanelHeight = it.height }.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        active.forEach { event -> androidx.compose.runtime.key(event.id) {
+            var timerMinimized by androidx.compose.runtime.saveable.rememberSaveable(event.id) { mutableStateOf(true) }
             ActiveTimerCard(
                 minimized = timerMinimized,
                 onMinimizedChange = { timerMinimized = it },
@@ -285,38 +289,35 @@ fun TodayScreen(
                 onStop = { running ->
                     onStopTimer(running, null) { editing = it }
                 },
-                onShield = { current, enabled -> onUpdate(current.changeNippleShield(enabled, System.currentTimeMillis())) { success -> sleepError = !success } },
+                onShield = { current, enabled -> onUpdate(current.changeNippleShield(enabled, System.currentTimeMillis())) { success -> sleepError = !success; if (success) onUpdateDefaultNippleShield(enabled) } },
                 onEdit = { editing = it },
                 onCancel = onDelete,
                 keepAwake = keepTimerAwake, onKeepAwake = onKeepTimerAwake,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = contentPadding.calculateBottomPadding() + 82.dp),
+
             )
+        } }
         }
     }
 
-    if (manualMenuOpen) AlertDialog(
-        onDismissRequest = { manualMenuOpen = false }, title = { Text("Manuel registrering") },
-        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
-            listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,
-                "Ble" to EditorKind.Diaper, "Søvn" to EditorKind.Sleep, "Mål" to EditorKind.Weight, "Fast føde" to EditorKind.SolidFood,
-                "Medicin" to EditorKind.Medicine, "Sundhedsbesøg" to EditorKind.HealthVisit, "Vaccination" to EditorKind.Vaccination,
-                "Helbredsnotat" to EditorKind.HealthNote, "Diverse" to EditorKind.Activity).forEach { (label, kind) ->
-                TextButton(onClick = { manualMenuOpen = false; dialog = kind }) { Text(label) }
-            }
-        } }, confirmButton = {}, dismissButton = { TextButton(onClick = { manualMenuOpen = false }) { Text("Luk") } },
-    )
+    if (chartsOpen && childId != null) MeasurementChartsDialog(events, childId) { chartsOpen = false }
+    if (manualMenuOpen) ManualRegistrationMenu(
+        listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,
+            "Ble" to EditorKind.Diaper, "Søvn" to EditorKind.Sleep, "Vægt" to EditorKind.Weight, "Højde" to EditorKind.Height, "Hovedomkreds" to EditorKind.HeadCircumference, "Temperatur" to EditorKind.Temperature, "Fast føde" to EditorKind.SolidFood,
+            "Medicin" to EditorKind.Medicine, "Sundhedsbesøg" to EditorKind.HealthVisit, "Vaccination" to EditorKind.Vaccination,
+            "Helbredsnotat" to EditorKind.HealthNote, "Mavetid" to EditorKind.Activity, "Bad" to EditorKind.Activity, "Leg" to EditorKind.Activity, "Udetid" to EditorKind.Activity, "Andet" to EditorKind.Activity).map { (label, kind) -> label to { manualActivityType = manualActivityTypeFor(label); manualMenuOpen = false; dialog = kind } },
+        { manualMenuOpen = false })
     when (dialog) {
         EditorKind.StartBreast -> AlertDialog(onDismissRequest = { dialog = null }, title = { Text("Start amning") },
             text = { Row { BreastSide.entries.forEach { side -> TextButton(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }) { Text(sideLabel(side).replaceFirstChar { it.uppercase() }) } } } },
             confirmButton = {}, dismissButton = { TextButton(onClick = { dialog = null }) { Text("Annuller") } })
-        EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes) }; dialog = null }
+        EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes, ratio -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes, ratio) }; dialog = null }
         EditorKind.Diaper -> DiaperDialog(initialType = selectedDiaperType, onDismiss = { dialog = null; selectedDiaperType = DiaperType.Wet }) { time, type, color, consistency, observation, notes -> childId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; dialog = null; selectedDiaperType = DiaperType.Wet }
         EditorKind.ManualBreastfeeding -> childId?.let { id ->
             val now = remember { System.currentTimeMillis() }
             EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Breastfeeding, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, activeSide = BreastSide.Left, timerSegments = "${now - 600_000}-$now", timerSegmentSides = "Left") }, { dialog = null }) { onSaveHealthRecord(it); dialog = null }
         }
         EditorKind.ManualPumping -> childId?.let { id -> val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600) }, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
-        EditorKind.StartPump -> SelectionStartPumpDialog({ dialog = null }) { method -> childId?.let { id -> onStartPumping(id); pendingPumpMethod = method }; dialog = null }
+        EditorKind.StartPump -> SelectionStartPumpDialog({ dialog = null }, childEvents.filter { it.type == CareEventType.Pumping }.maxByOrNull { it.startedAt }?.pumpingMethod.orEmpty()) { method -> childId?.let { id -> onStartPumping(id, method) }; dialog = null }
         EditorKind.Sleep -> SleepDialog(onDismiss = { dialog = null }) { start, end, type, location, settling, awakenings, quality, notes ->
             childId?.let { onAddSleep(it, start, end, type, location, settling, awakenings, quality, notes) { success -> sleepError = !success } }
             dialog = null
@@ -330,7 +331,7 @@ fun TodayScreen(
         EditorKind.Medicine -> childId?.let { id -> MedicineDialog(id, null, { dialog = null }, preferences.medicines) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.HealthNote -> childId?.let { id -> HealthNoteDialog(id, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartActivity -> StartActivityDialog({ dialog = null }) { type -> childId?.let { onStartActivity(it, type) { success -> sleepError = !success } }; dialog = null }
-        EditorKind.Activity -> childId?.let { id -> ActivityDialog(null, { dialog = null }) { start, end, type, notes -> onAddActivity(id, start, end, type, notes); dialog = null } }
+        EditorKind.Activity -> childId?.let { id -> ActivityDialog(manualActivityType, { dialog = null }) { start, end, type, notes -> onAddActivity(id, start, end, type, notes); dialog = null } }
         EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
@@ -354,7 +355,7 @@ fun TodayScreen(
     if (sleepError) AlertDialog(
         onDismissRequest = { sleepError = false },
         title = { Text("Registreringen kan ikke startes") },
-        text = { Text("Der er en aktiv tæller, overlappende søvn eller en amning, som er ændret imens. Kontrollér tiderne, eller luk redigeringen og åbn den igen.") },
+        text = { Text("Der kan højst være to tællere og én af hver type. Der kan også være overlappende søvn eller en amning, som er ændret imens. Kontrollér tiderne, eller luk redigeringen og åbn den igen.") },
         confirmButton = { Button(onClick = { sleepError = false }) { Text("OK") } },
     )
 }
@@ -422,7 +423,7 @@ private fun DashboardMetric.measurementType() = when (this) {
 }
 
 @Composable
-private fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, onSave: (List<DashboardMetric>) -> Unit) {
+internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, onSave: (List<DashboardMetric>) -> Unit) {
     var selected by remember(current) { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -430,6 +431,7 @@ private fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () 
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Vælg felter, og flyt dem op eller ned for at ændre rækkefølgen.")
             selected.forEachIndexed { index, metric ->
+                androidx.compose.material3.OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SelectionDropdown("Felt ${index + 1}", metric.displayLabel(), DashboardMetric.entries.map { it to it.displayLabel() }) { replacement ->
                     selected = selected.toMutableList().also { updated ->
                         val otherIndex = updated.indexOf(replacement)
@@ -437,13 +439,14 @@ private fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () 
                         updated[index] = replacement
                     }
                 }
-                Row {
-                    TextButton(enabled = index > 0, onClick = { selected = selected.toMutableList().apply { add(index - 1, removeAt(index)) } }) { Text("Flyt op") }
-                    TextButton(enabled = index < selected.lastIndex, onClick = { selected = selected.toMutableList().apply { add(index + 1, removeAt(index)) } }) { Text("Flyt ned") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CustomizationIconButton("Flyt felt ${index + 1} op", Icons.Outlined.ArrowUpward, index > 0) { selected = selected.toMutableList().apply { add(index - 1, removeAt(index)) } }
+                    CustomizationIconButton("Flyt felt ${index + 1} ned", Icons.Outlined.ArrowDownward, index < selected.lastIndex) { selected = selected.toMutableList().apply { add(index + 1, removeAt(index)) } }
+                    CustomizationIconButton("Fjern felt ${index + 1}", Icons.Outlined.Close, selected.size > 1) { selected = selected.filterIndexed { position, _ -> position != index } }
                 }
-                if (selected.size > 1) TextButton(onClick = { selected = selected.filterIndexed { position, _ -> position != index } }) { Text("Fjern felt ${index + 1}") }
+                } }
             }
-            if (selected.size < DashboardMetric.entries.size) TextButton(onClick = { selected = selected + DashboardMetric.entries.first { it !in selected } }) { Text("Tilføj felt") }
+            if (selected.size < DashboardMetric.entries.size) FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { selected = selected + DashboardMetric.entries.first { it !in selected } }) { Icon(Icons.Outlined.Add, null); Text("Tilføj felt") }
         } },
         confirmButton = { Button(onClick = { onSave(selected) }) { Text("Gem") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
@@ -451,7 +454,7 @@ private fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () 
 }
 
 @Composable
-private fun QuickActionCard(icon: ImageVector, title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun QuickActionCard(icon: ImageVector, title: String, onChart: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -459,7 +462,10 @@ private fun QuickActionCard(icon: ImageVector, title: String, content: @Composab
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BabySectionHeader(title, icon)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { BabySectionHeader(title, icon) }
+                if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, "Vis målegrafer") }
+            }
             content()
         }
     }
@@ -468,7 +474,7 @@ private fun QuickActionCard(icon: ImageVector, title: String, content: @Composab
 @Composable private fun QuickButton(text: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) = FilledTonalButton(modifier = modifier, enabled = enabled, onClick = onClick) { Text(text) }
 
 @Composable
-internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = false, onMinimizedChange: (Boolean) -> Unit = {}) {
+internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = true, onMinimizedChange: (Boolean) -> Unit = {}) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.runningSince) { while (event.runningSince != null) { now = System.currentTimeMillis(); delay(1_000) } }
     val elapsed = event.elapsedSeconds(now)
@@ -477,9 +483,13 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
             Text(when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             IconButton(onClick = { onMinimizedChange(!minimized) }) { Icon(if (minimized) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, if (minimized) "Udvid tæller" else "Minimer tæller") }
         }
-        Text(formatDuration(elapsed), style = MaterialTheme.typography.headlineMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(formatDuration(elapsed), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            Checkbox(keepAwake, onKeepAwake, modifier = Modifier.semantics { contentDescription = "Hold skærmen tændt" })
+            Text("Hold skærmen\ntændt", style = MaterialTheme.typography.bodySmall)
+        }
         if (!minimized) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(keepAwake, onKeepAwake); Text("Hold skærmen tændt", style = MaterialTheme.typography.bodySmall); if (event.type != CareEventType.Breastfeeding) TextButton(onClick = { onCancel(event) }) { Text("Annuller") } }
+            if (event.type != CareEventType.Breastfeeding) TextButton(onClick = { onCancel(event) }) { Text("Annuller") }
             if (event.type == CareEventType.Breastfeeding) Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(event.nippleShield, { onShield(event, it) }, modifier = Modifier.semantics { contentDescription = "Ammebrik" }); Text("Ammebrik", style = MaterialTheme.typography.bodySmall)
             }
@@ -508,13 +518,13 @@ internal fun DateTimeFields(value: Long, onChange: (Long) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             Text("Dato *", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
                 DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
             }) { Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value))) }
         }
         Column(Modifier.weight(1f)) {
             Text("Tid *", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
             }) { Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))) }
         }
@@ -527,7 +537,7 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
     val calendar = java.util.Calendar.getInstance().apply { timeInMillis = value }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Dato *", style = MaterialTheme.typography.labelMedium)
-        OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
+        OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
             DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }) { Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value))) }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -536,7 +546,7 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
         }
         if (timeSpecified) {
             Text("Tid", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
             }) { Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))) }
         }
@@ -544,15 +554,17 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable internal fun BottleDialog(onDismiss: () -> Unit, onSave: (Long, BottleContent, Int?, Int?, String) -> Unit) {
+@Composable internal fun BottleDialog(onDismiss: () -> Unit, onSave: (Long, BottleContent, Int?, Int?, String, String) -> Unit) {
+    var ratio by remember { mutableStateOf("") }
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var offered by remember { mutableStateOf("") }; var consumed by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }; var content by remember { mutableStateOf(BottleContent.BreastMilk) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilføj flaske") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeFields(time) { time = it }
         SelectionDropdown("Indhold *", content.displayLabel(), BottleContent.entries.map { it to it.displayLabel() }) { content = it }
-        OutlinedTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") })
-        OutlinedTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") })
-        OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(onClick = { onSave(time, content, offered.toIntOrNull(), consumed.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+        if (content == BottleContent.Mixed) BottleRatioField(ratio) { ratio = it }
+        RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") })
+        RegistrationTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") })
+        RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+    } }, confirmButton = { Button(onClick = { onSave(time, content, offered.toIntOrNull() ?: consumed.toIntOrNull(), consumed.toIntOrNull(), notes, if (content == BottleContent.Mixed) ratio else "") }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable internal fun DiaperDialog(onDismiss: () -> Unit, initialType: DiaperType = DiaperType.Wet, onSave: (Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String) -> Unit) {
@@ -561,7 +573,7 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
         DateTimeFields(time) { time = it }; SelectionDropdown("Type *", type.displayLabel(), DiaperType.entries.map { it to it.displayLabel() }) { type = it }
         SelectionDropdown("Farve", color?.displayLabel() ?: "Ikke angivet", listOf<DiaperColor?>(null).map { it to "Ikke angivet" } + DiaperColor.entries.map { it as DiaperColor? to it.displayLabel() }) { color = it }
         SelectionDropdown("Konsistens", consistency?.displayLabel() ?: "Ikke angivet", listOf<DiaperConsistency?>(null).map { it to "Ikke angivet" } + DiaperConsistency.entries.map { it as DiaperConsistency? to it.displayLabel() }) { consistency = it }
-        DiaperObservationField(observation) { observation = it }; OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+        DiaperObservationField(observation) { observation = it }; RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
     } }, confirmButton = { Button(onClick = { onSave(time, type, color, consistency, observation, notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
@@ -570,8 +582,8 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (type == CareEventType.Breastfeeding) "Manuel amning" else "Manuel pumpning") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Start *"); DateTimeFields(start) { start = it }; Text("Slut *"); DateTimeFields(end) { end = it }
         if (type == CareEventType.Breastfeeding) Row { BreastSide.entries.forEach { TextButton(onClick = { side = it }) { Text(if (side == it) "✓ ${sideLabel(it)}" else sideLabel(it)) } } }
-        if (type == CareEventType.Pumping) OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Mængde (ml)") })
-        OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+        if (type == CareEventType.Pumping) RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Mængde (ml)") })
+        RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
     } }, confirmButton = { Button(enabled = end >= start, onClick = { onSave(type, start, end, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
@@ -595,12 +607,12 @@ internal fun SleepDialog(
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row { SleepType.entries.forEach { option -> TextButton(onClick = { type = option }) { Text(if (type == option) "✓ ${if (option == SleepType.Nap) "Lur" else "Nattesøvn"}" else if (option == SleepType.Nap) "Lur" else "Nattesøvn") } } }
             Text("Start *"); DateTimeFields(start) { start = it }; Text("Slut *"); DateTimeFields(end) { end = it }
-            OutlinedTextField(location, { location = it }, label = { Text("Sovested") })
-            OutlinedTextField(settling, { settling = it }, label = { Text("Puttemetode") })
-            OutlinedTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger") })
+            RegistrationTextField(location, { location = it }, label = { Text("Sovested") })
+            RegistrationTextField(settling, { settling = it }, label = { Text("Puttemetode") })
+            RegistrationTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger") })
             Text("Søvnkvalitet")
             Row { SleepQuality.entries.forEach { option -> TextButton(onClick = { quality = if (quality == option) null else option }) { Text(if (quality == option) "✓ ${option.displayLabel()}" else option.displayLabel()) } } }
-            OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, location, settling, awakenings.toIntOrNull(), quality, notes) }) { Text("Gem") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
@@ -624,8 +636,8 @@ internal fun MeasurementDialog(
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
             SelectionDropdown("Måling *", type.displayLabel(), MeasurementType.entries.map { it to it.displayLabel() }) { type = it }
-            OutlinedTextField(value, { value = it.replace(',', '.').filter { char -> char.isDigit() || char == '.' } }, label = { Text("Værdi (${type.defaultUnit()}) *") })
-            OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+            RegistrationTextField(value, { value = it.replace(',', '.').filter { char -> char.isDigit() || char == '.' } }, label = { Text("Værdi (${type.defaultUnit()}) *") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = value.toDoubleOrNull() != null, onClick = { onSave(time, timeSpecified, type, value.toDouble(), type.defaultUnit(), notes) }) { Text("Gem") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
@@ -651,7 +663,7 @@ internal fun ActivityDialog(
             else Text("Type: ${type.displayLabel()}", style = MaterialTheme.typography.labelLarge)
             Text("Start *"); DateTimeFields(start) { start = it }
             Text("Slut *"); DateTimeFields(end) { end = it }
-            OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, notes) }) { Text("Gem") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
@@ -696,9 +708,9 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
             DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
             if (plans.isNotEmpty()) SelectionDropdown("Fra medicinkort", selectedPlan?.name ?: "Vælg medicin", plans.map { it to "${it.name} · ${it.dose}" }) { plan -> selectedPlan = plan; selection = ownChoice; customName = plan.name; dose = plan.dose }
             SelectionDropdown("Medicin *", selection, common.map { it to it }) { selection = it; selectedPlan = null }
-            if (selection == ownChoice) OutlinedTextField(customName, { customName = it; if (it != selectedPlan?.name) selectedPlan = null }, label = { Text("Navn på medicin *") })
-            OutlinedTextField(dose, { dose = it }, label = { Text("Dosis") })
-            OutlinedTextField(notes, { notes = it }, label = { Text("Noter") })
+            if (selection == ownChoice) RegistrationTextField(customName, { customName = it; if (it != selectedPlan?.name) selectedPlan = null }, label = { Text("Navn på medicin *") })
+            RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = name.isNotBlank(), onClick = {
             onSave((existing ?: CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = time)).copy(
@@ -721,8 +733,8 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
         title = { Text("Nyt helbredsnotat") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
-            OutlinedTextField(title, { title = it }, label = { Text("Titel *") })
-            OutlinedTextField(notes, { notes = it }, label = { Text("Observationer") })
+            RegistrationTextField(title, { title = it }, label = { Text("Titel *") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Observationer") })
         } },
         confirmButton = { Button(enabled = title.isNotBlank(), onClick = {
             onSave(CareEventEntity(childId = childId, type = CareEventType.HealthVisit, startedAt = time, endedAt = time, timeSpecified = timeSpecified, healthVisitType = dk.babyapp.data.tracking.HealthVisitType.Other, healthStatus = dk.babyapp.data.tracking.HealthRecordStatus.Completed, healthTitle = title.trim(), healthObservations = notes))
@@ -777,12 +789,13 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
                 }
                 CareEventType.Bottle -> {
                     SelectionDropdown("Indhold *", draft.bottleContent.displayLabel(), BottleContent.entries.map { it to it.displayLabel() }) { draft = draft.copy(bottleContent = it) }
-                    OutlinedTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") })
-                    OutlinedTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") })
+                    if (draft.bottleContent == BottleContent.Mixed) BottleRatioField(draft.bottleMixRatio) { draft = draft.copy(bottleMixRatio = it) }
+                    RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") })
+                    RegistrationTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") })
                 }
                 CareEventType.Pumping -> {
                     SelectionDropdown("Metode (valgfrit)", draft.pumpingMethod.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { draft = draft.copy(pumpingMethod = it) }
-                    OutlinedTextField(pumped, { pumped = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") })
+                    RegistrationTextField(pumped, { pumped = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") })
                 }
                 CareEventType.Diaper -> {
                     SelectionDropdown("Type *", draft.diaperType.displayLabel(), DiaperType.entries.map { it to it.displayLabel() }) { draft = draft.copy(diaperType = it) }
@@ -793,12 +806,12 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
                 CareEventType.Measurement -> {
                     val type = draft.measurementType ?: MeasurementType.Weight
                     SelectionDropdown("Måling *", type.displayLabel(), MeasurementType.entries.map { it to it.displayLabel() }) { draft = draft.copy(measurementType = it, measurementUnit = it.defaultUnit()) }
-                    OutlinedTextField(value, { value = it.replace(',', '.') }, label = { Text("Værdi (${type.defaultUnit()}) *") })
+                    RegistrationTextField(value, { value = it.replace(',', '.') }, label = { Text("Værdi (${type.defaultUnit()}) *") })
                 }
                 CareEventType.Activity -> SelectionDropdown("Type *", draft.activityType?.displayLabel() ?: "Andet", ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }) { draft = draft.copy(activityType = it) }
                 else -> Unit
             }
-            OutlinedTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter") })
+            RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter") })
         }
     }, confirmButton = { Button(enabled = valid, onClick = {
         val changed = start != event.startedAt || end != event.endedAt
@@ -811,7 +824,8 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
             leftSeconds = if (timed) left else event.leftSeconds, rightSeconds = if (timed) duration - left else event.rightSeconds,
             timerSegments = if (timed && changed) "$start-$end" else event.timerSegments,
             timerSegmentSides = if (timed && changed) draft.activeSide?.name.orEmpty() else event.timerSegmentSides,
-            amountOfferedMl = offered.toIntOrNull(), amountConsumedMl = consumed.toIntOrNull(), pumpedAmountMl = pumped.toIntOrNull(),
+            bottleMixRatio = if (draft.bottleContent == BottleContent.Mixed) draft.bottleMixRatio.trim() else "",
+            amountOfferedMl = offered.toIntOrNull() ?: consumed.toIntOrNull(), amountConsumedMl = consumed.toIntOrNull(), pumpedAmountMl = pumped.toIntOrNull(),
             measurementValue = value.toDoubleOrNull(), activityDurationSeconds = if (event.type == CareEventType.Activity) duration else event.activityDurationSeconds))
     }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }

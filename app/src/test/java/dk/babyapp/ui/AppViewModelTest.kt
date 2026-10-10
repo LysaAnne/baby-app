@@ -54,6 +54,46 @@ class AppViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
+    @Test fun `book reminder preference can be turned off and on`() = runTest(dispatcher) {
+        val preferences = FakePreferencesRepository()
+        val vm = AppViewModel(FakeProfilesRepository(), preferences, FakePhotoStorage(), FakeParentRepository(), FakeCareEventRepository(), FakeTimerNotifications(), FakeColorProfileRepository())
+        vm.updateBookReminders(false); advanceUntilIdle()
+        assertFalse(preferences.items.value.bookRemindersEnabled)
+        vm.updateBookReminders(true); advanceUntilIdle()
+        assertTrue(preferences.items.value.bookRemindersEnabled)
+    }
+
+    @Test fun `two timers run independently and a third cannot replace either`() = runTest(dispatcher) {
+        val events = FakeCareEventRepository()
+        val vm = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        vm.startBreastfeeding("child", dk.babyapp.data.tracking.BreastSide.Left)
+        vm.startActivity("child", dk.babyapp.data.tracking.ActivityType.TummyTime)
+        vm.startPumping("child", "Manuel pumpe")
+        advanceUntilIdle()
+        assertEquals(2, events.items.value.size)
+        val nursing = events.items.value.single { it.type == CareEventType.Breastfeeding }
+        val activity = events.items.value.single { it.type == CareEventType.Activity }
+        vm.toggleTimer(nursing)
+        advanceUntilIdle()
+        assertNull(events.get(nursing.id)?.runningSince)
+        assertEquals(activity, events.get(activity.id))
+        vm.stopTimer(activity)
+        advanceUntilIdle()
+        assertNull(events.get(nursing.id)?.endedAt)
+        vm.startPumping("child", "Manuel pumpe")
+        advanceUntilIdle()
+        assertEquals("Manuel pumpe", events.items.value.single { it.type == CareEventType.Pumping }.pumpingMethod)
+    }
+
+    @Test fun `bottle defaults offered to consumed and preserves mixture`() = runTest(dispatcher) {
+        val events = FakeCareEventRepository()
+        val vm = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        vm.addBottle("child", 1000, dk.babyapp.data.tracking.BottleContent.Mixed, null, 90, "", "2:1")
+        advanceUntilIdle()
+        assertEquals(90, events.items.value.single().amountOfferedMl)
+        assertEquals("2:1", events.items.value.single().bottleMixRatio)
+    }
+
     @Test
     fun `completing onboarding saves profile and active selection`() = runTest(dispatcher) {
         val profiles = FakeProfilesRepository()
@@ -236,9 +276,9 @@ class AppViewModelTest {
         collector.cancel()
     }
     @Test
-    fun `continued nursing remains saved after stopping and rejects active timers`() = runTest(dispatcher) {
+    fun `continued nursing remains saved after stopping and rejects another nursing timer`() = runTest(dispatcher) {
         val original = CareEventEntity(id = "saved", childId = "child", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 6000, leftSeconds = 5, notes = "Bevar mig", timerSegments = "1000-6000", timerSegmentSides = "Left")
-        val other = CareEventEntity(id = "other", childId = "child", type = CareEventType.Sleep, startedAt = 7000)
+        val other = CareEventEntity(id = "other", childId = "child", type = CareEventType.Breastfeeding, startedAt = 7000)
         val events = FakeCareEventRepository().also { it.items.value = listOf(original, other) }
         val viewModel = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
         var success = true
@@ -318,6 +358,7 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
     override suspend fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) {
         items.value = items.value.copy(dashboardMetrics = metrics)
     }
+    override suspend fun updateBookReminders(enabled: Boolean) { items.value = items.value.copy(bookRemindersEnabled = enabled) }
     override suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
         items.value = items.value.copy(dailyReminderEnabled = enabled, dailyReminderHour = hour, dailyReminderMinute = minute)
     }

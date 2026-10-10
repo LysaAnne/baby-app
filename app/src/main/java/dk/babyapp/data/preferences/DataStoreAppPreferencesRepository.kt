@@ -37,6 +37,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
                 ?.mapNotNull { stored -> DashboardMetric.entries.firstOrNull { it.name == stored } }
                 ?.takeIf { it.isNotEmpty() && it.distinct().size == it.size }
                 ?: DashboardMetric.defaults,
+            bookRemindersEnabled = values[BOOK_REMINDERS_ENABLED] ?: true,
             dailyReminderEnabled = values[DAILY_REMINDER_ENABLED] ?: false,
             dailyReminderHour = values[DAILY_REMINDER_HOUR] ?: 20,
             dailyReminderMinute = values[DAILY_REMINDER_MINUTE] ?: 0,
@@ -124,6 +125,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[QUICK_ACTION_CATEGORY_ORDER] = order.joinToString(",") }
     }
 
+    override suspend fun updateBookReminders(enabled: Boolean) {
+        context.appPreferencesDataStore.edit { it[BOOK_REMINDERS_ENABLED] = enabled }
+    }
+
     override suspend fun updateDefaultNippleShield(enabled: Boolean) {
         context.appPreferencesDataStore.edit { it[DEFAULT_NIPPLE_SHIELD] = enabled }
     }
@@ -155,6 +160,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val SHOW_DIAPER = booleanPreferencesKey("show_diaper")
         val GETTING_STARTED_SEEN = booleanPreferencesKey("getting_started_seen")
         val DASHBOARD_METRICS = stringPreferencesKey("dashboard_metrics")
+        val BOOK_REMINDERS_ENABLED = booleanPreferencesKey("book_reminders_enabled")
         val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
         val DAILY_REMINDER_HOUR = intPreferencesKey("daily_reminder_hour")
         val DAILY_REMINDER_MINUTE = intPreferencesKey("daily_reminder_minute")

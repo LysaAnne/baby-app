@@ -16,6 +16,7 @@ interface AppPreferencesRepository {
     suspend fun updateSettings(languageTag: String, region: DanishRegion, units: MeasurementUnits, theme: ThemePreference)
     suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean)
     suspend fun updateDashboardMetrics(metrics: List<DashboardMetric>)
+    suspend fun updateBookReminders(enabled: Boolean)
     suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int)
     suspend fun updateInsightDashboardMetrics(metrics: List<String>)
     suspend fun markGettingStartedSeen()

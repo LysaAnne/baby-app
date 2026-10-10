@@ -1,5 +1,8 @@
 package dk.babyapp.ui.settings
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+
 import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
@@ -53,16 +56,26 @@ import kotlinx.coroutines.launch
 private enum class DataAction { Csv, Pdf, Backup, Restore }
 
 @Composable
-fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int, Int) -> Unit, onDismiss: () -> Unit) {
+fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int, Int) -> Unit, onUpdateBookReminders: (Boolean) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current; var message by remember { mutableStateOf<String?>(null) }; var pendingEnable by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted && pendingEnable) onUpdate(true, preferences.dailyReminderHour, preferences.dailyReminderMinute) else if (!granted) message = "Notifikationstilladelsen blev ikke givet."
         pendingEnable = false
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Daglig påmindelse") }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val bookPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onUpdateBookReminders(true) else message = "Notifikationstilladelsen blev ikke givet."
+    }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Notifikationer") }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("Påmind om registrering"); Text("Androids batterioptimering kan forsinke leveringen.", style = MaterialTheme.typography.bodySmall) }; Switch(preferences.dailyReminderEnabled, { enabled ->
             if (enabled && Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) { pendingEnable = true; permission.launch(Manifest.permission.POST_NOTIFICATIONS) } else onUpdate(enabled, preferences.dailyReminderHour, preferences.dailyReminderMinute)
         }) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text("Barnets bog"); Text("Tre gange om ugen og på månedsdage.", style = MaterialTheme.typography.bodySmall) }
+            Switch(preferences.bookRemindersEnabled, { enabled ->
+                if (enabled && Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) bookPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else onUpdateBookReminders(enabled)
+            }, modifier = Modifier.semantics { contentDescription = "Bogpåmindelser" })
+        }
         if (preferences.dailyReminderEnabled) OutlinedButton(onClick = { TimePickerDialog(context, { _, h, m -> onUpdate(true, h, m) }, preferences.dailyReminderHour, preferences.dailyReminderMinute, true).show() }) { Text("Tidspunkt: %02d:%02d".format(preferences.dailyReminderHour, preferences.dailyReminderMinute)) }
     } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Luk") } })
     message?.let { AlertDialog(onDismissRequest = { message = null }, title = { Text("Påmindelse") }, text = { Text(it) }, confirmButton = { Button(onClick = { message = null }) { Text("OK") } }) }

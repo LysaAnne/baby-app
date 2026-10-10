@@ -51,6 +51,7 @@ internal fun DiaperType?.displayLabel() = when (this) {
 
 internal fun BottleContent?.displayLabel() = when (this) {
     BottleContent.BreastMilk -> "Modermælk"
+    BottleContent.Mixed -> "Modermælk + erstatning"
     BottleContent.Formula -> "Modermælkserstatning"
     BottleContent.Water -> "Vand"
     BottleContent.Other -> "Andet"

@@ -18,8 +18,10 @@ import dk.babyapp.ui.onboarding.OnboardingScreen
 import dk.babyapp.ui.theme.BabyAppTheme
 
 @Composable
-fun BabyApp(viewModel: AppViewModel = viewModel()) {
+fun BabyApp(viewModel: AppViewModel = viewModel(), bookTarget: dk.babyapp.reminders.BookNotificationTarget? = null, onBookTargetHandled: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(state.loaded, state.profiles, state.preferences.bookRemindersEnabled) { if (state.loaded) dk.babyapp.reminders.BookReminderScheduler(context).update(state.profiles, state.preferences.bookRemindersEnabled) }
     val activeTimer = state.careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
     LaunchedEffect(activeTimer?.id) { viewModel.restoreTimerNotification(activeTimer) }
     LaunchedEffect(state.loaded, state.preferences.languageTag) {
@@ -40,6 +42,7 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                 }
                 !state.preferences.onboardingCompleted -> OnboardingScreen(viewModel, state.preferences)
                 else -> BabyAppNavigation(
+                    bookTarget = bookTarget, onBookTargetHandled = onBookTargetHandled,
                     profiles = state.profiles,
                     activeChild = state.activeChild,
                     onSelectChild = viewModel::selectChild,
@@ -84,10 +87,10 @@ fun BabyApp(viewModel: AppViewModel = viewModel()) {
                     onUpdateJournalQuickFilters = viewModel::updateJournalQuickFilters,
                     onUpdateHiddenQuickActions = viewModel::updateHiddenQuickActions,
                     onUpdateMedicines = viewModel::updateMedicines,
+                    onUpdateBookReminders = viewModel::updateBookReminders,
                     onUpdateDailyReminder = viewModel::updateDailyReminder,
                     createEncryptedBackup = viewModel::createEncryptedBackup,
                     restoreEncryptedBackup = viewModel::restoreEncryptedBackup,
-                    onUpdateInsightDashboardMetrics = viewModel::updateInsightDashboardMetrics,
                     onCreateDeveloperTestFamily = viewModel::createDeveloperTestFamily,
                     onCreateDeveloperPaletteChildren = viewModel::createDeveloperPaletteChildren,
                     onSaveColorProfile = { viewModel.saveColorProfile(it) },

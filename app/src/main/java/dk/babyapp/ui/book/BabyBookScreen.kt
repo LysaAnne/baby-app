@@ -35,12 +35,12 @@ import java.util.zip.ZipOutputStream
 
 @Composable
 fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPadding: PaddingValues,
-    onSave: suspend (BabyBookPage) -> Unit, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String) {
+    onSave: suspend (BabyBookPage) -> Unit, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String, initialPageId: String? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val childPages = pages.filter { it.childId == child?.id }
-    var chapter by rememberSaveable(child?.id) { mutableStateOf<String?>(null) }
-    var editingId by rememberSaveable(child?.id) { mutableStateOf<String?>(null) }
+    var chapter by rememberSaveable(child?.id) { mutableStateOf(babyBookTemplates.firstOrNull { it.id == initialPageId }?.chapter) }
+    var editingId by rememberSaveable(child?.id) { mutableStateOf(initialPageId?.takeIf { id -> babyBookTemplates.any { it.id == id } }) }
     var message by remember { mutableStateOf<String?>(null) }
     var exportOpen by remember { mutableStateOf(false) }
     var exporting by remember { mutableStateOf(false) }
@@ -74,6 +74,10 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
             item {
                 Text("${child.name} · det første år", style = MaterialTheme.typography.titleMedium)
                 Text("Skriv lidt ad gangen. Alle felter er frivillige, og kapitlerne kan udfyldes i din egen rækkefølge.")
+                Text("Påmindelser: mandag, onsdag og fredag kl. 20 samt på månedsdage. Kun tomme sider foreslås.", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, dk.babyapp.reminders.BOOK_REMINDER_CHANNEL)) }) { Text("Indstil bogpåmindelser") }
                 OutlinedButton(enabled = !exporting, onClick = { exportOpen = true }) { Text(if (exporting) "Eksporterer…" else "Eksportér hele bogen") }
             }
             if (chapter == null) {

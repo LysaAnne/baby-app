@@ -6,6 +6,18 @@ import org.junit.Test
 import java.time.*
 
 class DailyOverviewTest {
+    @Test fun sideMinutesExcludeOtherDaysAndPauses() {
+        val date = LocalDate.of(2026, 10, 10)
+        val zone = ZoneId.of("Europe/Copenhagen")
+        val midnight = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val event = CareEventEntity(childId = "child", type = CareEventType.Breastfeeding, startedAt = midnight - 60000, endedAt = midnight + 300000,
+            timerSegments = "${midnight - 60000}-${midnight + 60000};${midnight + 180000}-${midnight + 300000}", timerSegmentSides = "Left;Right")
+        val sliced = eventsForDay(listOf(event), date, zone).single()
+        assertEquals(60L, nursingSideSeconds(sliced, BreastSide.Left))
+        assertEquals(120L, nursingSideSeconds(sliced, BreastSide.Right))
+        assertEquals(180L, sliced.elapsedSeconds())
+    }
+
     @Test fun nursingAcrossMidnightExcludesTheGapAndSplitsDays() {
         val zone = ZoneId.of("Europe/Copenhagen")
         val day = LocalDate.of(2026, 10, 2)

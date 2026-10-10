@@ -1,5 +1,8 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.material3.IconButton
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,7 +37,7 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdit: () -> Unit, onDelete: () -> Unit, onResume: (() -> Unit)? = null) {
+internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdit: () -> Unit, onDelete: () -> Unit, onResume: (() -> Unit)? = null, onMeasurements: (() -> Unit)? = null) {
     var expanded by remember(event.id) { mutableStateOf(false) }
     LaunchedEffect(expandAll) { expandAll?.let { expanded = it } }
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
@@ -46,6 +49,7 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
                     Text("${event.recordedAt()}  ·  ${event.summary()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (event.isRunning) Text("Kører nu", color = MaterialTheme.colorScheme.primary)
                 }
+                if (event.type == CareEventType.Measurement && onMeasurements != null) IconButton(onClick = onMeasurements) { Icon(Icons.Outlined.ShowChart, "Vis målegrafer") }
                 Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (expanded) "Fold sammen" else "Vis detaljer")
             }
             if (expanded) {
@@ -83,7 +87,7 @@ internal fun eventTitle(event: CareEventEntity) = when (event.type) {
 internal fun CareEventEntity.details() = when (type) {
     CareEventType.SolidFood -> listOf(foodName, foodTexture, foodAmount, foodReaction, notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Breastfeeding -> listOf("${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}", breastfeedingIssue?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.Bottle -> listOf("${amountConsumedMl ?: 0} af ${amountOfferedMl ?: 0} ml · ${bottleContent.displayLabel()}", notes).filter(String::isNotBlank).joinToString(" · ")
+    CareEventType.Bottle -> listOf("${amountConsumedMl ?: 0} af ${amountOfferedMl ?: amountConsumedMl ?: 0} ml · ${bottleContent.displayLabel()}", bottleMixRatio.takeIf { it.isNotBlank() && bottleContent == dk.babyapp.data.tracking.BottleContent.Mixed }?.let { "Modermælk : erstatning $it" }.orEmpty(), notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Pumping -> listOf(formatDuration(elapsedSeconds()), pumpedAmountMl?.let { "$it ml" }, pumpingMethod, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Diaper -> listOf(diaperColor?.displayLabel(), diaperConsistency?.displayLabel(), observation, notes).filter { !it.isNullOrBlank() }.joinToString(" · ").ifBlank { "Registreret" }
     CareEventType.Sleep -> listOf(formatDuration(elapsedSeconds()), sleepLocation, settlingMethod, awakenings?.let { "$it opvågninger" }, sleepQuality?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
