@@ -23,7 +23,12 @@ data class AppPreferences(
     val journalQuickFilters: List<String> = listOf("Madning · alle", "Ble", "Søvn", "Sundhed · alle"),
     val hiddenQuickActions: Set<String> = emptySet(),
     val medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
+    val measurementChartSettings: MeasurementChartSettings = MeasurementChartSettings(),
+    val lastPumpingMethod: String = "",
 )
+
+@kotlinx.serialization.Serializable
+data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null)
 
 enum class QuickAction(val label: String, val category: String) {
     Breastfeeding("Amning", "Madning"), Bottle("Flaske", "Madning"), Pumping("Pumpning", "Madning"),

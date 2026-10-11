@@ -63,6 +63,9 @@ private enum class AddKind { Breastfeeding, Bottle, Pumping, Diaper, Sleep, Meas
 
 @Composable
 fun TimelineScreen(
+    chartSettings: dk.babyapp.data.preferences.MeasurementChartSettings = dk.babyapp.data.preferences.MeasurementChartSettings(),
+    onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
+    lastPumpingMethod: String = "",
     activeChildId: String?,
     events: List<CareEventEntity>,
     careProviders: List<CareProvider>,
@@ -202,7 +205,7 @@ fun TimelineScreen(
     if (editQuickFilters) JournalQuickFiltersDialog(quickFilters, { editQuickFilters = false; filtersOpen = true }) {
         onUpdateQuickFilters(it); editQuickFilters = false; filtersOpen = true
     }
-    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(events, activeChildId) { chartsOpen = false }
+    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(events, activeChildId, chartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
     if (addMenu) ManualRegistrationMenu(
         listOf("Amning" to AddKind.Breastfeeding, "Flaske" to AddKind.Bottle, "Pumpning" to AddKind.Pumping,
             "Ble" to AddKind.Diaper, "Søvn" to AddKind.Sleep, "Vægt" to AddKind.Measurement, "Højde" to AddKind.Measurement, "Hovedomkreds" to AddKind.Measurement, "Temperatur" to AddKind.Measurement, "Fast føde" to AddKind.SolidFood,
@@ -226,7 +229,7 @@ fun TimelineScreen(
         val now = remember { System.currentTimeMillis() }
         EditEventDialog(remember { CareEventEntity(childId = activeChildId, type = CareEventType.Breastfeeding, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, activeSide = BreastSide.Left, timerSegments = "${now - 600_000}-$now", timerSegmentSides = "Left") }, { addKind = null }, ::saveAdded)
     }
-    if (addKind == AddKind.Pumping && activeChildId != null) { val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = activeChildId, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, pumpingMethod = "Maskine") }, { addKind = null }, ::saveAdded) }
+    if (addKind == AddKind.Pumping && activeChildId != null) PumpingDialog(activeChildId, lastPumpingMethod, { addKind = null }, ::saveAdded)
     if (addKind == AddKind.Measurement) MeasurementDialog(manualMeasurementType, { addKind = null }) { time, timeSpecified, type, value, unit, notes -> activeChildId?.let { onAddMeasurement(it, time, timeSpecified, type, value, unit, notes) }; addKind = null }
     if (addKind == AddKind.Activity) ActivityDialog(manualActivityType, { addKind = null }) { start, end, type, notes -> activeChildId?.let { onAddActivity(it, start, end, type, notes) }; addKind = null }
     editing?.let { event ->

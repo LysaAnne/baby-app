@@ -338,7 +338,11 @@ class AppViewModel @Inject constructor(
         val current = careEventRepository.get(event.id)
         val changedDuringEdit = event.type == CareEventType.Breastfeeding && current != null && current.updatedAt != event.updatedAt
         val overlaps = overlapsSleep(event, state.value.careEvents)
-        if (overlaps || changedDuringEdit) onResult(false) else { careEventRepository.save(event.copy(isDraft = false)); onResult(true) }
+        if (overlaps || changedDuringEdit) onResult(false) else {
+            careEventRepository.save(event.copy(isDraft = false))
+            if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
+            onResult(true)
+        }
     }
     fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch {
         careEventRepository.softDelete(event)
@@ -346,8 +350,10 @@ class AppViewModel @Inject constructor(
     }
     fun saveHealthRecord(event: CareEventEntity, onComplete: () -> Unit = {}) = viewModelScope.launch {
         careEventRepository.save(event)
+        if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
         onComplete()
     }
+    fun updateMeasurementChartSettings(settings: dk.babyapp.data.preferences.MeasurementChartSettings) = viewModelScope.launch { preferencesRepository.updateMeasurementChartSettings(settings) }
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
     }

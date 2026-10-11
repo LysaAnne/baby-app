@@ -3,6 +3,8 @@ package dk.babyapp.data.preferences
 import kotlinx.coroutines.flow.Flow
 
 interface AppPreferencesRepository {
+    suspend fun updateMeasurementChartSettings(settings: MeasurementChartSettings)
+    suspend fun updateLastPumpingMethod(method: String)
     val preferences: Flow<AppPreferences>
     suspend fun updateOnboarding(
         languageTag: String,

@@ -123,6 +123,7 @@ fun BabyAppNavigation(
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
     onUpdateJournalQuickFilters: (List<String>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
+    onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onUpdateMedicines: (List<dk.babyapp.data.medicine.MedicinePlan>) -> Unit = {},
     onUpdateBookReminders: (Boolean) -> Unit = {},
@@ -267,6 +268,7 @@ fun BabyAppNavigation(
                     onKeepTimerAwake = { keepTimerAwake = it },
                     onUpdateQuickActionCategoryOrder = onUpdateQuickActionCategoryOrder,
                     onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
+                    onUpdateMeasurementChartSettings = onUpdateMeasurementChartSettings,
                     onUpdateHiddenQuickActions = onUpdateHiddenQuickActions,
                     onUpdateMedicines = onUpdateMedicines,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
@@ -288,6 +290,9 @@ fun BabyAppNavigation(
             }
             composable<AppDestination.Timeline> {
                 TimelineScreen(
+                    chartSettings = preferences.measurementChartSettings,
+                    onUpdateMeasurementChartSettings = onUpdateMeasurementChartSettings,
+                    lastPumpingMethod = preferences.lastPumpingMethod,
                     dashboardMetrics = preferences.dashboardMetrics,
                     onResumeBreastfeeding = onResumeBreastfeeding,
                     quickFilters = preferences.journalQuickFilters,

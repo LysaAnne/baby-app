@@ -30,11 +30,12 @@ import java.util.Locale
 private enum class ChartPeriod(val label: String) { Week("En uge"), Month("En måned"), SixMonths("6 måneder"), Year("Et år"), All("Al tid"), Custom("Valgfri periode") }
 
 @Composable
-internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: String, onDismiss: () -> Unit) {
-    var period by remember { mutableStateOf(ChartPeriod.Month) }
+internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: String, settings: dk.babyapp.data.preferences.MeasurementChartSettings = dk.babyapp.data.preferences.MeasurementChartSettings(), onSettingsChange: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {}, onDismiss: () -> Unit) {
+    var period by remember { mutableStateOf(ChartPeriod.entries.firstOrNull { it.name == settings.period } ?: ChartPeriod.Month) }
     val today = LocalDate.now()
-    var customFrom by remember { mutableStateOf(today.minusMonths(1)) }
-    var customThrough by remember { mutableStateOf(today) }
+    var customFrom by remember { mutableStateOf(runCatching { LocalDate.parse(settings.from) }.getOrNull() ?: today.minusMonths(1)) }
+    var customThrough by remember { mutableStateOf(runCatching { LocalDate.parse(settings.through) }.getOrNull() ?: today) }
+    fun saveSelection() = onSettingsChange(dk.babyapp.data.preferences.MeasurementChartSettings(period.name, customFrom.toString(), customThrough.toString()))
     val from = when (period) {
         ChartPeriod.Week -> today.minusDays(6)
         ChartPeriod.Month -> today.minusMonths(1).plusDays(1)
@@ -52,11 +53,11 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                     TextButton(onClick = onDismiss) { Text("Luk") }
                 }
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    item { SelectionDropdown("Periode", period.label, ChartPeriod.entries.map { it to it.label }) { period = it } }
+                    item { SelectionDropdown("Periode", period.label, ChartPeriod.entries.map { it to it.label }) { period = it; saveSelection() } }
                     if (period == ChartPeriod.Custom) item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ChartDateButton("Fra", customFrom) { customFrom = it }
-                            ChartDateButton("Til", customThrough) { customThrough = it }
+                            ChartDateButton("Fra", customFrom) { customFrom = it; saveSelection() }
+                            ChartDateButton("Til", customThrough) { customThrough = it; saveSelection() }
                         }
                     }
                     if (from != null && from > through) item { Text("Fra-dato skal være før eller samme dag som til-dato.", color = MaterialTheme.colorScheme.error) }

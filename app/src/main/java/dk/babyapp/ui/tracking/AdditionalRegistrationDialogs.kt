@@ -29,11 +29,21 @@ internal fun DiaperObservationField(value: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-internal fun SelectionStartPumpDialog(onDismiss: () -> Unit, initialMethod: String = "", onStart: (String) -> Unit) {
+internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
     var method by remember { mutableStateOf(initialMethod) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Start pumpning") }, text = {
-        SelectionDropdown("Metode (valgfrit)", method.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { method = it }
-    }, confirmButton = { Button(onClick = { onStart(method) }) { Text("Start") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    var time by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var amount by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Registrer pumpning") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DateTimeFields(time) { time = it }
+            SelectionDropdown("Pumpetype", method.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { method = it }
+            RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") })
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+        }
+    }, confirmButton = { Button(enabled = amount.isBlank() || amount.toIntOrNull() != null, onClick = {
+        onSave(CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = time, endedAt = time, pumpedAmountMl = amount.toIntOrNull(), pumpingMethod = method, notes = notes))
+    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

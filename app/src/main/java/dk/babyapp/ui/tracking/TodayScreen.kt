@@ -140,6 +140,7 @@ fun TodayScreen(
     onKeepTimerAwake: (Boolean) -> Unit = {},
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
+    onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
 ) {
@@ -245,7 +246,7 @@ fun TodayScreen(
                     actions.filterNot { it == QuickAction.Breastfeeding || it == QuickAction.Diaper }.chunked(2).forEach { row ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { action ->
-                                val timer = action in setOf(QuickAction.Breastfeeding, QuickAction.Pumping, QuickAction.Nap, QuickAction.Night, QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity)
+                                val timer = action in setOf(QuickAction.Breastfeeding, QuickAction.Nap, QuickAction.Night, QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity)
                                 QuickButton(action.label, Modifier.weight(1f), childId != null && (!timer || dk.babyapp.domain.canStartTimer(childEvents, childId, when (action) {
                                     QuickAction.Pumping -> CareEventType.Pumping
                                     QuickAction.Nap, QuickAction.Night -> CareEventType.Sleep
@@ -255,7 +256,7 @@ fun TodayScreen(
                                     val id = childId ?: return@QuickButton
                                     when (action) {
                                         QuickAction.Breastfeeding -> dialog = EditorKind.StartBreast
-                                        QuickAction.Pumping -> dialog = EditorKind.StartPump
+                                        QuickAction.Pumping -> dialog = EditorKind.ManualPumping
                                         QuickAction.Nap -> onStartSleep(id, SleepType.Nap) { sleepError = !it }
                                         QuickAction.Night -> onStartSleep(id, SleepType.Night) { sleepError = !it }
                                         QuickAction.TummyTime -> onStartActivity(id, ActivityType.TummyTime) { sleepError = !it }
@@ -299,7 +300,7 @@ fun TodayScreen(
         }
     }
 
-    if (chartsOpen && childId != null) MeasurementChartsDialog(events, childId) { chartsOpen = false }
+    if (chartsOpen && childId != null) MeasurementChartsDialog(events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
     if (manualMenuOpen) ManualRegistrationMenu(
         listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,
             "Ble" to EditorKind.Diaper, "Søvn" to EditorKind.Sleep, "Vægt" to EditorKind.Weight, "Højde" to EditorKind.Height, "Hovedomkreds" to EditorKind.HeadCircumference, "Temperatur" to EditorKind.Temperature, "Fast føde" to EditorKind.SolidFood,
@@ -316,8 +317,7 @@ fun TodayScreen(
             val now = remember { System.currentTimeMillis() }
             EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Breastfeeding, startedAt = now - 600_000, endedAt = now, leftSeconds = 600, activeSide = BreastSide.Left, timerSegments = "${now - 600_000}-$now", timerSegmentSides = "Left") }, { dialog = null }) { onSaveHealthRecord(it); dialog = null }
         }
-        EditorKind.ManualPumping -> childId?.let { id -> val now = remember { System.currentTimeMillis() }; EditEventDialog(remember { CareEventEntity(childId = id, type = CareEventType.Pumping, startedAt = now - 600_000, endedAt = now, leftSeconds = 600) }, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
-        EditorKind.StartPump -> SelectionStartPumpDialog({ dialog = null }, childEvents.filter { it.type == CareEventType.Pumping }.maxByOrNull { it.startedAt }?.pumpingMethod.orEmpty()) { method -> childId?.let { id -> onStartPumping(id, method) }; dialog = null }
+        EditorKind.ManualPumping -> childId?.let { id -> PumpingDialog(id, preferences.lastPumpingMethod, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.Sleep -> SleepDialog(onDismiss = { dialog = null }) { start, end, type, location, settling, awakenings, quality, notes ->
             childId?.let { onAddSleep(it, start, end, type, location, settling, awakenings, quality, notes) { success -> sleepError = !success } }
             dialog = null
@@ -360,7 +360,7 @@ fun TodayScreen(
     )
 }
 
-private enum class EditorKind { StartBreast, SolidFood, Bottle, Diaper, ManualBreastfeeding, ManualPumping, StartPump, Sleep, HealthVisit, Vaccination, HealthNote, Weight, Height, HeadCircumference, Temperature, Medicine, StartActivity, Activity }
+private enum class EditorKind { StartBreast, SolidFood, Bottle, Diaper, ManualBreastfeeding, ManualPumping, Sleep, HealthVisit, Vaccination, HealthNote, Weight, Height, HeadCircumference, Temperature, Medicine, StartActivity, Activity }
 
 private data class OverviewItem(val label: String, val value: String, val event: CareEventEntity?)
 
@@ -768,7 +768,8 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
     var pumped by remember { mutableStateOf(event.pumpedAmountMl?.toString().orEmpty()) }
     var value by remember { mutableStateOf(event.measurementValue?.toString().orEmpty()) }
     val nursingHistory = event.type == CareEventType.Breastfeeding && event.timerSegments.isNotBlank()
-    val timed = event.type in setOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Activity)
+    val timed = event.type in setOf(CareEventType.Breastfeeding, CareEventType.Activity) ||
+        (event.type == CareEventType.Pumping && (event.endedAt ?: event.startedAt) > event.startedAt)
     val valid = (!timed || end >= start) && (event.type != CareEventType.Measurement || (value.toDoubleOrNull()?.let { it.isFinite() && it > 0 } == true)) &&
         (offered.isBlank() || offered.toIntOrNull() != null) && (consumed.isBlank() || consumed.toIntOrNull() != null) && (pumped.isBlank() || pumped.toIntOrNull() != null)
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Rediger registrering") }, text = {
@@ -794,7 +795,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
                     RegistrationTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") })
                 }
                 CareEventType.Pumping -> {
-                    SelectionDropdown("Metode (valgfrit)", draft.pumpingMethod.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { draft = draft.copy(pumpingMethod = it) }
+                    SelectionDropdown("Pumpetype", draft.pumpingMethod.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { draft = draft.copy(pumpingMethod = it) }
                     RegistrationTextField(pumped, { pumped = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") })
                 }
                 CareEventType.Diaper -> {

@@ -15,6 +15,34 @@ import org.junit.Test
 class RegistrationEditingTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun chartSelectionSurvivesClosingAndReopening() {
+        var settings by androidx.compose.runtime.mutableStateOf(dk.babyapp.data.preferences.MeasurementChartSettings())
+        var open by androidx.compose.runtime.mutableStateOf(true)
+        compose.setContent { MaterialTheme { if (open) dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", settings, { settings = it }) { open = false } } }
+        compose.onNodeWithText("En måned").performClick()
+        compose.onNodeWithText("6 måneder").performClick()
+        compose.onNodeWithText("Luk").performClick()
+        compose.runOnIdle { assertEquals("SixMonths", settings.period); open = true }
+        compose.onNodeWithText("6 måneder").assertExists()
+    }
+
+    @Test fun manualPumpingUsesLastMethodAndSavesWithoutTimer() {
+        var saved: CareEventEntity? = null
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.PumpingDialog("child", "Manuel pumpe", {}) { saved = it } } }
+        compose.onNodeWithText("Manuel pumpe").assertExists()
+        compose.onNodeWithText("Pumpet (ml)").performTextInput("85")
+        compose.onNodeWithText("Noter").performTextInput("Test")
+        compose.onNodeWithText("Gem").performClick()
+        compose.runOnIdle {
+            assertEquals("Manuel pumpe", saved?.pumpingMethod)
+            assertEquals(85, saved?.pumpedAmountMl)
+            assertEquals("Test", saved?.notes)
+            assertEquals(saved?.startedAt, saved?.endedAt)
+            assertNull(saved?.runningSince)
+            assertEquals(0L, saved?.elapsedSeconds())
+        }
+    }
+
     @Test fun bookRemindersCanBeDisabledInNotificationSettings() {
         var enabled = true
         compose.setContent { MaterialTheme { dk.babyapp.ui.settings.ReminderSettingsDialog(dk.babyapp.data.preferences.AppPreferences(bookRemindersEnabled = true), { _, _, _ -> }, { enabled = it }, {}) } }
@@ -23,7 +51,7 @@ class RegistrationEditingTest {
     }
 
     @Test fun chartsOfferAllPeriodsAndCustomDates() {
-        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", {}) } }
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", onDismiss = {}) } }
         compose.onNodeWithText("Vægt (kg)").assertIsDisplayed()
         compose.onNodeWithText("En måned").performClick()
         compose.onNodeWithText("Al tid").performClick()
@@ -81,12 +109,13 @@ class RegistrationEditingTest {
         compose.runOnIdle { assertEquals("60 ml + 30 ml (2:1)", savedRatio); assertEquals(90, savedOffered) }
     }
 
-    @Test fun pumpDialogStartsWithLastMethod() {
-        var method = ""
-        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.SelectionStartPumpDialog({}, "Manuel pumpe") { method = it } } }
+    @Test fun cancellingPumpDialogDoesNotSave() {
+        var saves = 0
+        var dismissed = false
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.PumpingDialog("child", "Manuel pumpe", { dismissed = true }) { saves++ } } }
         compose.onNodeWithText("Manuel pumpe").assertExists()
-        compose.onNodeWithText("Start").performClick()
-        compose.runOnIdle { assertEquals("Manuel pumpe", method) }
+        compose.onNodeWithText("Annuller").performClick()
+        compose.runOnIdle { assertTrue(dismissed); assertEquals(0, saves) }
     }
 
     @Test fun nursingEditorShowsIntervalMinutes() {

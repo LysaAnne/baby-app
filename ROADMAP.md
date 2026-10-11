@@ -4,6 +4,13 @@ This document is the staged implementation contract for Baby App.
 
 Each stage produces a usable, tested increment. Stages are implemented one at a time and only when the project owner explicitly asks for that stage. When product scope changes, update both this roadmap and [README.md](README.md).
 
+### October 10 follow-up
+
+- [x] Persist measurement chart period and custom dates in DataStore; share the selection between Today and Journal.
+- [x] Replace new pumping timers with manual registrations; remember the last saved pump type and preserve existing timed records.
+- Phone checks: choose a chart period/custom dates, close and restart; save pumping and reopen from both Today and Journal; cancel a different pump choice and verify no record/default changes; edit an older timed pumping record.
+- Verified: code-style check, lint, debug build, 75 unit tests and 17 targeted Pixel_8 emulator tests passed. Physical-phone checks remain manual.
+
 ## Status legend
 
 - `[ ]` Not started

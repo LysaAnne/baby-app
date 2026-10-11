@@ -84,6 +84,7 @@ fun BabyApp(viewModel: AppViewModel = viewModel(), bookTarget: dk.babyapp.remind
                     onUpdateDashboardMetrics = viewModel::updateDashboardMetrics,
                     onUpdateQuickActionCategoryOrder = viewModel::updateQuickActionCategoryOrder,
                     onUpdateDefaultNippleShield = viewModel::updateDefaultNippleShield,
+                    onUpdateMeasurementChartSettings = viewModel::updateMeasurementChartSettings,
                     onUpdateJournalQuickFilters = viewModel::updateJournalQuickFilters,
                     onUpdateHiddenQuickActions = viewModel::updateHiddenQuickActions,
                     onUpdateMedicines = viewModel::updateMedicines,

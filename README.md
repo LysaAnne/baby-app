@@ -11,6 +11,12 @@ The product should feel simple, modern, calm, and cute. It must be useful during
 
 ## September 2026 tracking improvements
 
+### October 10 follow-up: chart preferences and manual pumping
+
+- Measurement charts remember the selected period and custom date range across closing, navigation and app restarts. Today and Journal share this preference. Relative ranges remain relative to today's date.
+- Pumping opens a manual form from quick registration, the manual menu and Journal: date, time, pump type, ml and notes. It does not start a timer and can be recorded while another timer runs.
+- The last saved pump type is reused, including after restarting. Cancelling does not save a record or change the default. Historical pumping durations and intervals remain editable and are not migrated away.
+
 - Diaper observations use a dropdown, and editing includes diaper type, colour, consistency and notes.
 - New diaper forms save only after **Gem**. Stopped timers remain drafts until saved; cancelling discards the draft. Cancelling an edit of an existing record preserves that record.
 - Bottle and pumping notes appear in Journal. Pumping supports an optional **Hånd / Maskine / Manuel pumpe** method and editable ml. Editing notes preserves accumulated active time and pause intervals.

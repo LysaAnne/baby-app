@@ -88,7 +88,7 @@ internal fun CareEventEntity.details() = when (type) {
     CareEventType.SolidFood -> listOf(foodName, foodTexture, foodAmount, foodReaction, notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Breastfeeding -> listOf("${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}", breastfeedingIssue?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Bottle -> listOf("${amountConsumedMl ?: 0} af ${amountOfferedMl ?: amountConsumedMl ?: 0} ml · ${bottleContent.displayLabel()}", bottleMixRatio.takeIf { it.isNotBlank() && bottleContent == dk.babyapp.data.tracking.BottleContent.Mixed }?.let { "Modermælk : erstatning $it" }.orEmpty(), notes).filter(String::isNotBlank).joinToString(" · ")
-    CareEventType.Pumping -> listOf(formatDuration(elapsedSeconds()), pumpedAmountMl?.let { "$it ml" }, pumpingMethod, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Pumping -> listOf(elapsedSeconds().takeIf { it > 0 }?.let { formatDuration(it) }, pumpedAmountMl?.let { "$it ml" }, pumpingMethod, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Diaper -> listOf(diaperColor?.displayLabel(), diaperConsistency?.displayLabel(), observation, notes).filter { !it.isNullOrBlank() }.joinToString(" · ").ifBlank { "Registreret" }
     CareEventType.Sleep -> listOf(formatDuration(elapsedSeconds()), sleepLocation, settlingMethod, awakenings?.let { "$it opvågninger" }, sleepQuality?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Measurement -> listOf(measurementValue?.let { "$it $measurementUnit" }, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")

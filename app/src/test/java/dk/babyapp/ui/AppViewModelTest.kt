@@ -63,6 +63,19 @@ class AppViewModelTest {
         assertTrue(preferences.items.value.bookRemindersEnabled)
     }
 
+    @Test fun `saving and editing pumping remembers method without starting timer`() = runTest(dispatcher) {
+        val preferences = FakePreferencesRepository()
+        val events = FakeCareEventRepository()
+        val vm = AppViewModel(FakeProfilesRepository(), preferences, FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        val event = dk.babyapp.data.tracking.CareEventEntity(childId = "child", type = dk.babyapp.data.tracking.CareEventType.Pumping, startedAt = 1000, endedAt = 1000, pumpingMethod = "Manuel pumpe", pumpedAmountMl = 85)
+        vm.saveHealthRecord(event); advanceUntilIdle()
+        assertEquals("Manuel pumpe", preferences.items.value.lastPumpingMethod)
+        assertEquals(null, events.items.value.single().runningSince)
+        vm.updateCareEvent(event.copy(pumpingMethod = "Maskine")); advanceUntilIdle()
+        assertEquals("Maskine", preferences.items.value.lastPumpingMethod)
+        assertEquals(85, events.items.value.single().pumpedAmountMl)
+    }
+
     @Test fun `two timers run independently and a third cannot replace either`() = runTest(dispatcher) {
         val events = FakeCareEventRepository()
         val vm = AppViewModel(FakeProfilesRepository(), FakePreferencesRepository(), FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
@@ -333,6 +346,8 @@ private class FakeProfilesRepository(initial: List<ChildProfile> = emptyList()) 
 }
 
 private class FakePreferencesRepository(initial: AppPreferences = AppPreferences()) : AppPreferencesRepository {
+    override suspend fun updateMeasurementChartSettings(settings: dk.babyapp.data.preferences.MeasurementChartSettings) { items.value = items.value.copy(measurementChartSettings = settings) }
+    override suspend fun updateLastPumpingMethod(method: String) { items.value = items.value.copy(lastPumpingMethod = method) }
     val items = MutableStateFlow(initial)
     override val preferences: Flow<AppPreferences> = items
     override suspend fun updateOnboarding(
