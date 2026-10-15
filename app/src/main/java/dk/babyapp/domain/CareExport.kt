@@ -19,7 +19,7 @@ fun createCareCsv(child: ChildProfile, events: List<CareEventEntity>, from: Loca
         appendLine("id,type,dato,tid,start_iso,slut_iso,varighed_sekunder,vaerdi,enhed,noter")
         rows.forEach { event ->
             val local = Instant.ofEpochMilli(event.startedAt).atZone(zone)
-            val value = event.measurementValue?.toString() ?: event.amountConsumedMl?.toString() ?: event.pumpedAmountMl?.toString().orEmpty()
+            val value = event.headSide?.name ?: event.measurementValue?.toString() ?: event.amountConsumedMl?.toString() ?: event.pumpedAmountMl?.toString().orEmpty()
             appendLine(listOf(event.id, event.type.name, local.toLocalDate().toString(), if (event.timeSpecified) local.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")) else "", Instant.ofEpochMilli(event.startedAt).toString(), event.endedAt?.let { Instant.ofEpochMilli(it).toString() }.orEmpty(), event.elapsedSeconds().toString(), value, event.measurementUnit, event.notes).joinToString(",", transform = ::csv))
         }
     }

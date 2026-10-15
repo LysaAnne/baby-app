@@ -66,6 +66,32 @@ class BabyAppNavigationTest {
         composeRule.runOnIdle { org.junit.Assert.assertFalse(savedDefault) }
     }
 
+    @Test fun overviewOpensChartsAndBrowsesChildDailySummary() {
+        val child = ChildProfile(id = "child", name = "Freja")
+        val today = LocalDate.now()
+        fun atDay(date: LocalDate) = date.atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val recent = dk.babyapp.data.tracking.CareEventEntity(id = "recent", childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Bottle, startedAt = atDay(today), endedAt = atDay(today), amountConsumedMl = 90)
+        val older = recent.copy(id = "older", startedAt = atDay(today.minusDays(1)), endedAt = atDay(today.minusDays(1)), amountConsumedMl = 60)
+        val otherChild = recent.copy(id = "other", childId = "other", amountConsumedMl = 999)
+        composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(recent, older, otherChild), preferences = AppPreferences(hasSeenGettingStarted = true)) }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeRule.onAllNodesWithText(context.getString(R.string.nav_insights)).filter(isSelectable()).onFirst().performClick()
+        composeRule.onNodeWithText("Grafer").performClick()
+        composeRule.onNodeWithText("Målenes udvikling").assertIsDisplayed()
+        composeRule.onNodeWithText("Luk").performClick()
+        composeRule.onNodeWithText("Dagens overblik").performClick()
+        composeRule.onAllNodesWithText("90 ml spist").onFirst().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Næste dag").assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription("Forrige dag").performClick()
+        composeRule.onAllNodesWithText("60 ml spist").onFirst().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Forrige dag").performClick()
+        composeRule.onNodeWithText("0 registreringer i alt").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Næste dag").performClick()
+        composeRule.onAllNodesWithText("60 ml spist").onFirst().assertIsDisplayed()
+        composeRule.onNode(hasText("I dag") and hasAnyAncestor(isDialog())).performClick()
+        composeRule.onAllNodesWithText("90 ml spist").onFirst().assertIsDisplayed()
+    }
+
     @Test fun measurementChartsOpenFromTodayAndJournal() {
         val child = ChildProfile(id = "child", name = "Freja")
         val event = dk.babyapp.data.tracking.CareEventEntity(childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Measurement, startedAt = System.currentTimeMillis(), endedAt = System.currentTimeMillis(), measurementType = dk.babyapp.data.tracking.MeasurementType.Weight, measurementValue = 4.5, measurementUnit = "kg")

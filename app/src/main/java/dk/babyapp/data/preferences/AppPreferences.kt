@@ -13,6 +13,8 @@ data class AppPreferences(
     val showDiaperQuickAction: Boolean = true,
     val hasSeenGettingStarted: Boolean = false,
     val dashboardMetrics: List<DashboardMetric> = DashboardMetric.defaults,
+    val teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
+    val bookReminderFrequency: BookReminderFrequency = BookReminderFrequency.ThreeWeekly,
     val bookRemindersEnabled: Boolean = true,
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderHour: Int = 20,
@@ -23,6 +25,7 @@ data class AppPreferences(
     val journalQuickFilters: List<String> = listOf("Madning · alle", "Ble", "Søvn", "Sundhed · alle"),
     val hiddenQuickActions: Set<String> = emptySet(),
     val medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
+    val headSideStatistics: HeadSideStatisticsSettings = HeadSideStatisticsSettings(),
     val measurementChartSettings: MeasurementChartSettings = MeasurementChartSettings(),
     val lastPumpingMethod: String = "",
 )
@@ -32,7 +35,7 @@ data class MeasurementChartSettings(val period: String = "Month", val from: Stri
 
 enum class QuickAction(val label: String, val category: String) {
     Breastfeeding("Amning", "Madning"), Bottle("Flaske", "Madning"), Pumping("Pumpning", "Madning"),
-    Diaper("Ble", "Ble"), Nap("Lur", "Søvn"), Night("Nattesøvn", "Søvn"),
+    HeadSide("Favoritside", "Søvn"), Diaper("Ble", "Ble"), Nap("Lur", "Søvn"), Night("Nattesøvn", "Søvn"),
     Weight("Vægt", "Mål"), Height("Højde", "Mål"), HeadCircumference("Hovedomkreds", "Mål"), Temperature("Temperatur", "Mål"),
     HealthVisit("Sundhedsbesøg", "Sundhed"), Vaccination("Vaccination", "Sundhed"), Medicine("Medicin", "Sundhed"), HealthNote("Helbredsnotat", "Sundhed"),
     SolidFood("Måltid / smagsprøve", "Fast føde"), TummyTime("Mavetid", "Diverse"), Bath("Bad", "Diverse"), Play("Leg", "Diverse"), OutdoorTime("Udetid", "Diverse"), Activity("Andet", "Diverse"),
@@ -57,7 +60,8 @@ enum class DashboardMetric {
     Medicine,
     HealthVisits,
     Vaccinations,
-    Activities;
+    Activities,
+    HeadSide;
 
     companion object {
         val defaults = listOf(Feeding, Diapers, Sleep, TummyTime)
@@ -75,3 +79,13 @@ enum class DanishRegion {
 enum class MeasurementUnits { Metric, Imperial }
 
 enum class ThemePreference { System, Light, Dark }
+
+enum class BookReminderFrequency(val label: String) { Daily("Dagligt"), ThreeWeekly("Tre gange om ugen"), Weekly("Ugentligt"), Monthly("Månedligt") }
+
+@kotlinx.serialization.Serializable
+data class HeadSideStatisticsSettings(
+    val period: String = "Month",
+    val from: String? = null,
+    val through: String? = null,
+    val correctionDates: Map<String, String> = emptyMap(),
+)

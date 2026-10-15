@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import dk.babyapp.data.medicine.MedicinePlan
+import dk.babyapp.data.teeth.*
 
 private val Context.appPreferencesDataStore by preferencesDataStore(name = "app_preferences")
 
@@ -37,13 +38,16 @@ class DataStoreAppPreferencesRepository @Inject constructor(
                 ?.mapNotNull { stored -> DashboardMetric.entries.firstOrNull { it.name == stored } }
                 ?.takeIf { it.isNotEmpty() && it.distinct().size == it.size }
                 ?: DashboardMetric.defaults,
+            teeth = values[TEETH]?.let { Json.decodeFromString<List<ToothRecord>>(it) } ?: emptyList(),
+            bookReminderFrequency = enumValueOrDefault(values[BOOK_FREQUENCY], BookReminderFrequency.ThreeWeekly),
             bookRemindersEnabled = values[BOOK_REMINDERS_ENABLED] ?: true,
-            dailyReminderEnabled = values[DAILY_REMINDER_ENABLED] ?: false,
+            dailyReminderEnabled = false,
             dailyReminderHour = values[DAILY_REMINDER_HOUR] ?: 20,
             dailyReminderMinute = values[DAILY_REMINDER_MINUTE] ?: 0,
             insightDashboardMetrics = values[INSIGHT_DASHBOARD_METRICS]?.split(',')?.filter(String::isNotBlank)?.takeIf { it.size in 3..6 } ?: listOf("Sleep", "Feedings", "Diapers", "TummyTime"),
             quickActionCategoryOrder = values[QUICK_ACTION_CATEGORY_ORDER]?.split(',') ?: emptyList(),
             defaultNippleShield = values[DEFAULT_NIPPLE_SHIELD] ?: false,
+            headSideStatistics = values[HEAD_SIDE_STATISTICS]?.let { Json.decodeFromString<HeadSideStatisticsSettings>(it) } ?: HeadSideStatisticsSettings(),
             measurementChartSettings = values[MEASUREMENT_CHART_SETTINGS]?.let { runCatching { Json.decodeFromString<MeasurementChartSettings>(it) }.getOrNull() } ?: MeasurementChartSettings(),
             lastPumpingMethod = values[LAST_PUMPING_METHOD] ?: "",
             journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',') ?: AppPreferences().journalQuickFilters,
@@ -127,12 +131,34 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[QUICK_ACTION_CATEGORY_ORDER] = order.joinToString(",") }
     }
 
+    override suspend fun updateBookReminderFrequency(frequency: BookReminderFrequency) {
+        context.appPreferencesDataStore.edit { it[BOOK_FREQUENCY] = frequency.name }
+    }
+
+    override suspend fun saveTooth(record: ToothRecord) {
+        record.validate()
+        context.appPreferencesDataStore.edit { values ->
+            val old = values[TEETH]?.let { Json.decodeFromString<List<ToothRecord>>(it) } ?: emptyList()
+            val kept = old.filterNot { it.childId == record.childId && it.tooth == record.tooth }
+            values[TEETH] = Json.encodeToString(if (record.emerged == null && record.lost == null) kept else kept + record)
+        }
+    }
+
+    override suspend fun replaceTeeth(records: List<ToothRecord>) {
+        records.forEach { it.validate() }
+        context.appPreferencesDataStore.edit { it[TEETH] = Json.encodeToString(records) }
+    }
+
     override suspend fun updateBookReminders(enabled: Boolean) {
         context.appPreferencesDataStore.edit { it[BOOK_REMINDERS_ENABLED] = enabled }
     }
 
     override suspend fun updateDefaultNippleShield(enabled: Boolean) {
         context.appPreferencesDataStore.edit { it[DEFAULT_NIPPLE_SHIELD] = enabled }
+    }
+
+    override suspend fun updateHeadSideStatistics(settings: HeadSideStatisticsSettings) {
+        context.appPreferencesDataStore.edit { it[HEAD_SIDE_STATISTICS] = Json.encodeToString(settings) }
     }
 
     override suspend fun updateMeasurementChartSettings(settings: MeasurementChartSettings) {
@@ -177,6 +203,9 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val INSIGHT_DASHBOARD_METRICS = stringPreferencesKey("insight_dashboard_metrics")
         val QUICK_ACTION_CATEGORY_ORDER = stringPreferencesKey("quick_action_category_order")
         val DEFAULT_NIPPLE_SHIELD = booleanPreferencesKey("default_nipple_shield")
+        val TEETH = stringPreferencesKey("teeth")
+        val BOOK_FREQUENCY = stringPreferencesKey("book_reminder_frequency")
+        val HEAD_SIDE_STATISTICS = stringPreferencesKey("head_side_statistics")
         val MEASUREMENT_CHART_SETTINGS = stringPreferencesKey("measurement_chart_settings")
         val LAST_PUMPING_METHOD = stringPreferencesKey("last_pumping_method")
         val JOURNAL_QUICK_FILTERS = stringPreferencesKey("journal_quick_filters")

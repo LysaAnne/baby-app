@@ -123,9 +123,12 @@ fun BabyAppNavigation(
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
     onUpdateJournalQuickFilters: (List<String>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
+    onUpdateHeadSideStatistics: (dk.babyapp.data.preferences.HeadSideStatisticsSettings) -> Unit = {},
     onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
+    onSaveTooth: (dk.babyapp.data.teeth.ToothRecord) -> Unit = {},
     onUpdateMedicines: (List<dk.babyapp.data.medicine.MedicinePlan>) -> Unit = {},
+    onUpdateBookReminderFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit = {},
     onUpdateBookReminders: (Boolean) -> Unit = {},
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit = { _, _, _ -> },
     createEncryptedBackup: suspend (CharArray) -> ByteArray = { byteArrayOf() },
@@ -270,6 +273,7 @@ fun BabyAppNavigation(
                     onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
                     onUpdateMeasurementChartSettings = onUpdateMeasurementChartSettings,
                     onUpdateHiddenQuickActions = onUpdateHiddenQuickActions,
+                    onSaveTooth = onSaveTooth,
                     onUpdateMedicines = onUpdateMedicines,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
                     onSaveHealthRecord = onSaveHealthRecord,
@@ -310,6 +314,17 @@ fun BabyAppNavigation(
                     onAddActivity = onAddActivity,
                     onUpdate = onUpdateCareEvent,
                     onDelete = onDeleteCareEvent,
+                )
+            }
+            composable<AppDestination.Overview> {
+                dk.babyapp.ui.tracking.OverviewScreen(
+                    childId = activeChild?.id,
+                    events = visibleEvents,
+                    contentPadding = contentPadding,
+                    chartSettings = preferences.measurementChartSettings,
+                    onChartSettingsChange = onUpdateMeasurementChartSettings,
+                    statisticsSettings = preferences.headSideStatistics,
+                    onStatisticsSettingsChange = onUpdateHeadSideStatistics,
                 )
             }
             composable<BookPageDestination> { entry ->
@@ -362,6 +377,7 @@ fun BabyAppNavigation(
         preferences = preferences,
         activeChild = activeChild,
         careEvents = careEvents,
+        onUpdateBookReminderFrequency = onUpdateBookReminderFrequency,
         onUpdateBookReminders = onUpdateBookReminders,
         onUpdateDailyReminder = onUpdateDailyReminder,
         createEncryptedBackup = createEncryptedBackup,

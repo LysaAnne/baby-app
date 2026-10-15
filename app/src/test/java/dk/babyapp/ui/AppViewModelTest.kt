@@ -346,6 +346,7 @@ private class FakeProfilesRepository(initial: List<ChildProfile> = emptyList()) 
 }
 
 private class FakePreferencesRepository(initial: AppPreferences = AppPreferences()) : AppPreferencesRepository {
+    override suspend fun updateHeadSideStatistics(settings: dk.babyapp.data.preferences.HeadSideStatisticsSettings) { items.value = items.value.copy(headSideStatistics = settings) }
     override suspend fun updateMeasurementChartSettings(settings: dk.babyapp.data.preferences.MeasurementChartSettings) { items.value = items.value.copy(measurementChartSettings = settings) }
     override suspend fun updateLastPumpingMethod(method: String) { items.value = items.value.copy(lastPumpingMethod = method) }
     val items = MutableStateFlow(initial)
@@ -373,6 +374,9 @@ private class FakePreferencesRepository(initial: AppPreferences = AppPreferences
     override suspend fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) {
         items.value = items.value.copy(dashboardMetrics = metrics)
     }
+    override suspend fun updateBookReminderFrequency(frequency: dk.babyapp.data.preferences.BookReminderFrequency) { items.value = items.value.copy(bookReminderFrequency = frequency) }
+    override suspend fun saveTooth(record: dk.babyapp.data.teeth.ToothRecord) { items.value = items.value.copy(teeth = items.value.teeth.filterNot { it.childId == record.childId && it.tooth == record.tooth } + record) }
+    override suspend fun replaceTeeth(records: List<dk.babyapp.data.teeth.ToothRecord>) { items.value = items.value.copy(teeth = records) }
     override suspend fun updateBookReminders(enabled: Boolean) { items.value = items.value.copy(bookRemindersEnabled = enabled) }
     override suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
         items.value = items.value.copy(dailyReminderEnabled = enabled, dailyReminderHour = hour, dailyReminderMinute = minute)

@@ -41,12 +41,15 @@ internal fun easterSunday(year: Int): LocalDate {
     return LocalDate.of(year, (h + l - 7 * m + 114) / 31, (h + l - 7 * m + 114) % 31 + 1)
 }
 
-fun nextBookReminderAt(children: List<ChildProfile>, now: ZonedDateTime): ZonedDateTime? {
+fun isBookReminderDay(date: LocalDate, frequency: dk.babyapp.data.preferences.BookReminderFrequency): Boolean = when (frequency) {
+    dk.babyapp.data.preferences.BookReminderFrequency.Daily -> true
+    dk.babyapp.data.preferences.BookReminderFrequency.ThreeWeekly -> date.dayOfWeek in bookReminderWeekdays
+    dk.babyapp.data.preferences.BookReminderFrequency.Weekly -> date.dayOfWeek == DayOfWeek.MONDAY
+    dk.babyapp.data.preferences.BookReminderFrequency.Monthly -> date.dayOfMonth == 1
+}
+
+fun nextBookReminderAt(children: List<ChildProfile>, now: ZonedDateTime, frequency: dk.babyapp.data.preferences.BookReminderFrequency = dk.babyapp.data.preferences.BookReminderFrequency.ThreeWeekly): ZonedDateTime? {
     if (children.isEmpty()) return null
-    val weekly = (0L..7L).map { now.toLocalDate().plusDays(it).atTime(20, 0).atZone(now.zone) }
-        .first { it > now && it.dayOfWeek in bookReminderWeekdays }
-    val monthly = children.filter { it.birthStatus == BirthStatus.Born }.flatMap { child ->
-        child.birthDate?.let { birth -> (1L..12L).map { birth.plusMonths(it).atTime(20, 0).atZone(now.zone) } }.orEmpty()
-    }.filter { it > now }.minOrNull()
-    return if (monthly != null && monthly < weekly) monthly else weekly
+    return (0L..32L).map { now.toLocalDate().plusDays(it).atTime(20, 0).atZone(now.zone) }
+        .first { it > now && isBookReminderDay(it.toLocalDate(), frequency) }
 }

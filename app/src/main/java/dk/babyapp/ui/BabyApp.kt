@@ -21,7 +21,7 @@ import dk.babyapp.ui.theme.BabyAppTheme
 fun BabyApp(viewModel: AppViewModel = viewModel(), bookTarget: dk.babyapp.reminders.BookNotificationTarget? = null, onBookTargetHandled: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(state.loaded, state.profiles, state.preferences.bookRemindersEnabled) { if (state.loaded) dk.babyapp.reminders.BookReminderScheduler(context).update(state.profiles, state.preferences.bookRemindersEnabled) }
+    LaunchedEffect(state.loaded, state.profiles, state.preferences.bookRemindersEnabled, state.preferences.bookReminderFrequency) { if (state.loaded) dk.babyapp.reminders.BookReminderScheduler(context).update(state.profiles, state.preferences.bookRemindersEnabled, state.preferences.bookReminderFrequency) }
     val activeTimer = state.careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
     LaunchedEffect(activeTimer?.id) { viewModel.restoreTimerNotification(activeTimer) }
     LaunchedEffect(state.loaded, state.preferences.languageTag) {
@@ -84,10 +84,13 @@ fun BabyApp(viewModel: AppViewModel = viewModel(), bookTarget: dk.babyapp.remind
                     onUpdateDashboardMetrics = viewModel::updateDashboardMetrics,
                     onUpdateQuickActionCategoryOrder = viewModel::updateQuickActionCategoryOrder,
                     onUpdateDefaultNippleShield = viewModel::updateDefaultNippleShield,
+                    onUpdateHeadSideStatistics = viewModel::updateHeadSideStatistics,
                     onUpdateMeasurementChartSettings = viewModel::updateMeasurementChartSettings,
                     onUpdateJournalQuickFilters = viewModel::updateJournalQuickFilters,
                     onUpdateHiddenQuickActions = viewModel::updateHiddenQuickActions,
                     onUpdateMedicines = viewModel::updateMedicines,
+                    onSaveTooth = viewModel::saveTooth,
+                    onUpdateBookReminderFrequency = viewModel::updateBookReminderFrequency,
                     onUpdateBookReminders = viewModel::updateBookReminders,
                     onUpdateDailyReminder = viewModel::updateDailyReminder,
                     createEncryptedBackup = viewModel::createEncryptedBackup,

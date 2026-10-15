@@ -45,7 +45,7 @@ class RegistrationEditingTest {
 
     @Test fun bookRemindersCanBeDisabledInNotificationSettings() {
         var enabled = true
-        compose.setContent { MaterialTheme { dk.babyapp.ui.settings.ReminderSettingsDialog(dk.babyapp.data.preferences.AppPreferences(bookRemindersEnabled = true), { _, _, _ -> }, { enabled = it }, {}) } }
+        compose.setContent { MaterialTheme { dk.babyapp.ui.settings.ReminderSettingsDialog(dk.babyapp.data.preferences.AppPreferences(bookRemindersEnabled = true), { _, _, _ -> }, { enabled = it }, onDismiss = {}) } }
         compose.onNodeWithContentDescription("Bogpåmindelser").performClick()
         compose.runOnIdle { assertFalse(enabled) }
     }

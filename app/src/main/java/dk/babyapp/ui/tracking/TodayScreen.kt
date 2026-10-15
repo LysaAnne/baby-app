@@ -142,6 +142,7 @@ fun TodayScreen(
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
+    onSaveTooth: (dk.babyapp.data.teeth.ToothRecord) -> Unit = {},
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
 ) {
     val childEvents = childId?.let { id -> events.filter { it.childId == id && !it.isDraft && it.deletedAt == null } }.orEmpty()
@@ -166,6 +167,7 @@ fun TodayScreen(
     var deleteTarget by remember { mutableStateOf<CareEventEntity?>(null) }
     var customizeOpen by remember { mutableStateOf(false) }
     var dashboardCustomizeOpen by remember { mutableStateOf(false) }
+    var teethOpen by remember(childId) { mutableStateOf(false) }
     var chartsOpen by remember { mutableStateOf(false) }
     var manualActivityType by remember { mutableStateOf(ActivityType.Other) }
     var manualMenuOpen by remember { mutableStateOf(false) }
@@ -231,6 +233,9 @@ fun TodayScreen(
                             }
                         }
                     }
+                    if (QuickAction.HeadSide in actions) {
+                        HeadSideQuickButtons(childEvents, childId, onSaveHealthRecord)
+                    }
                     if (QuickAction.Diaper in actions) {
                         DiaperType.entries.chunked(2).forEach { types ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -243,7 +248,7 @@ fun TodayScreen(
                             }
                         }
                     }
-                    actions.filterNot { it == QuickAction.Breastfeeding || it == QuickAction.Diaper }.chunked(2).forEach { row ->
+                    actions.filterNot { it == QuickAction.Breastfeeding || it == QuickAction.Diaper || it == QuickAction.HeadSide }.chunked(2).forEach { row ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { action ->
                                 val timer = action in setOf(QuickAction.Breastfeeding, QuickAction.Nap, QuickAction.Night, QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity)
@@ -270,6 +275,7 @@ fun TodayScreen(
                             }
                         }
                     }
+                    if (category == "Sundhed") OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
                     if (category == "Sundhed") TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
                 }
             }
@@ -335,6 +341,7 @@ fun TodayScreen(
         EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
+    if (teethOpen && childId != null) TeethDialog(childId, preferences.teeth, onSaveTooth) { teethOpen = false }
     if (medicineCardOpen && childId != null) MedicineCardDialog(childId, preferences.medicines, onUpdateMedicines, { medicineCardOpen = false })
     editing?.let { event ->
         val dismiss = { if (event.isDraft) onDelete(event); editing = null }
@@ -388,6 +395,7 @@ private fun SummaryMetric(label: String, value: String, detail: String? = null, 
 }
 
 private fun DashboardMetric.displayLabel() = when (this) {
+    DashboardMetric.HeadSide -> "Favoritside"
     DashboardMetric.Feeding -> "Madning"
     DashboardMetric.Diapers -> "Bleer"
     DashboardMetric.Sleep -> "Søvn"
@@ -405,6 +413,7 @@ private fun DashboardMetric.displayLabel() = when (this) {
 }
 
 private fun DashboardMetric.matches(event: CareEventEntity): Boolean = when (this) {
+    DashboardMetric.HeadSide -> event.type == CareEventType.HeadSide
     DashboardMetric.Pumping -> event.type == CareEventType.Pumping
     DashboardMetric.SolidFood -> event.type == CareEventType.SolidFood
     DashboardMetric.Medicine -> event.type == CareEventType.Activity && event.activityType == ActivityType.Medicine
@@ -493,7 +502,10 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
             if (event.type == CareEventType.Breastfeeding) Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(event.nippleShield, { onShield(event, it) }, modifier = Modifier.semantics { contentDescription = "Ammebrik" }); Text("Ammebrik", style = MaterialTheme.typography.bodySmall)
             }
-            if (event.type == CareEventType.Breastfeeding) OutlinedButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
+            if (event.type == CareEventType.Breastfeeding) {
+                NursingIntervalOverview(event, now)
+                OutlinedButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
+            }
             if (event.type == CareEventType.Breastfeeding) Text("Venstre ${formatDuration(event.leftSeconds)}  •  Højre ${formatDuration(event.rightSeconds)}")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -744,6 +756,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 }
 
 @Composable internal fun EditEventDialog(event: CareEventEntity, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
+    if (event.type == CareEventType.HeadSide) { HeadSideEditor(event, onDismiss, onSave); return }
     if (event.type == CareEventType.Breastfeeding) { NursingEditor(event, onDismiss, onSave); return }
     if (event.type == CareEventType.SolidFood) { SolidFoodDialog(event.childId, event, onDismiss, onSave); return }
     if (event.type == CareEventType.Activity && event.activityType == ActivityType.Medicine) {
@@ -849,6 +862,10 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
             val lastSleep = todayEvents.filter { it.type == CareEventType.Sleep }.maxByOrNull { it.startedAt }
             val overviewItems = metrics.map { metric ->
                 when (metric) {
+                    DashboardMetric.HeadSide -> {
+                        val counts = dk.babyapp.domain.headSideTotals(todayEvents)
+                        OverviewItem(metric.displayLabel(), "Venstre ${counts.left} · Højre ${counts.right}", todayEvents.filter { it.type == CareEventType.HeadSide }.maxByOrNull { it.startedAt })
+                    }
                     DashboardMetric.Feeding -> OverviewItem(metric.displayLabel(), if (lastFeeding == null) "-" else listOfNotNull("$breastMinutes min".takeIf { todayEvents.any { it.type == CareEventType.Breastfeeding } }, "$bottleMl ml".takeIf { todayEvents.any { it.type == CareEventType.Bottle } }).joinToString(" · "), lastFeeding)
                     DashboardMetric.Diapers -> OverviewItem(metric.displayLabel(), "", lastDiaper)
                     DashboardMetric.Sleep -> OverviewItem(metric.displayLabel(), if (lastSleep == null) "-" else formatMinutes(sleepMinutes), lastSleep)

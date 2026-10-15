@@ -11,6 +11,8 @@ The product should feel simple, modern, calm, and cute. It must be useful during
 
 ## September 2026 tracking improvements
 
+Planned: optional growth references in measurement charts, with WHO weight/length and Danish head-circumference curves. The [researched calculation and integration plan](docs/GROWTH-REFERENCE-PLAN.md) describes the toggle, LMS calculations and validation requirements. This feature is not implemented yet.
+
 ### October 10 follow-up: chart preferences and manual pumping
 
 - Measurement charts remember the selected period and custom date range across closing, navigation and app restarts. Today and Journal share this preference. Relative ranges remain relative to today's date.
@@ -796,7 +798,7 @@ Phone checks: correct an active nursing start; stop and edit/delete a side inter
 ### Customization and Baby Book reminders — 2026-10-10
 
 - Dashboard customization uses separate outlined cards and accessible icon buttons for move/remove/add. Quick-registration sections have a one-tap hide/show button; hiding a section hides all its actions, including Health. Showing it restores all actions; individual actions can then be adjusted.
-- Removed the Overblik/Insights tab, navigation route and screen. Tracking data, export calculations and saved preferences remain available for future use.
+- Previously removed the Overblik/Insights tab; superseded by the October 11 Overblik restoration below. Tracking data and saved preferences were preserved.
 - Baby Book reminders run Monday/Wednesday/Friday at 20:00 local time, choosing a random empty age-eligible page across children and avoiding immediate repeats. Text or photos count as a started page and prevent reminders. A separate notification is scheduled on each monthly anniversary from months 1–12, with calendar month-end handling.
 - Birthday and year-retrospective pages wait until age one; first Christmas, New Year and Easter wait until the child's first occurrence. Post-birth pages wait for a recorded birth, and late-pregnancy prompts wait until four weeks before the due date. Other undated prompts are suggestions, not claims that a milestone has happened.
 - Uses inexact Android alarms, reschedules after reboot/time-zone/time changes and profile edits, deduplicates delivered slots and monthly milestones, and respects notification permission/channel settings. Android battery restrictions may delay delivery. Channel settings are accessible from Barnets bog.
@@ -819,3 +821,48 @@ Phone checks: correct an active nursing start; stop and edit/delete a side inter
 - Diverse has separate Mavetid, Bad, Leg, Udetid and Andet buttons in quick registration and both manual-registration menus. Quick buttons start the selected activity timer; manual buttons preselect the corresponding activity in the editor. Existing Activity preference identity is retained for Andet.
 
 - Validation: assembleDebug and checkCodeStyle passed; focused Pixel_8 test passed for all five quick-action callbacks (semantics invocation) and all five manual selections/saves from both Today and Journal. Physical-device touch behavior was not verified.
+
+### Overblik navigation — October 11, 2026
+
+- Restored **Overblik** between Journal and Barnets bog, with two square icon buttons side by side: **Grafer** and **Dagens overblik**.
+- Grafer opens the existing Mål charts with the shared saved period/date settings. Dagens overblik reuses the same table as Journal’s Opsummer dag for the active child, with previous/next day and I dag controls. Future days are disabled; empty days show zero registrations.
+- No data migration is needed. The separate growth-reference proposal remains planned.
+- Phone check: open both buttons, browse days, return to today, switch child, verify chart period persistence and close/back behavior.
+- Verified: checkCodeStyle, 75 unit tests, lintDebug, assembleDebug and two targeted Pixel_8 emulator tests passed (Overblik daily navigation/child filtering and existing Today/Journal chart access). git diff --check passed. Physical-phone checks remain manual.
+
+### Hierarchical daily summary — October 11, 2026
+
+- Dagens overblik and Journal’s Opsummer dag share bold parent rows with totals and indented, regular-weight subtype rows with their own counts and details.
+- Nursing shows Venstre/Højre with counts of registrations using each side and minutes. A registration using both sides counts once in each subtype, once in the parent. Unknown timed sides remain explicit.
+- Diapers use mutually exclusive Wet/Dirty/Both/Dry subtypes (plus unknown), so Both is not counted twice. Bottle contents, sleep types, pumping methods, measurement types, activity types and health-visit types also appear as subrows. Mixed measurement units are never summed.
+- Phone check: verify both summary entry points, a nursing registration using both sides, mixed diaper types and a day with several measurement types.
+- Verified: checkCodeStyle, 78 unit tests, lintDebug, assembleDebug and the targeted Pixel_8 Overblik daily-navigation test passed. Physical-phone layout checks remain manual.
+
+### Compact book label and visible nursing intervals — October 11, 2026
+
+- The navigation label is now Bog (Book in English); the book itself keeps its full title.
+- Expanding a nursing timer directly shows every recorded interval with side, start/end, duration and nipple-shield use. Running durations update with the timer; long lists scroll inside the card. Ret intervaller remains available for editing.
+- Phone check: confirm the five navigation labels fit on one line; expand a nursing timer, switch sides, pause/resume and scroll a long interval list.
+- Verified: checkCodeStyle, lintDebug, assembleDebug, git diff --check and two existing Pixel_8 timer-control tests passed. Physical-phone label fit and interval-list layout remain manual checks.
+
+### Book reminder frequency and tooth chart — October 13, 2026
+
+- Removed the general daily registration notification. Legacy alarms and delivered notifications are cancelled on app startup/boot, and an already queued old receiver cannot notify or reschedule. Timer notifications and medicine reminders remain enabled as requested.
+- Barnets bog reminder settings now offer Daily, Three times weekly (Monday/Wednesday/Friday), Weekly (Monday), or Monthly (first day), at 20:00, plus off. At most one unfinished, age-eligible page is suggested across children on each scheduled date; extra monthly anniversaries no longer override the chosen frequency. Android can delay delivery.
+- Sundhed → Tænder opens a native, tappable diagram of 20 milk teeth in upper/lower arches, with the child's left/right marked. Each tooth stores eruption and loss dates separately for the selected child; dates can be corrected or cleared. Loss may be recorded with unknown eruption date. Future dates and loss preceding known eruption are rejected.
+- Tooth records persist locally in DataStore, are included in encrypted backup and are removed with a deleted child. Older backups without teeth restore an empty tooth collection. No Room migration or deletion of existing care records is required. This version covers milk teeth only.
+- Anatomical scope reference: [ADA primary tooth chart](https://www.ada.org/-/media/project/ada-organization/ada/ada-org/files/resources/public-programs/give-kids-a-smile/ada_primary_permanent_toothdev_eng.pdf). The diagram is app-native, with no copied artwork or medical predictions.
+- Phone checks: choose each book frequency and reopen settings/restart; confirm off cancels book prompts and general registration reminders stop; confirm timer/medicine notifications remain. Open Tænder, record/correct/clear both dates, cancel an edit, switch children and restart. Check encrypted backup/restore with saved teeth. Real-device notification timing and battery restrictions remain manual checks.
+- Verified: checkCodeStyle, 80 unit tests, lintDebug, assembleDebug and six targeted Pixel_8 tests (two UI, two preferences, two backup tests) passed. UI tests passed on isolated retry after an emulator startup failure; tooth editor/arch layout was visually inspected from an emulator capture. Physical-phone delivery remains unverified.
+
+### Favorite head side and Nøgletal — October 15, 2026
+
+- Søvn → Favoritside has Venstre/Højre buttons: each tap saves one timestamped observation for the selected child, without starting a timer or changing sleep duration. Journal supports correcting the side/time and deleting a mistaken observation.
+- Dagens overblik includes a bold Favoritside total with left/right subrows. The optional Favoritside dashboard tile shows both daily counts.
+- Overblik → Nøgletal offers 1D, 1U, 1M, 3M, 6M, 1Å and custom inclusive dates. The selected range survives reopening/restarts. Counts, percentages, the most recorded side and cumulative daily totals describe observations, not time spent on either side or a medical assessment.
+- A correction date is saved separately for each child. It splits the selected range into before the date and from the date (inclusive), with counts and percentages for both. Existing observations remain unchanged; comparisons explain unequal period lengths and show the change in left-side share in percentage points. Empty periods have no percentage.
+- Room migration 22 → 23 adds a nullable head-side field while retaining existing records. Observations, range preferences and correction dates are included in encrypted backup; older backups remain supported.
+- Verified: code-style check, debug build, lint, 86 unit tests and 7 targeted Pixel_8 emulator tests passed, including registration/editing, correction split, preference reload, migration and backup compatibility.
+- Phone checks: tap each side under Søvn; add the Favoritside dashboard tile; check daily summary and Journal edits/deletion; compare custom dates across a correction date; switch children and restart to check saved settings. Physical-phone layout and touch checks remain manual.
+
+- October 15 refinement: Journal’s Søvn filter includes Favoritside observations. Favorite-side quick registration shows only the heading and left/right count buttons, without explanatory or post-tap confirmation text.

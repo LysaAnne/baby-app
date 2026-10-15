@@ -305,6 +305,7 @@ fun SettingsDialog(
     preferences: AppPreferences,
     activeChild: ChildProfile?,
     careEvents: List<CareEventEntity>,
+    onUpdateBookReminderFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit,
     onUpdateBookReminders: (Boolean) -> Unit,
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit,
     createEncryptedBackup: suspend (CharArray) -> ByteArray,
@@ -409,7 +410,7 @@ fun SettingsDialog(
         onImport = importColorProfiles,
         onDismiss = { palettePreviewOpen = false },
     )
-    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders) { reminderSettingsOpen = false }
+    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency) { reminderSettingsOpen = false }
     if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup) { dataManagementOpen = false }
 }
 

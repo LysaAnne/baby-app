@@ -21,6 +21,29 @@ class Migration14To15Test {
         AppDatabase::class.java,
     )
 
+    @Test fun migration22To23PreservesRecordsAndAddsNullableHeadSide() {
+        val name = "migration-22-23"
+        helper.createDatabase(name, 22).use { db ->
+            val values = android.content.ContentValues()
+            db.query("PRAGMA table_info(care_events)").use { cursor ->
+                while (cursor.moveToNext()) if (cursor.getInt(cursor.getColumnIndexOrThrow("notnull")) == 1) {
+                    val column = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                    if (cursor.getString(cursor.getColumnIndexOrThrow("type")) == "TEXT") values.put(column, "") else values.put(column, 0)
+                }
+            }
+            values.put("id", "saved"); values.put("childId", "child"); values.put("type", "Breastfeeding")
+            values.put("timerSegments", "1000-61000"); values.put("timerSegmentSides", "Left"); values.put("notes", "Bevar mig")
+            db.insert("care_events", android.database.sqlite.SQLiteDatabase.CONFLICT_ABORT, values)
+        }
+        helper.runMigrationsAndValidate(name, 23, true, CoreModule.MIGRATION_22_23).use { db ->
+            db.query("SELECT timerSegments, timerSegmentSides, notes, headSide FROM care_events WHERE id = 'saved'").use { cursor ->
+                org.junit.Assert.assertTrue(cursor.moveToFirst())
+                assertEquals("1000-61000", cursor.getString(0)); assertEquals("Left", cursor.getString(1))
+                assertEquals("Bevar mig", cursor.getString(2)); org.junit.Assert.assertTrue(cursor.isNull(3))
+            }
+        }
+    }
+
     @Test fun migration21To22PreservesNursingAndAddsOptionalBottleRatio() {
         val name = "migration-21-22"
         helper.createDatabase(name, 21).use { db ->

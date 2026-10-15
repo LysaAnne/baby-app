@@ -30,6 +30,14 @@ class BackupRestoreTest {
         val bookPage = dk.babyapp.data.book.BabyBookPage("child", "cover", "{\"En hilsen til dig\":\"Kære Freja\"}")
         database.babyBookDao().save(bookPage)
         val preferences = DataStoreAppPreferencesRepository(context)
+        val previousStatistics = preferences.preferences.first().headSideStatistics
+        val statistics = dk.babyapp.data.preferences.HeadSideStatisticsSettings("Week", correctionDates = mapOf("child" to "2026-10-01"))
+        preferences.updateHeadSideStatistics(statistics)
+        val head = dk.babyapp.domain.headSideObservation("child", dk.babyapp.data.tracking.HeadSide.Left, 123).copy(id = "head")
+        database.careEventDao().upsert(head)
+        val previousTeeth = preferences.preferences.first().teeth
+        val tooth = dk.babyapp.data.teeth.ToothRecord("child", 51, "2026-01-01", "2026-10-01")
+        preferences.replaceTeeth(listOf(tooth))
         val previousMedicines = preferences.preferences.first().medicines
         val plan = MedicinePlan(id = "test-medicine", childId = "child", name = "Testmedicin", dose = "Testdosis", asNeeded = true)
         preferences.updateMedicines(listOf(plan))
@@ -38,11 +46,18 @@ class BackupRestoreTest {
         database.openHelper.writableDatabase.execSQL("DELETE FROM care_events")
         database.openHelper.writableDatabase.execSQL("DELETE FROM child_profiles")
         preferences.updateMedicines(emptyList())
+        preferences.replaceTeeth(emptyList())
+        preferences.updateHeadSideStatistics(dk.babyapp.data.preferences.HeadSideStatisticsSettings())
         service.restore(bytes, "hemmelig123".toCharArray())
         assertEquals(bookPage, database.babyBookDao().observeAll().first().single())
         assertEquals("Freja", database.childProfileDao().getById("child")?.name)
         assertEquals("child", database.careEventDao().get("event")?.childId)
         assertEquals(listOf(plan), preferences.preferences.first().medicines)
+        assertEquals(listOf(tooth), preferences.preferences.first().teeth)
+        assertEquals(dk.babyapp.data.tracking.HeadSide.Left, database.careEventDao().get("head")?.headSide)
+        assertEquals(statistics, preferences.preferences.first().headSideStatistics)
+        preferences.updateHeadSideStatistics(previousStatistics)
+        preferences.replaceTeeth(previousTeeth)
         preferences.updateMedicines(previousMedicines)
     }
     @Test fun olderBackupWithoutBookOrSideColumnsStillRestores() = runBlocking {
@@ -53,7 +68,9 @@ class BackupRestoreTest {
         val root = org.json.JSONObject(String(decrypt(service.create(password), password)))
         val tables = root.getJSONObject("tables")
         tables.remove("baby_book_pages")
+        root.remove("teeth")
         val event = tables.getJSONArray("care_events").getJSONObject(0)
+        event.remove("headSide"); root.remove("headSideStatistics")
         event.remove("timerSegmentSides"); event.remove("nursingContinued")
         service.restore(encrypt(root.toString().toByteArray(), password), password)
         assertEquals("Gammel note", database.careEventDao().get("legacy-event")?.notes)

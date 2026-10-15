@@ -179,6 +179,8 @@ class AppViewModel @Inject constructor(
             profilesRepository.delete(profile)
             val currentPreferences = preferencesRepository.preferences.first()
             preferencesRepository.updateMedicines(currentPreferences.medicines.filterNot { it.childId == profile.id })
+            preferencesRepository.replaceTeeth(currentPreferences.teeth.filterNot { it.childId == profile.id })
+            preferencesRepository.updateHeadSideStatistics(currentPreferences.headSideStatistics.copy(correctionDates = currentPreferences.headSideStatistics.correctionDates - profile.id))
             val next = state.value.profiles.firstOrNull { it.id != profile.id }
             if (state.value.preferences.activeChildId == profile.id) {
                 preferencesRepository.setActiveChild(next?.id)
@@ -195,6 +197,9 @@ class AppViewModel @Inject constructor(
     suspend fun importPhoto(uri: Uri): String = withContext(Dispatchers.IO) { photoStore.import(uri) }
 
     fun photoFile(fileName: String?): File? = fileName?.let(photoStore::file)?.takeIf(File::exists)
+
+    fun updateBookReminderFrequency(frequency: dk.babyapp.data.preferences.BookReminderFrequency) = viewModelScope.launch { preferencesRepository.updateBookReminderFrequency(frequency) }
+    fun saveTooth(record: dk.babyapp.data.teeth.ToothRecord) = viewModelScope.launch { preferencesRepository.saveTooth(record) }
 
     fun updateBookReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateBookReminders(enabled) }
 
@@ -353,6 +358,7 @@ class AppViewModel @Inject constructor(
         if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
         onComplete()
     }
+    fun updateHeadSideStatistics(settings: dk.babyapp.data.preferences.HeadSideStatisticsSettings) = viewModelScope.launch { preferencesRepository.updateHeadSideStatistics(settings) }
     fun updateMeasurementChartSettings(settings: dk.babyapp.data.preferences.MeasurementChartSettings) = viewModelScope.launch { preferencesRepository.updateMeasurementChartSettings(settings) }
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
@@ -481,6 +487,8 @@ class AppViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         listOf(
             CareEventEntity(id = "developer-event-breast", childId = childId, type = CareEventType.Breastfeeding, startedAt = now - 3 * 60 * 60 * 1_000, endedAt = now - 2 * 60 * 60 * 1_000 - 42 * 60 * 1_000, activeSide = BreastSide.Right, leftSeconds = 480, rightSeconds = 600, notes = "Rolig amning"),
+            dk.babyapp.domain.headSideObservation(childId, dk.babyapp.data.tracking.HeadSide.Left, now - 60 * 60 * 1000).copy(id = "developer-head-left"),
+            dk.babyapp.domain.headSideObservation(childId, dk.babyapp.data.tracking.HeadSide.Right, now - 30 * 60 * 1000).copy(id = "developer-head-right"),
             CareEventEntity(id = "developer-event-bottle", childId = childId, type = CareEventType.Bottle, startedAt = now - 90 * 60 * 1_000, endedAt = now - 90 * 60 * 1_000, bottleContent = BottleContent.BreastMilk, amountOfferedMl = 120, amountConsumedMl = 105, notes = "Testregistrering"),
             CareEventEntity(id = "developer-event-diaper", childId = childId, type = CareEventType.Diaper, startedAt = now - 35 * 60 * 1_000, endedAt = now - 35 * 60 * 1_000, diaperType = DiaperType.Both, observation = "Normal", notes = "Testregistrering"),
             CareEventEntity(id = "developer-event-pump", childId = childId, type = CareEventType.Pumping, startedAt = now - 5 * 60 * 60 * 1_000, endedAt = now - 5 * 60 * 60 * 1_000 + 15 * 60 * 1_000, leftSeconds = 900, pumpedAmountMl = 85),

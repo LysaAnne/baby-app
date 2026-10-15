@@ -13,6 +13,7 @@ import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.data.tracking.ActivityType
 
 internal fun CareEventType.displayLabel() = when (this) {
+    CareEventType.HeadSide -> "Favoritside"
     CareEventType.SolidFood -> "Fast føde"
     CareEventType.Breastfeeding -> "Amning"
     CareEventType.Bottle -> "Flaske"
@@ -82,3 +83,5 @@ internal fun HealthVisitType.displayLabel() = when (this) {
     HealthVisitType.Dental -> "Tandpleje"
     HealthVisitType.Other -> "Andet"
 }
+
+internal fun dk.babyapp.data.tracking.HeadSide?.displayLabel() = when (this) { dk.babyapp.data.tracking.HeadSide.Left -> "Venstre"; dk.babyapp.data.tracking.HeadSide.Right -> "Højre"; null -> "Side ikke angivet" }

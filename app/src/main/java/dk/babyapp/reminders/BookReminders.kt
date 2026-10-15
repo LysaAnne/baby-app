@@ -30,10 +30,10 @@ data class BookNotificationTarget(val childId: String, val pageId: String) {
 }
 
 class BookReminderScheduler(private val context: Context) {
-    fun update(children: List<ChildProfile>, enabled: Boolean = true) {
+    fun update(children: List<ChildProfile>, enabled: Boolean = true, frequency: dk.babyapp.data.preferences.BookReminderFrequency = dk.babyapp.data.preferences.BookReminderFrequency.ThreeWeekly) {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(BOOK_REMINDER_CHANNEL, "Barnets bog", NotificationManager.IMPORTANCE_DEFAULT))
         val alarm = context.getSystemService(AlarmManager::class.java)
-        val next = if (enabled) nextBookReminderAt(children, ZonedDateTime.now()) else null
+        val next = if (enabled) nextBookReminderAt(children, ZonedDateTime.now(), frequency) else null
         val pending = PendingIntent.getBroadcast(context, 7400, Intent(context, BookReminderReceiver::class.java).putExtra("scheduledDate", next?.toLocalDate()?.toString()), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         alarm.cancel(pending)
         if (!enabled) {
@@ -55,8 +55,9 @@ class BookReminderReceiver : BroadcastReceiver() {
             try {
                 val profiles = children.profiles.first()
                 // Schedule before reading pages: a malformed/removed page must not stop future reminders.
-                val enabled = dk.babyapp.data.preferences.DataStoreAppPreferencesRepository(context.applicationContext).preferences.first().bookRemindersEnabled
-                BookReminderScheduler(context).update(profiles, enabled)
+                val preferences = dk.babyapp.data.preferences.DataStoreAppPreferencesRepository(context.applicationContext).preferences.first()
+                val enabled = preferences.bookRemindersEnabled
+                BookReminderScheduler(context).update(profiles, enabled, preferences.bookReminderFrequency)
                 if (!enabled) return@launch
                 if (intent?.action in setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)) return@launch
                 val manager = context.getSystemService(NotificationManager::class.java)
@@ -66,24 +67,13 @@ class BookReminderReceiver : BroadcastReceiver() {
                 val today = LocalDate.now()
                 val scheduledDate = runCatching { LocalDate.parse(intent?.getStringExtra("scheduledDate")) }.getOrDefault(today)
                 val history = context.getSharedPreferences("book_reminder_history", Context.MODE_PRIVATE)
-                val sent = history.getStringSet("milestones", emptySet()).orEmpty().toMutableSet()
                 val available = profiles.flatMap { child -> babyBookTemplates.filter { template ->
                     bookPageAvailable(template, child, today) && !bookPageHasContent(pages.firstOrNull { it.childId == child.id && it.pageId == template.id })
                 }.map { child to it } }
-                val milestones = available.filter { (child, template) ->
-                    val month = template.id.removePrefix("month-").toLongOrNull()
-                    val due = if (template.id.startsWith("month-") && month != null) child.birthDate?.plusMonths(month) else null
-                    due != null && due == scheduledDate && today >= due && "${child.id}:${template.id}:$due" !in sent
-                }
-                milestones.forEach { (child, template) ->
-                    notifyPage(context, manager, child, template, 7401 + child.id.hashCode().and(0xffff))
-                    sent += "${child.id}:${template.id}:${child.birthDate?.plusMonths(template.id.removePrefix("month-").toLong())}"
-                }
-                history.edit().putStringSet("milestones", sent).apply()
-                if (scheduledDate.dayOfWeek in bookReminderWeekdays && today >= scheduledDate && history.getString("weeklyDate", null) != scheduledDate.toString()) {
+                if (isBookReminderDay(scheduledDate, preferences.bookReminderFrequency) && today == scheduledDate && history.getString("weeklyDate", null) != scheduledDate.toString()) {
                     // One general prompt across all children, avoiding an immediate repeat where possible.
                     val last = history.getString("lastPage", null)
-                    val candidates = available.filter { pair -> pair !in milestones }
+                    val candidates = available
                     val choice = candidates.filter { "${it.first.id}:${it.second.id}" != last }.ifEmpty { candidates }.randomOrNull()
                     if (choice != null) {
                         notifyPage(context, manager, choice.first, choice.second, 7400)

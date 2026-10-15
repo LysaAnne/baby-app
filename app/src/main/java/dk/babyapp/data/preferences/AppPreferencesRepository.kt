@@ -3,6 +3,7 @@ package dk.babyapp.data.preferences
 import kotlinx.coroutines.flow.Flow
 
 interface AppPreferencesRepository {
+    suspend fun updateHeadSideStatistics(settings: HeadSideStatisticsSettings)
     suspend fun updateMeasurementChartSettings(settings: MeasurementChartSettings)
     suspend fun updateLastPumpingMethod(method: String)
     val preferences: Flow<AppPreferences>
@@ -18,6 +19,9 @@ interface AppPreferencesRepository {
     suspend fun updateSettings(languageTag: String, region: DanishRegion, units: MeasurementUnits, theme: ThemePreference)
     suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean)
     suspend fun updateDashboardMetrics(metrics: List<DashboardMetric>)
+    suspend fun updateBookReminderFrequency(frequency: BookReminderFrequency)
+    suspend fun saveTooth(record: dk.babyapp.data.teeth.ToothRecord)
+    suspend fun replaceTeeth(records: List<dk.babyapp.data.teeth.ToothRecord>)
     suspend fun updateBookReminders(enabled: Boolean)
     suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int)
     suspend fun updateInsightDashboardMetrics(metrics: List<String>)

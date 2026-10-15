@@ -15,6 +15,23 @@ import dk.babyapp.data.tracking.*
 import dk.babyapp.domain.*
 
 @Composable
+internal fun NursingIntervalOverview(event: CareEventEntity, now: Long) {
+    val intervals = event.nursingIntervals()
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM HH:mm")
+    fun time(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).format(formatter)
+    Column(Modifier.fillMaxWidth().heightIn(max = 180.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (intervals.isEmpty()) Text("Ingen intervaller endnu", style = MaterialTheme.typography.bodySmall)
+        intervals.forEachIndexed { index, interval ->
+            val side = when (interval.side) { BreastSide.Left -> "Venstre"; BreastSide.Right -> "Højre"; null -> "Side ikke registreret" }
+            Column {
+                Text("Interval ${index + 1} · $side · ${formatDuration(((interval.end ?: now) - interval.start).coerceAtLeast(0) / 1000)}", style = MaterialTheme.typography.bodyMedium)
+                Text("${time(interval.start)} – ${interval.end?.let { time(it) } ?: "kører"}${if (interval.nippleShield) " · Ammebrik" else ""}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
 internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.id) { while (event.endedAt == null) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }

@@ -21,6 +21,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import dk.babyapp.data.medicine.MedicinePlan
+import dk.babyapp.data.teeth.validate
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -44,6 +45,8 @@ class EncryptedBackupService @Inject constructor(
         val photos = JSONObject()
         File(context.filesDir, "profile_photos").listFiles()?.forEach { file -> photos.put(file.name, Base64.getEncoder().encodeToString(file.readBytes())) }
         root.put("photos", photos)
+        root.put("headSideStatistics", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().headSideStatistics))
+        root.put("teeth", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().teeth))
         root.put("medicines", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().medicines))
         return encrypt(root.toString().toByteArray(), password)
     }
@@ -51,6 +54,9 @@ class EncryptedBackupService @Inject constructor(
     suspend fun restore(bytes: ByteArray, password: CharArray) {
         val root = JSONObject(String(decrypt(bytes, password)))
         require(root.getInt("format") == 1) { "Backupformatet understøttes ikke" }
+        val statistics = Json.decodeFromString<dk.babyapp.data.preferences.HeadSideStatisticsSettings>(root.optString("headSideStatistics", "{}"))
+        val teeth = Json.decodeFromString<List<dk.babyapp.data.teeth.ToothRecord>>(root.optString("teeth", "[]"))
+        teeth.forEach { it.validate() }
         val medicines = Json.decodeFromString<List<MedicinePlan>>(root.optString("medicines", "[]"))
         val tables = root.getJSONObject("tables")
         TABLES.filterNot { it == "baby_book_pages" }.forEach { require(tables.has(it)) { "Backupfilen mangler $it" } }
@@ -69,6 +75,8 @@ class EncryptedBackupService @Inject constructor(
         val photos = root.optJSONObject("photos") ?: JSONObject()
         photos.keys().forEach { name -> File(photoDir, File(name).name).writeBytes(Base64.getDecoder().decode(photos.getString(name))) }
         DataStoreAppPreferencesRepository(context).updateMedicines(medicines)
+        DataStoreAppPreferencesRepository(context).replaceTeeth(teeth)
+        DataStoreAppPreferencesRepository(context).updateHeadSideStatistics(statistics)
         database.invalidationTracker.refreshAsync()
     }
 

@@ -29,6 +29,12 @@ sealed interface AppDestination {
     }
 
     @Serializable
+    data object Overview : AppDestination {
+        override val labelRes = R.string.nav_insights
+        override val icon = Icons.Outlined.AutoGraph
+    }
+
+    @Serializable
     data object Guide : AppDestination {
         override val labelRes = R.string.nav_guide
         override val icon = Icons.AutoMirrored.Outlined.MenuBook
@@ -41,7 +47,7 @@ sealed interface AppDestination {
     }
 
     companion object {
-        val topLevel = listOf(Today, Timeline, Guide, Family)
+        val topLevel = listOf(Today, Timeline, Overview, Guide, Family)
     }
 }
 

@@ -34,12 +34,15 @@ class BookReminderPlanTest {
         assertTrue(bookPageAvailable(page("before-0"), expected, birth))
         assertFalse(bookPageAvailable(page("before-12"), expected, birth))
     }
-    @Test fun scheduleUsesThreeWeekdaysAndAdditionalMonthlyAnniversary() {
+    @Test fun scheduleRespectsChosenFrequencyWithoutExtraAnniversary() {
         val zone = ZoneId.of("Europe/Copenhagen")
-        // Saturday February 28 is the one-month anniversary, before Monday's general prompt.
+        // Monthly anniversaries no longer bypass the chosen reminder frequency.
         val fridayEvening = LocalDate.of(2026, 2, 27).atTime(21, 0).atZone(zone)
-        assertEquals(LocalDate.of(2026, 2, 28).atTime(20, 0).atZone(zone), nextBookReminderAt(listOf(child), fridayEvening))
+        assertEquals(LocalDate.of(2026, 3, 2).atTime(20, 0).atZone(zone), nextBookReminderAt(listOf(child), fridayEvening))
         assertEquals(DayOfWeek.MONDAY, nextBookReminderAt(listOf(child), fridayEvening.plusDays(1))?.dayOfWeek)
+        assertEquals(LocalDate.of(2026, 2, 28), nextBookReminderAt(listOf(child), fridayEvening, dk.babyapp.data.preferences.BookReminderFrequency.Daily)?.toLocalDate())
+        assertEquals(LocalDate.of(2026, 3, 1), nextBookReminderAt(listOf(child), fridayEvening, dk.babyapp.data.preferences.BookReminderFrequency.Monthly)?.toLocalDate())
+        assertEquals(DayOfWeek.MONDAY, nextBookReminderAt(listOf(child), fridayEvening, dk.babyapp.data.preferences.BookReminderFrequency.Weekly)?.dayOfWeek)
         assertNull(nextBookReminderAt(emptyList(), fridayEvening))
         assertEquals(setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), bookReminderWeekdays)
     }

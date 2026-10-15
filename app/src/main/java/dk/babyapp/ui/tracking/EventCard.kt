@@ -74,6 +74,7 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
 }
 
 internal fun eventTitle(event: CareEventEntity) = when (event.type) {
+    CareEventType.HeadSide -> "Favoritside – ${event.headSide.displayLabel()}"
     CareEventType.SolidFood -> "Fast føde – ${event.foodName}"
     CareEventType.Diaper -> "Ble – ${event.diaperType.displayLabel()}"
     CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"
@@ -85,6 +86,7 @@ internal fun eventTitle(event: CareEventEntity) = when (event.type) {
 }
 
 internal fun CareEventEntity.details() = when (type) {
+    CareEventType.HeadSide -> listOf(headSide.displayLabel(), notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.SolidFood -> listOf(foodName, foodTexture, foodAmount, foodReaction, notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Breastfeeding -> listOf("${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}", breastfeedingIssue?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Bottle -> listOf("${amountConsumedMl ?: 0} af ${amountOfferedMl ?: amountConsumedMl ?: 0} ml · ${bottleContent.displayLabel()}", bottleMixRatio.takeIf { it.isNotBlank() && bottleContent == dk.babyapp.data.tracking.BottleContent.Mixed }?.let { "Modermælk : erstatning $it" }.orEmpty(), notes).filter(String::isNotBlank).joinToString(" · ")
@@ -98,6 +100,7 @@ internal fun CareEventEntity.details() = when (type) {
 }
 
 private fun CareEventEntity.summary() = when (type) {
+    CareEventType.HeadSide -> headSide.displayLabel()
     CareEventType.SolidFood -> foodAmount.ifBlank { foodTexture.ifBlank { "Måltid" } }
     CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep -> formatDuration(elapsedSeconds())
     CareEventType.Bottle -> amountConsumedMl?.let { "$it ml" } ?: bottleContent.displayLabel()
@@ -115,6 +118,7 @@ private fun CareEventEntity.recordedAt(): String = if (!timeSpecified) {
 }
 
 private fun CareEventEntity.icon() = when (type) {
+    CareEventType.HeadSide -> "↔"
     CareEventType.SolidFood -> "🥣"
     CareEventType.Breastfeeding -> "🤱"
     CareEventType.Bottle -> "🍼"

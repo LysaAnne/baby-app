@@ -11,5 +11,5 @@ internal val journalFilters = listOf(
     JournalFilter("Nattesøvn") { it.type == CareEventType.Sleep && it.sleepType == SleepType.Night },
     JournalFilter("Medicin") { it.type == CareEventType.Activity && it.activityType == ActivityType.Medicine },
     JournalFilter("Mavetid") { it.type == CareEventType.Activity && it.activityType == ActivityType.TummyTime },
-) + CareEventType.entries.map { type -> JournalFilter(type.displayLabel()) { it.type == type } } +
+) + CareEventType.entries.map { type -> JournalFilter(type.displayLabel()) { it.type == type || (type == CareEventType.Sleep && it.type == CareEventType.HeadSide) } } +
     MeasurementType.entries.map { type -> JournalFilter(type.displayLabel()) { it.type == CareEventType.Measurement && it.measurementType == type } }
