@@ -35,7 +35,7 @@ internal fun HeadSideStatisticsDialog(childId: String, events: List<CareEventEnt
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Nøgletal", style = MaterialTheme.typography.headlineSmall)
+                    Text("Favoritside", style = MaterialTheme.typography.headlineSmall)
                     TextButton(onClick = onDismiss) { Text("Luk") }
                 }
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {

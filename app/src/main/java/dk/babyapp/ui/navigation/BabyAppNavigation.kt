@@ -271,6 +271,7 @@ fun BabyAppNavigation(
                     onKeepTimerAwake = { keepTimerAwake = it },
                     onUpdateQuickActionCategoryOrder = onUpdateQuickActionCategoryOrder,
                     onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
+                    onUpdateHeadSideStatistics = onUpdateHeadSideStatistics,
                     onUpdateMeasurementChartSettings = onUpdateMeasurementChartSettings,
                     onUpdateHiddenQuickActions = onUpdateHiddenQuickActions,
                     onSaveTooth = onSaveTooth,

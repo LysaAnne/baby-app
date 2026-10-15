@@ -866,3 +866,5 @@ Phone checks: correct an active nursing start; stop and edit/delete a side inter
 - Phone checks: tap each side under Søvn; add the Favoritside dashboard tile; check daily summary and Journal edits/deletion; compare custom dates across a correction date; switch children and restart to check saved settings. Physical-phone layout and touch checks remain manual.
 
 - October 15 refinement: Journal’s Søvn filter includes Favoritside observations. Favorite-side quick registration shows only the heading and left/right count buttons, without explanatory or post-tap confirmation text.
+
+- October 15 refinement: Nøgletal is now named Favoritside. A graph icon beside the Favoritside quick-registration heading opens the same overview, sharing saved period and correction settings with Overblik.

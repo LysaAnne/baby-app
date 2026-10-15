@@ -1,6 +1,9 @@
 package dk.babyapp.ui.tracking
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoGraph
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,9 +15,14 @@ import dk.babyapp.domain.*
 import java.time.LocalDate
 
 @Composable
-internal fun HeadSideQuickButtons(events: List<CareEventEntity>, childId: String?, onSave: (CareEventEntity) -> Unit) {
+internal fun HeadSideQuickButtons(events: List<CareEventEntity>, childId: String?, onOpenStatistics: (() -> Unit)? = null, onSave: (CareEventEntity) -> Unit) {
     val counts = headSideTotals(eventsForDay(events.filter { it.childId == childId }, LocalDate.now()))
-    Text("Favoritside", style = MaterialTheme.typography.titleSmall)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Favoritside", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        if (onOpenStatistics != null) IconButton(onClick = onOpenStatistics, enabled = childId != null) {
+            Icon(Icons.Outlined.AutoGraph, contentDescription = "Åbn favoritside")
+        }
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         HeadSide.entries.forEach { side ->
             FilledTonalButton(modifier = Modifier.weight(1f).semantics { contentDescription = "Registrer hovedside ${side.displayLabel().lowercase()}" }, enabled = childId != null, onClick = {

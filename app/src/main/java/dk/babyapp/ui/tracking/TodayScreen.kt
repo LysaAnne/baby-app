@@ -140,6 +140,7 @@ fun TodayScreen(
     onKeepTimerAwake: (Boolean) -> Unit = {},
     onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
+    onUpdateHeadSideStatistics: (dk.babyapp.data.preferences.HeadSideStatisticsSettings) -> Unit = {},
     onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onSaveTooth: (dk.babyapp.data.teeth.ToothRecord) -> Unit = {},
@@ -168,6 +169,7 @@ fun TodayScreen(
     var customizeOpen by remember { mutableStateOf(false) }
     var dashboardCustomizeOpen by remember { mutableStateOf(false) }
     var teethOpen by remember(childId) { mutableStateOf(false) }
+    var headSideOpen by remember(childId) { mutableStateOf(false) }
     var chartsOpen by remember { mutableStateOf(false) }
     var manualActivityType by remember { mutableStateOf(ActivityType.Other) }
     var manualMenuOpen by remember { mutableStateOf(false) }
@@ -234,7 +236,7 @@ fun TodayScreen(
                         }
                     }
                     if (QuickAction.HeadSide in actions) {
-                        HeadSideQuickButtons(childEvents, childId, onSaveHealthRecord)
+                        HeadSideQuickButtons(childEvents, childId, { headSideOpen = true }, onSaveHealthRecord)
                     }
                     if (QuickAction.Diaper in actions) {
                         DiaperType.entries.chunked(2).forEach { types ->
@@ -306,6 +308,7 @@ fun TodayScreen(
         }
     }
 
+    if (headSideOpen && childId != null) HeadSideStatisticsDialog(childId, events, preferences.headSideStatistics, onUpdateHeadSideStatistics) { headSideOpen = false }
     if (chartsOpen && childId != null) MeasurementChartsDialog(events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
     if (manualMenuOpen) ManualRegistrationMenu(
         listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,

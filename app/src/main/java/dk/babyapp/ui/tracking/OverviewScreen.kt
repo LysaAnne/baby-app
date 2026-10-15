@@ -46,7 +46,7 @@ internal fun OverviewScreen(
             OverviewTile("Dagens overblik", Icons.Outlined.CalendarToday, childId != null, Modifier.weight(1f)) { dayOpen = true }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OverviewTile("Nøgletal", Icons.Outlined.AutoGraph, childId != null, Modifier.weight(1f)) { statisticsOpen = true }
+            OverviewTile("Favoritside", Icons.Outlined.AutoGraph, childId != null, Modifier.weight(1f)) { statisticsOpen = true }
             Spacer(Modifier.weight(1f))
         }
     }
