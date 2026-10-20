@@ -28,7 +28,6 @@ import dk.babyapp.domain.resumeNursing
 import dk.babyapp.domain.switchNursingSide
 import dk.babyapp.tracking.TimerNotificationController
 import javax.inject.Inject
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -44,8 +43,11 @@ class TrackingViewModel @Inject constructor(
 ) : ViewModel() {
     private val timerStartMutex = Mutex()
 
+    private suspend fun sleepsNear(event: CareEventEntity) =
+        careEventRepository.sleepsOverlapping(event.childId, event.startedAt, event.endedAt ?: System.currentTimeMillis())
+
     private suspend fun canStartTimer(childId: String, type: CareEventType) =
-        dk.babyapp.domain.canStartTimer(careEventRepository.events.first(), childId, type)
+        dk.babyapp.domain.canStartTimer(careEventRepository.unfinished(), childId, type)
 
     fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch { timerStartMutex.withLock {
         if (!canStartTimer(childId, CareEventType.Breastfeeding)) return@withLock
@@ -161,7 +163,7 @@ class TrackingViewModel @Inject constructor(
         onResult: (Boolean) -> Unit = {},
     ) = viewModelScope.launch {
         val candidate = CareEventEntity(childId = childId, type = CareEventType.Sleep, startedAt = start, endedAt = end)
-        val overlaps = overlapsSleep(candidate, careEventRepository.events.first())
+        val overlaps = overlapsSleep(candidate, sleepsNear(candidate))
         if (end <= start || overlaps) {
             onResult(false)
         } else {
@@ -179,7 +181,7 @@ class TrackingViewModel @Inject constructor(
     fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
         val current = careEventRepository.get(event.id)
         val changedDuringEdit = event.type == CareEventType.Breastfeeding && current != null && current.updatedAt != event.updatedAt
-        val overlaps = overlapsSleep(event, careEventRepository.events.first())
+        val overlaps = overlapsSleep(event, sleepsNear(event))
         if (overlaps || changedDuringEdit) onResult(false) else {
             careEventRepository.save(event.copy(isDraft = false))
             if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)

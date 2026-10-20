@@ -29,7 +29,7 @@ fun BabyApp(
     val state by viewModel.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(state.loaded, state.profiles, state.preferences.bookRemindersEnabled, state.preferences.bookReminderFrequency) { if (state.loaded) dk.babyapp.reminders.BookReminderScheduler(context).update(state.profiles, state.preferences.bookRemindersEnabled, state.preferences.bookReminderFrequency) }
-    val activeTimer = state.careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }
+    val activeTimer = state.unfinishedEvents.firstOrNull()
     LaunchedEffect(activeTimer?.id) { viewModel.restoreTimerNotification(activeTimer) }
     LaunchedEffect(state.loaded, state.preferences.languageTag) {
         if (state.loaded && AppCompatDelegate.getApplicationLocales().toLanguageTags() != "da") {
@@ -66,7 +66,10 @@ fun BabyApp(
                     onReorderChildren = family::reorderChildren,
                     onReorderFamily = family::reorderFamily,
                     careProviders = state.careProviders,
-                    careEvents = state.careEvents,
+                    careEvents = state.recentEvents,
+                    runningEvents = state.unfinishedEvents,
+                    recentFrom = state.recentFrom,
+                    childHistory = { viewModel.childHistory.collectAsState().value ?: state.recentEvents },
                     bookPages = state.bookPages,
                     onSaveBookPage = book::saveBookPage,
                     colorProfiles = state.colorProfiles,

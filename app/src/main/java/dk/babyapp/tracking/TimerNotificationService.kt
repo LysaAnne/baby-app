@@ -89,8 +89,7 @@ class TimerNotificationService : Service() {
     private fun beginUpdates() {
         updateJob?.cancel()
         updateJob = scope.launch {
-            repository.events.collect { events ->
-                val active = events.filter { it.endedAt == null && it.deletedAt == null }
+            repository.unfinishedEvents.collect { active ->
                 val manager = getSystemService(NotificationManager::class.java)
                 val nextIds = active.drop(1).map { 0x40000000 or (it.id.hashCode() and 0x3fffffff) }.toSet()
                 (secondaryIds - nextIds).forEach(manager::cancel)

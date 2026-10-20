@@ -53,6 +53,30 @@ class BabyAppNavigationTest {
         }
     }
 
+    @Test fun historyIsOnlyLoadedForScreensThatShowIt() {
+        val child = ChildProfile(id = "child", name = "Freja")
+        val now = System.currentTimeMillis()
+        val recent = dk.babyapp.data.tracking.CareEventEntity(id = "recent", childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Diaper, startedAt = now, endedAt = now, diaperType = dk.babyapp.data.tracking.DiaperType.Wet)
+        val older = recent.copy(id = "older", startedAt = now - 2 * 86_400_000L, endedAt = now - 2 * 86_400_000L, notes = "Fra historikken")
+        var historyCollected = false
+        composeRule.setContent {
+            BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" },
+                preferences = AppPreferences(hasSeenGettingStarted = true), careEvents = listOf(recent), recentFrom = java.time.LocalDate.now().minusDays(1),
+                childHistory = { historyCollected = true; listOf(recent, older) })
+        }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { org.junit.Assert.assertFalse(historyCollected) }
+        // Going back past the recent window on Today needs the history.
+        composeRule.onNodeWithContentDescription("Forrige dags overblik").performClick()
+        composeRule.onNodeWithContentDescription("Forrige dags overblik").performClick()
+        composeRule.runOnIdle { org.junit.Assert.assertTrue(historyCollected) }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(isSelectable()).onFirst().performClick()
+        composeRule.onNodeWithText("Udfold datoer").performClick()
+        composeRule.onNodeWithText("Udfold registreringer").performClick()
+        composeRule.onAllNodesWithText("Fra historikken", substring = true).onFirst().assertExists()
+    }
+
     @Test fun nursingTimerDoesNotOfferShield() {
         val child = ChildProfile(id = "child", name = "Freja")
         val now = System.currentTimeMillis()

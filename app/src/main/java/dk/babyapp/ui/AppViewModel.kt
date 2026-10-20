@@ -29,8 +29,16 @@ import dk.babyapp.tracking.TimerNotificationController
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -41,7 +49,11 @@ data class AppUiState(
     val parents: List<ParentProfile> = emptyList(),
     val parentLinks: List<ChildParentLink> = emptyList(),
     val careProviders: List<CareProvider> = emptyList(),
-    val careEvents: List<CareEventEntity> = emptyList(),
+    /** The active child's registrations from [recentFrom] on, plus unfinished timers and drafts. */
+    val recentEvents: List<CareEventEntity> = emptyList(),
+    val recentFrom: LocalDate? = null,
+    /** Started timers of every child. */
+    val unfinishedEvents: List<CareEventEntity> = emptyList(),
     val bookPages: List<BabyBookPage> = emptyList(),
     val colorProfiles: List<ColorProfile> = emptyList(),
     val medicines: List<MedicinePlan> = emptyList(),
@@ -62,6 +74,7 @@ data class OnboardingSettings(
  * The state every screen reads, plus app-wide actions (onboarding, active child, reminders).
  * Changes to data live in the feature ViewModels: tracking, family, settings, book and developer.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AppViewModel @Inject constructor(
     profilesRepository: ChildProfileRepository,
@@ -89,15 +102,41 @@ class AppViewModel @Inject constructor(
         teethRepository?.records ?: flowOf(emptyList()),
     ) { medicines, teeth -> medicines to teeth }
 
+    private val activeChildId = profileState.map { it.activeChild?.id }.distinctUntilChanged()
+
+    // Today only needs recent days; loading years of history after every change took about a second.
+    private val recentEvents = activeChildId.flatMapLatest { id ->
+        if (id == null) flowOf(null to emptyList()) else {
+            val from = LocalDate.now().minusDays(RECENT_DAYS)
+            careEventRepository.recentEventsForChild(id, from.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()).map { from to it }
+        }
+    }
+
+    private val appearance = combine(colorProfileRepository.profiles, bookRepository?.pages ?: flowOf(emptyList())) { colors, pages -> colors to pages }
+
     val state: StateFlow<AppUiState> = combine(
         combine(profileState, careLists) { base, (medicines, teeth) -> base.copy(medicines = medicines, teeth = teeth) },
         profilesRepository.careProviders,
-        careEventRepository.events,
-        colorProfileRepository.profiles,
-        bookRepository?.pages ?: flowOf(emptyList()),
-    ) { base, careProviders, careEvents, colorProfiles, bookPages ->
-        base.copy(loaded = true, bookPages = bookPages, careProviders = careProviders, careEvents = careEvents, colorProfiles = colorProfiles)
+        recentEvents,
+        careEventRepository.unfinishedEvents,
+        appearance,
+    ) { base, careProviders, (recentFrom, recent), unfinished, (colorProfiles, bookPages) ->
+        base.copy(
+            loaded = true, bookPages = bookPages, careProviders = careProviders, colorProfiles = colorProfiles,
+            recentEvents = recent, recentFrom = recentFrom, unfinishedEvents = unfinished,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
+
+    /**
+     * The active child's whole history, for Journal, Overview, charts and export. It is only loaded
+     * while collected. Null until loaded, including right after switching child.
+     */
+    val childHistory: StateFlow<List<CareEventEntity>?> = activeChildId.flatMapLatest { id ->
+        flow {
+            emit(null)
+            emitAll(if (id == null) flowOf(emptyList()) else careEventRepository.eventsForChild(id))
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun completeOnboarding(
         settings: OnboardingSettings,
@@ -127,4 +166,8 @@ class AppViewModel @Inject constructor(
     }
 
     fun restoreTimerNotification(event: CareEventEntity?) { if (event != null && event.endedAt == null) timerNotifications.show(event.id) }
+
+    private companion object {
+        const val RECENT_DAYS = 35L
+    }
 }

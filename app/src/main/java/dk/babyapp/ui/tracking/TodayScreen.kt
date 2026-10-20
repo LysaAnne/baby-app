@@ -148,6 +148,8 @@ fun TodayScreen(
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
     medicines: List<MedicinePlan> = emptyList(),
     teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
+    recentFrom: LocalDate? = null,
+    history: @Composable () -> List<CareEventEntity> = { events },
 ) {
     val childEvents = childId?.let { id -> events.filter { it.childId == id && !it.isDraft && it.deletedAt == null } }.orEmpty()
     val active = childEvents.filter { it.endedAt == null && it.type in listOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep, CareEventType.Activity) }
@@ -178,6 +180,9 @@ fun TodayScreen(
     var manualMenuOpen by remember { mutableStateOf(false) }
     var sleepError by remember { mutableStateOf(false) }
     var medicineCardOpen by remember { mutableStateOf(false) }
+    // [events] only covers recent days; the whole history is loaded while an older day or a chart is shown.
+    val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen)) history() else null
+    val allChildEvents = historyEvents?.let { all -> all.filter { it.childId == childId && !it.isDraft && it.deletedAt == null } } ?: childEvents
     LaunchedEffect(childId, events) {
         if (editing == null) editing = events.firstOrNull { it.childId == childId && it.isDraft && it.deletedAt == null }
     }
@@ -212,7 +217,7 @@ fun TodayScreen(
                 TextButton(enabled = overviewDate != today, onClick = { overviewDate = today }) { Text(if (overviewDate == today) "I dag" else "Tilbage til i dag") }
                 IconButton(enabled = overviewDate < today, onClick = { overviewDate = overviewDate.plusDays(1) }) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Næste dags overblik") }
             }
-            DailyOverview(dk.babyapp.domain.eventsForDay(childEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true })
+            DailyOverview(dk.babyapp.domain.eventsForDay(allChildEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true })
         }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
@@ -312,8 +317,8 @@ fun TodayScreen(
         }
     }
 
-    if (headSideOpen && childId != null) HeadSideStatisticsDialog(childId, events, preferences.headSideStatistics, onUpdateHeadSideStatistics) { headSideOpen = false }
-    if (chartsOpen && childId != null) MeasurementChartsDialog(events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
+    if (headSideOpen && childId != null) HeadSideStatisticsDialog(childId, historyEvents ?: events, preferences.headSideStatistics, onUpdateHeadSideStatistics) { headSideOpen = false }
+    if (chartsOpen && childId != null) MeasurementChartsDialog(historyEvents ?: events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
     if (manualMenuOpen) ManualRegistrationMenu(
         listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,
             "Ble" to EditorKind.Diaper, "Søvn" to EditorKind.Sleep, "Vægt" to EditorKind.Weight, "Højde" to EditorKind.Height, "Hovedomkreds" to EditorKind.HeadCircumference, "Temperatur" to EditorKind.Temperature, "Fast føde" to EditorKind.SolidFood,

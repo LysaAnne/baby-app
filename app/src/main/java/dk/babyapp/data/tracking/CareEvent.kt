@@ -22,7 +22,7 @@ enum class HealthRecordStatus { Scheduled, Completed, Postponed, Cancelled, Decl
 
 @Entity(
     tableName = "care_events",
-    indices = [Index("childId"), Index("startedAt")],
+    indices = [Index("childId"), Index("startedAt"), Index("childId", "startedAt")],
 )
 data class CareEventEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),

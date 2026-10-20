@@ -98,6 +98,12 @@ fun BabyAppNavigation(
     onReorderFamily: (List<String>) -> Unit = {},
     careProviders: List<CareProvider> = emptyList(),
     careEvents: List<CareEventEntity> = emptyList(),
+    /** Started timers of every child; defaults to those in [careEvents]. */
+    runningEvents: List<CareEventEntity> = careEvents.filter { it.endedAt == null && it.deletedAt == null },
+    /** First day [careEvents] is complete for, or null when it already holds the whole history. */
+    recentFrom: LocalDate? = null,
+    /** The active child's whole history. Only called by screens that show history, so it is loaded only there. */
+    childHistory: @Composable () -> List<CareEventEntity> = { careEvents },
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
     colorProfiles: List<ColorProfile> = emptyList(),
@@ -157,14 +163,14 @@ fun BabyAppNavigation(
             onBookTargetHandled()
         }
     }
-    val activeTimers = careEvents.filter { it.endedAt == null && it.deletedAt == null }
+    val activeTimers = runningEvents
     var keepTimerAwake by androidx.compose.runtime.saveable.rememberSaveable(activeTimers.isNotEmpty()) { androidx.compose.runtime.mutableStateOf(false) }
     val timerView = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.DisposableEffect(timerView, activeTimers.any { it.runningSince != null }, keepTimerAwake) {
         timerView.keepScreenOn = keepTimerAwake && activeTimers.any { it.runningSince != null }
         onDispose { timerView.keepScreenOn = false }
     }
-    val visibleEvents = careEvents.filterNot { it.isDraft || it.deletedAt != null }
+    fun visible(events: List<CareEventEntity>) = events.filterNot { it.isDraft || it.deletedAt != null }
     var settingsOpen by remember { mutableStateOf(false) }
     var requestedEditChildId by remember { mutableStateOf<String?>(null) }
 
@@ -212,7 +218,7 @@ fun BabyAppNavigation(
                     }
                 },
                 actions = {
-                    careEvents.firstOrNull { it.endedAt == null && it.deletedAt == null }?.let { event ->
+                    runningEvents.firstOrNull()?.let { event ->
                         dk.babyapp.ui.tracking.TopBarTimer(event) { onSelectChild(event.childId); navController.navigate(AppDestination.Today) { launchSingleTop = true } }
                     }
                     IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings)) }
@@ -258,6 +264,7 @@ fun BabyAppNavigation(
                 TodayScreen(
                     scrollToTopRequest = todayScrollRequest,
                     childId = activeChild?.id, events = careEvents, contentPadding = contentPadding, preferences = preferences,
+                    recentFrom = recentFrom, history = childHistory,
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
@@ -308,7 +315,7 @@ fun BabyAppNavigation(
                     onUpdateQuickFilters = onUpdateJournalQuickFilters,
                     activeChildId = activeChild?.id,
                     medicines = medicines,
-                    events = visibleEvents,
+                    events = visible(childHistory()),
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     contentPadding = contentPadding,
                     onAddSleep = onAddSleep,
@@ -324,7 +331,7 @@ fun BabyAppNavigation(
             composable<AppDestination.Overview> {
                 dk.babyapp.ui.tracking.OverviewScreen(
                     childId = activeChild?.id,
-                    events = visibleEvents,
+                    events = visible(childHistory()),
                     contentPadding = contentPadding,
                     chartSettings = preferences.measurementChartSettings,
                     onChartSettingsChange = onUpdateMeasurementChartSettings,
@@ -381,7 +388,7 @@ fun BabyAppNavigation(
     if (settingsOpen) SettingsDialog(
         preferences = preferences,
         activeChild = activeChild,
-        careEvents = careEvents,
+        careEvents = childHistory(),
         onUpdateBookReminderFrequency = onUpdateBookReminderFrequency,
         onUpdateBookReminders = onUpdateBookReminders,
         onUpdateDailyReminder = onUpdateDailyReminder,

@@ -14,6 +14,12 @@ Denne liste beskriver alt, appen kan pr. 20. oktober 2026 (commit `2d42b4e`). De
   - `CareListsDatabaseTest` kræver, at medicinkort og tænder fra før databaseversion 24 kopieres én gang, i samme rækkefølge, uden at overskrive eller miste noget; den gamle kopi i indstillingerne bevares.
 - Manuelt: Tag en krypteret backup på telefonen før installation af en ny version.
 
+## Indlæsning af registreringer
+
+- I dag henter kun det aktive barns seneste 35 dage samt kørende timere og kladder (ca. 20 ms med 3 års data mod ca. 900 ms for alt).
+- Hele barnets historik hentes kun, mens Journal, Overblik, eksport, en graf eller en ældre dag på I dag vises.
+- Kørende timere for alle børn hentes særskilt til topbjælken og notifikationen.
+
 ## Opstart og generelt
 
 - [ ] Velkomst/onboarding (dansk) med region, enheder og tema; intet barn oprettes i onboarding

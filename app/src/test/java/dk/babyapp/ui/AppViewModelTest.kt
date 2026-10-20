@@ -82,4 +82,38 @@ class AppViewModelTest {
 
         assertEquals(true, preferences.items.value.hasSeenGettingStarted)
     }
+
+    @Test
+    fun `state holds recent events of the active child and history is loaded on demand`() = runTest(dispatcher) {
+        val alma = ChildProfile(name = "Alma", birthDate = java.time.LocalDate.of(2024, 1, 1))
+        val noah = ChildProfile(name = "Noah", birthDate = java.time.LocalDate.of(2026, 1, 1))
+        val now = System.currentTimeMillis()
+        val day = 86_400_000L
+        val events = FakeCareEventRepository().also { repo ->
+            repo.items.value = listOf(
+                CareEventEntity(id = "alma-today", childId = alma.id, type = CareEventType.Diaper, startedAt = now, endedAt = now),
+                CareEventEntity(id = "alma-last-year", childId = alma.id, type = CareEventType.Diaper, startedAt = now - 365 * day, endedAt = now - 365 * day),
+                CareEventEntity(id = "noah-running", childId = noah.id, type = CareEventType.Sleep, startedAt = now, runningSince = now),
+            )
+        }
+        val preferences = FakePreferencesRepository(AppPreferences(true, alma.id))
+        val viewModel = AppViewModel(FakeProfilesRepository(listOf(alma, noah)), preferences, FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        val collector = launch { viewModel.state.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(listOf("alma-today"), viewModel.state.value.recentEvents.map { it.id })
+        assertEquals(listOf("noah-running"), viewModel.state.value.unfinishedEvents.map { it.id })
+        assertNull(viewModel.childHistory.value)
+
+        val history = launch { viewModel.childHistory.collect {} }
+        advanceUntilIdle()
+        assertEquals(setOf("alma-today", "alma-last-year"), viewModel.childHistory.value?.map { it.id }?.toSet())
+
+        preferences.setActiveChild(noah.id)
+        advanceUntilIdle()
+        assertEquals(listOf("noah-running"), viewModel.state.value.recentEvents.map { it.id })
+        assertEquals(listOf("noah-running"), viewModel.childHistory.value?.map { it.id })
+        history.cancel()
+        collector.cancel()
+    }
 }

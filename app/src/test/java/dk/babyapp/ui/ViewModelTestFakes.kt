@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -129,7 +130,13 @@ internal class FakeParentRepository : ParentProfileRepository {
 
 internal class FakeCareEventRepository : CareEventRepository {
     val items = MutableStateFlow<List<CareEventEntity>>(emptyList())
-    override val events: Flow<List<CareEventEntity>> = items
+    override fun eventsForChild(childId: String): Flow<List<CareEventEntity>> = items.map { all -> all.filter { it.childId == childId } }
+    override fun recentEventsForChild(childId: String, from: Long): Flow<List<CareEventEntity>> =
+        items.map { all -> all.filter { it.childId == childId && (it.startedAt >= from || it.endedAt == null || it.isDraft) } }
+    override val unfinishedEvents: Flow<List<CareEventEntity>> = items.map { all -> all.filter { it.endedAt == null && it.deletedAt == null } }
+    override suspend fun unfinished() = items.value.filter { it.endedAt == null && it.deletedAt == null }
+    override suspend fun sleepsOverlapping(childId: String, start: Long, end: Long) =
+        items.value.filter { it.childId == childId && it.type == CareEventType.Sleep && it.deletedAt == null && it.startedAt < end && (it.endedAt == null || it.endedAt > start) }
     override suspend fun save(event: CareEventEntity) { items.value = items.value.filterNot { it.id == event.id } + event }
     override suspend fun get(id: String) = items.value.firstOrNull { it.id == id }
     override suspend fun activeForChild(childId: String) = items.value.firstOrNull { it.childId == childId && it.endedAt == null && it.deletedAt == null }
