@@ -18,23 +18,14 @@ class RegistrationPreferencesTest {
         } finally { repository.updateHeadSideStatistics(previous) }
     }
 
-    @Test fun teethAndBookFrequencyPersistAndKeepOtherChild() = runBlocking {
+    @Test fun bookFrequencyPersists() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val repository = DataStoreAppPreferencesRepository(context)
         val previous = repository.preferences.first()
         try {
-            val first = dk.babyapp.data.teeth.ToothRecord("first", 51, "2026-01-01")
-            val second = dk.babyapp.data.teeth.ToothRecord("second", 51, lost = "2026-02-01")
-            repository.replaceTeeth(listOf(first, second))
-            repository.saveTooth(first.copy(lost = "2026-03-01"))
             repository.updateBookReminderFrequency(BookReminderFrequency.Monthly)
-            val reloaded = DataStoreAppPreferencesRepository(context).preferences.first()
-            assertEquals(BookReminderFrequency.Monthly, reloaded.bookReminderFrequency)
-            assertEquals(second, reloaded.teeth.single { it.childId == "second" })
-            repository.saveTooth(first.copy(emerged = null))
-            assertEquals(listOf(second), repository.preferences.first().teeth)
+            assertEquals(BookReminderFrequency.Monthly, DataStoreAppPreferencesRepository(context).preferences.first().bookReminderFrequency)
         } finally {
-            repository.replaceTeeth(previous.teeth)
             repository.updateBookReminderFrequency(previous.bookReminderFrequency)
         }
     }

@@ -23,7 +23,14 @@ import androidx.datastore.preferences.core.edit
 import dk.babyapp.data.color.colorProfileDataStore
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import dk.babyapp.data.preferences.appPreferencesDataStore
+import dk.babyapp.data.legacy.LegacyListMigrator
 import dk.babyapp.data.medicine.MedicinePlan
+import dk.babyapp.data.medicine.MedicinePlanEntity
+import dk.babyapp.data.medicine.toEntity
+import dk.babyapp.data.medicine.toPlan
+import dk.babyapp.data.teeth.ToothRecordEntity
+import dk.babyapp.data.teeth.toEntity
+import dk.babyapp.data.teeth.toRecord
 import dk.babyapp.data.teeth.validate
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
@@ -33,9 +40,11 @@ import kotlinx.serialization.json.Json
 class EncryptedBackupService @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val database: AppDatabase,
+    private val legacyLists: LegacyListMigrator = LegacyListMigrator(context, database),
 ) {
     suspend fun create(password: CharArray): ByteArray {
         require(password.size >= 8) { "Adgangskoden skal være mindst 8 tegn" }
+        legacyLists.ensureMigrated()
         val root = JSONObject().put("format", 1).put("createdAt", System.currentTimeMillis())
         val tables = JSONObject()
         val db = database.openHelper.writableDatabase
@@ -49,8 +58,9 @@ class EncryptedBackupService @Inject constructor(
         File(context.filesDir, "profile_photos").listFiles()?.forEach { file -> photos.put(file.name, Base64.getEncoder().encodeToString(file.readBytes())) }
         root.put("photos", photos)
         root.put("headSideStatistics", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().headSideStatistics))
-        root.put("teeth", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().teeth))
-        root.put("medicines", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().medicines))
+        // Also kept as JSON so app versions from before database version 24 can restore them.
+        root.put("teeth", Json.encodeToString(database.teethDao().all().map { it.toRecord() }))
+        root.put("medicines", Json.encodeToString(database.medicineDao().all().map { it.toPlan() }))
         // Optional sections: older app versions ignore unknown keys, so the format number stays 1 and their restore keeps working.
         root.put("databaseVersion", db.version)
         root.put("appPreferences", context.appPreferencesDataStore.data.first().toBackupJson())
@@ -68,7 +78,12 @@ class EncryptedBackupService @Inject constructor(
         teeth.forEach { it.validate() }
         val medicines = Json.decodeFromString<List<MedicinePlan>>(root.optString("medicines", "[]"))
         val tables = root.getJSONObject("tables")
-        TABLES.filterNot { it == "baby_book_pages" }.forEach { require(tables.has(it)) { "Backupfilen mangler $it" } }
+        REQUIRED_TABLES.forEach { require(tables.has(it)) { "Backupfilen mangler $it" } }
+        // Backups from before database version 24 only have the lists as JSON.
+        val legacyRows = mapOf(
+            "medicine_plans" to medicines.mapIndexed { index, plan -> plan.toEntity(index).toContentValues() },
+            "tooth_records" to teeth.mapIndexed { index, record -> record.toEntity(index).toContentValues() },
+        ).filterKeys { !tables.has(it) }
         val photoJson = root.optJSONObject("photos") ?: JSONObject()
         val photos = photoJson.keys().asSequence().associate { name -> File(name).name to Base64.getDecoder().decode(photoJson.getString(name)) }
         val appPreferenceWrites = root.optJSONObject("appPreferences")?.toPreferenceWrites()
@@ -80,6 +95,7 @@ class EncryptedBackupService @Inject constructor(
                 val rows = tables.optJSONArray(table) ?: JSONArray()
                 repeat(rows.length()) { index -> db.insert(table, SQLiteDatabase.CONFLICT_REPLACE, rows.getJSONObject(index).toContentValues()) }
             }
+            legacyRows.forEach { (table, rows) -> rows.forEach { db.insert(table, SQLiteDatabase.CONFLICT_REPLACE, it) } }
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
         val photoDir = File(context.filesDir, "profile_photos").apply { mkdirs() }
@@ -87,12 +103,12 @@ class EncryptedBackupService @Inject constructor(
         photos.forEach { (name, content) -> File(photoDir, name).writeBytes(content) }
         if (appPreferenceWrites != null) {
             context.appPreferencesDataStore.edit { prefs -> prefs.clear(); appPreferenceWrites.forEach { it(prefs) } }
-            dk.babyapp.reminders.MedicineReminderScheduler(context).sync(medicines)
         } else {
-            DataStoreAppPreferencesRepository(context).updateMedicines(medicines)
-            DataStoreAppPreferencesRepository(context).replaceTeeth(teeth)
             DataStoreAppPreferencesRepository(context).updateHeadSideStatistics(statistics)
         }
+        // The database now holds the restored lists, so the old preference copy must not be imported again.
+        legacyLists.markMigrated()
+        dk.babyapp.reminders.MedicineReminderScheduler(context).sync(database.medicineDao().all().map { it.toPlan() })
         if (colorProfileWrites != null) {
             context.colorProfileDataStore.edit { prefs -> prefs.clear(); colorProfileWrites.forEach { it(prefs) } }
         }
@@ -100,7 +116,8 @@ class EncryptedBackupService @Inject constructor(
     }
 
     private companion object {
-        val TABLES = listOf("child_profiles", "parent_profiles", "child_parent_links", "care_providers", "care_events", "baby_book_pages")
+        val TABLES = listOf("child_profiles", "parent_profiles", "child_parent_links", "care_providers", "care_events", "baby_book_pages", "medicine_plans", "tooth_records")
+        val REQUIRED_TABLES = listOf("child_profiles", "parent_profiles", "child_parent_links", "care_providers", "care_events")
         val MAGIC = byteArrayOf(0x42, 0x41, 0x42, 0x59, 0x42, 0x4B, 0x31)
     }
 }
@@ -125,4 +142,13 @@ private fun Cursor.toJson() = JSONObject().also { row ->
 
 private fun JSONObject.toContentValues() = ContentValues().also { values ->
     keys().forEach { key -> when (val value = get(key)) { JSONObject.NULL -> values.putNull(key); is Long -> values.put(key, value); is Int -> values.put(key, value); is Double -> values.put(key, value); else -> values.put(key, value.toString()) } }
+}
+
+private fun MedicinePlanEntity.toContentValues() = ContentValues().apply {
+    put("id", id); put("childId", childId); put("name", name); put("dose", dose); put("instructions", instructions)
+    put("asNeeded", asNeeded); put("timesJson", timesJson); put("reminders", reminders); put("active", active); put("sortOrder", sortOrder)
+}
+
+private fun ToothRecordEntity.toContentValues() = ContentValues().apply {
+    put("childId", childId); put("tooth", tooth); put("emerged", emerged); put("lost", lost); put("sortOrder", sortOrder)
 }

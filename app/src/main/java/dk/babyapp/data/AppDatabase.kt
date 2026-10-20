@@ -13,8 +13,8 @@ import dk.babyapp.data.tracking.CareEventDao
 import dk.babyapp.data.tracking.CareEventEntity
 
 @Database(
-    entities = [ChildProfileEntity::class, ParentProfileEntity::class, ChildParentLink::class, CareProviderEntity::class, CareEventEntity::class, dk.babyapp.data.book.BabyBookPage::class],
-    version = 23,
+    entities = [ChildProfileEntity::class, ParentProfileEntity::class, ChildParentLink::class, CareProviderEntity::class, CareEventEntity::class, dk.babyapp.data.book.BabyBookPage::class, dk.babyapp.data.medicine.MedicinePlanEntity::class, dk.babyapp.data.teeth.ToothRecordEntity::class],
+    version = 24,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -23,4 +23,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun parentProfileDao(): ParentProfileDao
     abstract fun careProviderDao(): CareProviderDao
     abstract fun careEventDao(): CareEventDao
+    abstract fun medicineDao(): dk.babyapp.data.medicine.MedicineDao
+    abstract fun teethDao(): dk.babyapp.data.teeth.TeethDao
 }

@@ -7,6 +7,10 @@ import dk.babyapp.data.book.BabyBookPage
 import dk.babyapp.data.book.BabyBookRepository
 import dk.babyapp.data.color.ColorProfile
 import dk.babyapp.data.color.ColorProfileRepository
+import dk.babyapp.data.medicine.MedicinePlan
+import dk.babyapp.data.medicine.MedicineRepository
+import dk.babyapp.data.teeth.ToothRecord
+import dk.babyapp.data.teeth.TeethRepository
 import dk.babyapp.data.preferences.AppPreferences
 import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.preferences.DanishRegion
@@ -40,6 +44,8 @@ data class AppUiState(
     val careEvents: List<CareEventEntity> = emptyList(),
     val bookPages: List<BabyBookPage> = emptyList(),
     val colorProfiles: List<ColorProfile> = emptyList(),
+    val medicines: List<MedicinePlan> = emptyList(),
+    val teeth: List<ToothRecord> = emptyList(),
 ) {
     val activeChild: ChildProfile?
         get() = profiles.firstOrNull { it.id == preferences.activeChildId } ?: profiles.firstOrNull()
@@ -66,6 +72,8 @@ class AppViewModel @Inject constructor(
     colorProfileRepository: ColorProfileRepository,
     bookRepository: BabyBookRepository? = null,
     private val reminderScheduler: DailyReminderScheduler? = null,
+    medicineRepository: MedicineRepository? = null,
+    teethRepository: TeethRepository? = null,
 ) : ViewModel() {
     private val profileState = combine(
         preferencesRepository.preferences,
@@ -76,8 +84,13 @@ class AppViewModel @Inject constructor(
         AppUiState(preferences = preferences, profiles = profiles, parents = parents, parentLinks = links)
     }
 
+    private val careLists = combine(
+        medicineRepository?.plans ?: flowOf(emptyList()),
+        teethRepository?.records ?: flowOf(emptyList()),
+    ) { medicines, teeth -> medicines to teeth }
+
     val state: StateFlow<AppUiState> = combine(
-        profileState,
+        combine(profileState, careLists) { base, (medicines, teeth) -> base.copy(medicines = medicines, teeth = teeth) },
         profilesRepository.careProviders,
         careEventRepository.events,
         colorProfileRepository.profiles,

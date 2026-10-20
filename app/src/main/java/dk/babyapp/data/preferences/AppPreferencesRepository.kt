@@ -20,8 +20,6 @@ interface AppPreferencesRepository {
     suspend fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean)
     suspend fun updateDashboardMetrics(metrics: List<DashboardMetric>)
     suspend fun updateBookReminderFrequency(frequency: BookReminderFrequency)
-    suspend fun saveTooth(record: dk.babyapp.data.teeth.ToothRecord)
-    suspend fun replaceTeeth(records: List<dk.babyapp.data.teeth.ToothRecord>)
     suspend fun updateBookReminders(enabled: Boolean)
     suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int)
     suspend fun updateInsightDashboardMetrics(metrics: List<String>)
@@ -30,5 +28,4 @@ interface AppPreferencesRepository {
     suspend fun updateDefaultNippleShield(enabled: Boolean)
     suspend fun updateJournalQuickFilters(filters: List<String>)
     suspend fun updateHiddenQuickActions(hidden: Set<String>)
-    suspend fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>)
 }

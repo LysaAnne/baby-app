@@ -145,6 +145,8 @@ fun TodayScreen(
     onUpdateHiddenQuickActions: (Set<String>) -> Unit = {},
     onSaveTooth: (dk.babyapp.data.teeth.ToothRecord) -> Unit = {},
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
+    medicines: List<MedicinePlan> = emptyList(),
+    teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
 ) {
     val childEvents = childId?.let { id -> events.filter { it.childId == id && !it.isDraft && it.deletedAt == null } }.orEmpty()
     val active = childEvents.filter { it.endedAt == null && it.type in listOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep, CareEventType.Activity) }
@@ -338,20 +340,20 @@ fun TodayScreen(
         EditorKind.Height -> childId?.let { id -> MeasurementDialog(MeasurementType.Height, { dialog = null }) { time, specified, type, value, unit, notes -> onAddMeasurement(id, time, specified, type, value, unit, notes); dialog = null } }
         EditorKind.HeadCircumference -> childId?.let { id -> MeasurementDialog(MeasurementType.HeadCircumference, { dialog = null }) { time, specified, type, value, unit, notes -> onAddMeasurement(id, time, specified, type, value, unit, notes); dialog = null } }
         EditorKind.Temperature -> childId?.let { id -> MeasurementDialog(MeasurementType.Temperature, { dialog = null }) { time, specified, type, value, unit, notes -> onAddMeasurement(id, time, specified, type, value, unit, notes); dialog = null } }
-        EditorKind.Medicine -> childId?.let { id -> MedicineDialog(id, null, { dialog = null }, preferences.medicines) { onSaveHealthRecord(it); dialog = null } }
+        EditorKind.Medicine -> childId?.let { id -> MedicineDialog(id, null, { dialog = null }, medicines) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.HealthNote -> childId?.let { id -> HealthNoteDialog(id, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartActivity -> StartActivityDialog({ dialog = null }) { type -> childId?.let { onStartActivity(it, type) { success -> sleepError = !success } }; dialog = null }
         EditorKind.Activity -> childId?.let { id -> ActivityDialog(manualActivityType, { dialog = null }) { start, end, type, notes -> onAddActivity(id, start, end, type, notes); dialog = null } }
         EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
-    if (teethOpen && childId != null) TeethDialog(childId, preferences.teeth, onSaveTooth) { teethOpen = false }
-    if (medicineCardOpen && childId != null) MedicineCardDialog(childId, preferences.medicines, onUpdateMedicines, { medicineCardOpen = false })
+    if (teethOpen && childId != null) TeethDialog(childId, teeth, onSaveTooth) { teethOpen = false }
+    if (medicineCardOpen && childId != null) MedicineCardDialog(childId, medicines, onUpdateMedicines, { medicineCardOpen = false })
     editing?.let { event ->
         val dismiss = { if (event.isDraft) onDelete(event); editing = null }
         val save: (CareEventEntity) -> Unit = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> sleepError = !success; if (success) editing = null } }
         if (event.type in setOf(CareEventType.HealthVisit, CareEventType.Vaccination)) HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, dismiss, save)
-        else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, dismiss, preferences.medicines, save)
+        else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, dismiss, medicines, save)
         else EditEventDialog(event, dismiss, save)
     }
     deleteTarget?.let { event -> AlertDialog(

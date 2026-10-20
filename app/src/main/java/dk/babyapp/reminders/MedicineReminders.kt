@@ -14,11 +14,9 @@ import androidx.core.app.NotificationManagerCompat
 import dk.babyapp.MainActivity
 import dk.babyapp.R
 import dk.babyapp.data.medicine.MedicinePlan
-import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import java.time.ZonedDateTime
 import java.time.LocalTime
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -67,12 +65,13 @@ class MedicineReminderScheduler(private val context: Context) {
 class MedicineReminderReceiver : BroadcastReceiver() {
     companion object { private val actionLock = Mutex() }
     @javax.inject.Inject lateinit var events: dk.babyapp.data.tracking.CareEventRepository
+    @javax.inject.Inject lateinit var medicines: dk.babyapp.data.medicine.MedicineRepository
 
     override fun onReceive(context: Context, intent: Intent?) {
         val result = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val plans = DataStoreAppPreferencesRepository(context.applicationContext).preferences.first().medicines
+                val plans = medicines.all()
                 val action = intent?.action
                 if (action in setOf("medicine.taken", "medicine.snooze", "medicine.skip")) {
                     actionLock.withLock {

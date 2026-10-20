@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dk.babyapp.data.medicine.MedicineRepository
 import dk.babyapp.data.preferences.AppPreferences
 import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.profile.ChildProfile
@@ -11,6 +12,7 @@ import dk.babyapp.data.profile.ChildProfileRepository
 import dk.babyapp.data.profile.ParentProfile
 import dk.babyapp.data.profile.ParentProfileRepository
 import dk.babyapp.data.profile.ProfileImageStorage
+import dk.babyapp.data.teeth.TeethRepository
 import dk.babyapp.ui.profile.ProfileDraft
 import dk.babyapp.ui.profile.ProfileValidationError
 import dk.babyapp.ui.profile.toProfile
@@ -31,6 +33,8 @@ class FamilyViewModel @Inject constructor(
     private val preferencesRepository: AppPreferencesRepository,
     private val parentRepository: ParentProfileRepository,
     private val photoStore: ProfileImageStorage,
+    private val medicineRepository: MedicineRepository? = null,
+    private val teethRepository: TeethRepository? = null,
 ) : ViewModel() {
     // Validation runs synchronously so errors are reported before the dialog closes.
     private val preferences = preferencesRepository.preferences.stateIn(viewModelScope, SharingStarted.Eagerly, AppPreferences())
@@ -63,8 +67,8 @@ class FamilyViewModel @Inject constructor(
             val next = profilesRepository.profiles.first().firstOrNull { it.id != profile.id }
             profilesRepository.delete(profile)
             val currentPreferences = preferencesRepository.preferences.first()
-            preferencesRepository.updateMedicines(currentPreferences.medicines.filterNot { it.childId == profile.id })
-            preferencesRepository.replaceTeeth(currentPreferences.teeth.filterNot { it.childId == profile.id })
+            medicineRepository?.deleteForChild(profile.id)
+            teethRepository?.deleteForChild(profile.id)
             preferencesRepository.updateHeadSideStatistics(currentPreferences.headSideStatistics.copy(correctionDates = currentPreferences.headSideStatistics.correctionDates - profile.id))
             if (currentPreferences.activeChildId == profile.id) {
                 preferencesRepository.setActiveChild(next?.id)

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dk.babyapp.data.medicine.MedicinePlan
+import dk.babyapp.data.medicine.MedicineRepository
+import dk.babyapp.data.teeth.TeethRepository
 import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.teeth.ToothRecord
 import dk.babyapp.data.tracking.ActivityType
@@ -37,6 +39,8 @@ class TrackingViewModel @Inject constructor(
     private val careEventRepository: CareEventRepository,
     private val preferencesRepository: AppPreferencesRepository,
     private val timerNotifications: TimerNotificationController,
+    private val medicineRepository: MedicineRepository? = null,
+    private val teethRepository: TeethRepository? = null,
 ) : ViewModel() {
     private val timerStartMutex = Mutex()
 
@@ -195,6 +199,6 @@ class TrackingViewModel @Inject constructor(
     }
 
     fun updateDefaultNippleShield(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateDefaultNippleShield(enabled) }
-    fun saveTooth(record: ToothRecord) = viewModelScope.launch { preferencesRepository.saveTooth(record) }
-    fun updateMedicines(medicines: List<MedicinePlan>) = viewModelScope.launch { preferencesRepository.updateMedicines(medicines) }
+    fun saveTooth(record: ToothRecord) = viewModelScope.launch { requireNotNull(teethRepository).save(record) }
+    fun updateMedicines(medicines: List<MedicinePlan>) = viewModelScope.launch { requireNotNull(medicineRepository).replaceAll(medicines) }
 }

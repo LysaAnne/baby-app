@@ -96,6 +96,8 @@ fun BabyApp(
                     onUpdateJournalQuickFilters = settings::updateJournalQuickFilters,
                     onUpdateHiddenQuickActions = settings::updateHiddenQuickActions,
                     onUpdateMedicines = tracking::updateMedicines,
+                    medicines = state.medicines,
+                    teeth = state.teeth,
                     onSaveTooth = tracking::saveTooth,
                     onUpdateBookReminderFrequency = book::updateBookReminderFrequency,
                     onUpdateBookReminders = book::updateBookReminders,

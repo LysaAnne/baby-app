@@ -10,6 +10,7 @@ Denne liste beskriver alt, appen kan pr. 20. oktober 2026 (commit `2d42b4e`). De
   - `MigrationChainTest` opgraderer en database fra hver tidligere version (1–22) og kræver, at alle rækker og værdier er bevaret.
   - `LegacyEventDisplayTest` låser titel, resumé, detaljer og dagsoversigt for gamle registreringstyper fast (`app/src/test/resources/legacy-event-display.txt`).
   - `BackupRestoreTest` kræver, at backup gendanner alle data, indstillinger og farvetemaer, og at ældre backupfiler stadig kan gendannes.
+  - `CareListsDatabaseTest` kræver, at medicinkort og tænder fra før databaseversion 24 kopieres én gang, i samme rækkefølge, uden at overskrive eller miste noget; den gamle kopi i indstillingerne bevares.
 - Manuelt: Tag en krypteret backup på telefonen før installation af en ny version.
 
 ## Opstart og generelt

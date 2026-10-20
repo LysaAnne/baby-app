@@ -12,6 +12,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import dk.babyapp.data.medicine.MedicinePlan
+import dk.babyapp.data.medicine.toEntity
+import dk.babyapp.data.medicine.toPlan
+import dk.babyapp.data.teeth.toEntity
+import dk.babyapp.data.teeth.toRecord
+import kotlinx.serialization.encodeToString
 import org.junit.After
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
@@ -34,7 +39,19 @@ class BackupRestoreTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
 
-    @After fun close() = database.close()
+    private lateinit var savedPreferences: androidx.datastore.preferences.core.Preferences
+
+    // Backup and restore touch the real app preferences; put them back afterwards.
+    @org.junit.Before fun saveStore() = runBlocking {
+        savedPreferences = context.appPreferencesDataStore.data.first()
+        context.appPreferencesDataStore.edit { it[dk.babyapp.data.legacy.LegacyListMigrator.MIGRATED] = true }
+        Unit
+    }
+
+    @After fun close() = runBlocking {
+        context.appPreferencesDataStore.edit { it.clear(); it += savedPreferences }
+        database.close()
+    }
 
     @Test fun encryptedBackupRestoresProfilesAndEvents() = runBlocking {
         database.childProfileDao().upsert(ChildProfile(id = "child", name = "Freja").toEntity())
@@ -47,30 +64,26 @@ class BackupRestoreTest {
         preferences.updateHeadSideStatistics(statistics)
         val head = dk.babyapp.domain.headSideObservation("child", dk.babyapp.data.tracking.HeadSide.Left, 123).copy(id = "head")
         database.careEventDao().upsert(head)
-        val previousTeeth = preferences.preferences.first().teeth
         val tooth = dk.babyapp.data.teeth.ToothRecord("child", 51, "2026-01-01", "2026-10-01")
-        preferences.replaceTeeth(listOf(tooth))
-        val previousMedicines = preferences.preferences.first().medicines
+        database.teethDao().insertAll(listOf(tooth.toEntity(0)))
         val plan = MedicinePlan(id = "test-medicine", childId = "child", name = "Testmedicin", dose = "Testdosis", asNeeded = true)
-        preferences.updateMedicines(listOf(plan))
+        database.medicineDao().insertAll(listOf(plan.toEntity(0)))
         val service = EncryptedBackupService(context, database)
         val bytes = service.create("hemmelig123".toCharArray())
         database.openHelper.writableDatabase.execSQL("DELETE FROM care_events")
         database.openHelper.writableDatabase.execSQL("DELETE FROM child_profiles")
-        preferences.updateMedicines(emptyList())
-        preferences.replaceTeeth(emptyList())
+        database.medicineDao().deleteAll()
+        database.teethDao().deleteAll()
         preferences.updateHeadSideStatistics(dk.babyapp.data.preferences.HeadSideStatisticsSettings())
         service.restore(bytes, "hemmelig123".toCharArray())
         assertEquals(bookPage, database.babyBookDao().observeAll().first().single())
         assertEquals("Freja", database.childProfileDao().getById("child")?.name)
         assertEquals("child", database.careEventDao().get("event")?.childId)
-        assertEquals(listOf(plan), preferences.preferences.first().medicines)
-        assertEquals(listOf(tooth), preferences.preferences.first().teeth)
+        assertEquals(listOf(plan), database.medicineDao().all().map { it.toPlan() })
+        assertEquals(listOf(tooth), database.teethDao().all().map { it.toRecord() })
         assertEquals(dk.babyapp.data.tracking.HeadSide.Left, database.careEventDao().get("head")?.headSide)
         assertEquals(statistics, preferences.preferences.first().headSideStatistics)
         preferences.updateHeadSideStatistics(previousStatistics)
-        preferences.replaceTeeth(previousTeeth)
-        preferences.updateMedicines(previousMedicines)
     }
     @Test fun olderBackupWithoutBookOrSideColumnsStillRestores() = runBlocking {
         database.childProfileDao().upsert(ChildProfile(id = "legacy-child", name = "Alma").toEntity())
@@ -80,7 +93,10 @@ class BackupRestoreTest {
         val root = org.json.JSONObject(String(decrypt(service.create(password), password)))
         val tables = root.getJSONObject("tables")
         tables.remove("baby_book_pages")
+        tables.remove("medicine_plans"); tables.remove("tooth_records")
         root.remove("teeth")
+        val legacyPlan = MedicinePlan(id = "legacy-medicine", childId = "legacy-child", name = "Gammel medicin", times = listOf("08:00"))
+        root.put("medicines", kotlinx.serialization.json.Json.encodeToString(listOf(legacyPlan)))
         val event = tables.getJSONArray("care_events").getJSONObject(0)
         event.remove("headSide"); root.remove("headSideStatistics")
         event.remove("timerSegmentSides"); event.remove("nursingContinued")
@@ -88,6 +104,8 @@ class BackupRestoreTest {
         assertEquals("Gammel note", database.careEventDao().get("legacy-event")?.notes)
         assertEquals("", database.careEventDao().get("legacy-event")?.timerSegmentSides)
         assertEquals(emptyList<dk.babyapp.data.book.BabyBookPage>(), database.babyBookDao().observeAll().first())
+        assertEquals(listOf(legacyPlan), database.medicineDao().all().map { it.toPlan() })
+        assertEquals(emptyList<dk.babyapp.data.teeth.ToothRecord>(), database.teethDao().all().map { it.toRecord() })
     }
 
     @Test fun backupRestoresEverySettingAndColorProfile() = runBlocking {

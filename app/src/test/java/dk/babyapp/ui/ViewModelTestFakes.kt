@@ -92,8 +92,6 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
         items.value = items.value.copy(dashboardMetrics = metrics)
     }
     override suspend fun updateBookReminderFrequency(frequency: dk.babyapp.data.preferences.BookReminderFrequency) { items.value = items.value.copy(bookReminderFrequency = frequency) }
-    override suspend fun saveTooth(record: dk.babyapp.data.teeth.ToothRecord) { items.value = items.value.copy(teeth = items.value.teeth.filterNot { it.childId == record.childId && it.tooth == record.tooth } + record) }
-    override suspend fun replaceTeeth(records: List<dk.babyapp.data.teeth.ToothRecord>) { items.value = items.value.copy(teeth = records) }
     override suspend fun updateBookReminders(enabled: Boolean) { items.value = items.value.copy(bookRemindersEnabled = enabled) }
     override suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
         items.value = items.value.copy(dailyReminderEnabled = enabled, dailyReminderHour = hour, dailyReminderMinute = minute)
@@ -103,7 +101,6 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
     override suspend fun updateDefaultNippleShield(enabled: Boolean) { items.value = items.value.copy(defaultNippleShield = enabled) }
     override suspend fun updateJournalQuickFilters(filters: List<String>) { items.value = items.value.copy(journalQuickFilters = filters) }
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }
-    override suspend fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>) { items.value = items.value.copy(medicines = medicines) }
     override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }
 }
 
