@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private val Context.colorProfileDataStore by preferencesDataStore(name = "color_profiles")
+internal val Context.colorProfileDataStore by preferencesDataStore(name = "color_profiles")
 
 class DataStoreColorProfileRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,

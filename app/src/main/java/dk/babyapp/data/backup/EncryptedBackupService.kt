@@ -19,7 +19,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import org.json.JSONArray
 import org.json.JSONObject
+import androidx.datastore.preferences.core.edit
+import dk.babyapp.data.color.colorProfileDataStore
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
+import dk.babyapp.data.preferences.appPreferencesDataStore
 import dk.babyapp.data.medicine.MedicinePlan
 import dk.babyapp.data.teeth.validate
 import kotlinx.coroutines.flow.first
@@ -48,19 +51,28 @@ class EncryptedBackupService @Inject constructor(
         root.put("headSideStatistics", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().headSideStatistics))
         root.put("teeth", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().teeth))
         root.put("medicines", Json.encodeToString(DataStoreAppPreferencesRepository(context).preferences.first().medicines))
+        // Optional sections: older app versions ignore unknown keys, so the format number stays 1 and their restore keeps working.
+        root.put("databaseVersion", db.version)
+        root.put("appPreferences", context.appPreferencesDataStore.data.first().toBackupJson())
+        root.put("colorProfiles", context.colorProfileDataStore.data.first().toBackupJson())
         return encrypt(root.toString().toByteArray(), password)
     }
 
     suspend fun restore(bytes: ByteArray, password: CharArray) {
         val root = JSONObject(String(decrypt(bytes, password)))
         require(root.getInt("format") == 1) { "Backupformatet understøttes ikke" }
+        val db = database.openHelper.writableDatabase
+        require(root.optInt("databaseVersion", 0) <= db.version) { "Backuppen er lavet med en nyere version af appen" }
         val statistics = Json.decodeFromString<dk.babyapp.data.preferences.HeadSideStatisticsSettings>(root.optString("headSideStatistics", "{}"))
         val teeth = Json.decodeFromString<List<dk.babyapp.data.teeth.ToothRecord>>(root.optString("teeth", "[]"))
         teeth.forEach { it.validate() }
         val medicines = Json.decodeFromString<List<MedicinePlan>>(root.optString("medicines", "[]"))
         val tables = root.getJSONObject("tables")
         TABLES.filterNot { it == "baby_book_pages" }.forEach { require(tables.has(it)) { "Backupfilen mangler $it" } }
-        val db = database.openHelper.writableDatabase
+        val photoJson = root.optJSONObject("photos") ?: JSONObject()
+        val photos = photoJson.keys().asSequence().associate { name -> File(name).name to Base64.getDecoder().decode(photoJson.getString(name)) }
+        val appPreferenceWrites = root.optJSONObject("appPreferences")?.toPreferenceWrites()
+        val colorProfileWrites = root.optJSONObject("colorProfiles")?.toPreferenceWrites()
         db.beginTransaction()
         try {
             TABLES.asReversed().forEach { db.execSQL("DELETE FROM $it") }
@@ -72,11 +84,18 @@ class EncryptedBackupService @Inject constructor(
         } finally { db.endTransaction() }
         val photoDir = File(context.filesDir, "profile_photos").apply { mkdirs() }
         photoDir.listFiles()?.forEach(File::delete)
-        val photos = root.optJSONObject("photos") ?: JSONObject()
-        photos.keys().forEach { name -> File(photoDir, File(name).name).writeBytes(Base64.getDecoder().decode(photos.getString(name))) }
-        DataStoreAppPreferencesRepository(context).updateMedicines(medicines)
-        DataStoreAppPreferencesRepository(context).replaceTeeth(teeth)
-        DataStoreAppPreferencesRepository(context).updateHeadSideStatistics(statistics)
+        photos.forEach { (name, content) -> File(photoDir, name).writeBytes(content) }
+        if (appPreferenceWrites != null) {
+            context.appPreferencesDataStore.edit { prefs -> prefs.clear(); appPreferenceWrites.forEach { it(prefs) } }
+            dk.babyapp.reminders.MedicineReminderScheduler(context).sync(medicines)
+        } else {
+            DataStoreAppPreferencesRepository(context).updateMedicines(medicines)
+            DataStoreAppPreferencesRepository(context).replaceTeeth(teeth)
+            DataStoreAppPreferencesRepository(context).updateHeadSideStatistics(statistics)
+        }
+        if (colorProfileWrites != null) {
+            context.colorProfileDataStore.edit { prefs -> prefs.clear(); colorProfileWrites.forEach { it(prefs) } }
+        }
         database.invalidationTracker.refreshAsync()
     }
 

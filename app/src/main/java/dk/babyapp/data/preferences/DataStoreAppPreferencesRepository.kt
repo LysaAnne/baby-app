@@ -15,7 +15,7 @@ import kotlinx.serialization.json.Json
 import dk.babyapp.data.medicine.MedicinePlan
 import dk.babyapp.data.teeth.*
 
-private val Context.appPreferencesDataStore by preferencesDataStore(name = "app_preferences")
+internal val Context.appPreferencesDataStore by preferencesDataStore(name = "app_preferences")
 
 class DataStoreAppPreferencesRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,

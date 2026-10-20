@@ -13,7 +13,19 @@ import kotlinx.coroutines.flow.first
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import dk.babyapp.data.medicine.MedicinePlan
 import org.junit.After
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import dk.babyapp.data.color.DataStoreColorProfileRepository
+import dk.babyapp.data.color.colorProfileDataStore
+import dk.babyapp.data.preferences.appPreferencesDataStore
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -78,4 +90,47 @@ class BackupRestoreTest {
         assertEquals(emptyList<dk.babyapp.data.book.BabyBookPage>(), database.babyBookDao().observeAll().first())
     }
 
+    @Test fun backupRestoresEverySettingAndColorProfile() = runBlocking {
+        val appStore = context.appPreferencesDataStore
+        val colorStore = context.colorProfileDataStore
+        val savedApp = appStore.data.first()
+        val savedColors = colorStore.data.first()
+        try {
+            appStore.edit { prefs ->
+                prefs[booleanPreferencesKey("backup_test_boolean")] = true
+                prefs[intPreferencesKey("backup_test_int")] = 7
+                prefs[longPreferencesKey("backup_test_long")] = 1_760_000_000_000
+                prefs[floatPreferencesKey("backup_test_float")] = 1.5f
+                prefs[doublePreferencesKey("backup_test_double")] = 2.25
+                prefs[stringPreferencesKey("backup_test_string")] = "Madning · alle"
+                prefs[stringSetPreferencesKey("backup_test_set")] = setOf("Bottle", "Diaper")
+            }
+            val colors = DataStoreColorProfileRepository(context)
+            colors.move(colors.profiles.first().first().id, 1)
+            val expectedApp = appStore.data.first()
+            val expectedColors = colorStore.data.first()
+            val service = EncryptedBackupService(context, database)
+            val bytes = service.create("hemmelig123".toCharArray())
+            appStore.edit { it.clear() }
+            colorStore.edit { it.clear() }
+            service.restore(bytes, "hemmelig123".toCharArray())
+            assertEquals(expectedApp, appStore.data.first())
+            assertEquals(expectedColors, colorStore.data.first())
+        } finally {
+            appStore.edit { it.clear(); it += savedApp }
+            colorStore.edit { it.clear(); it += savedColors }
+        }
+    }
+
+    @Test fun backupFromNewerAppIsRejectedWithoutTouchingData() = runBlocking {
+        database.childProfileDao().upsert(ChildProfile(id = "kept-child", name = "Ida").toEntity())
+        val service = EncryptedBackupService(context, database)
+        val password = "hemmelig123".toCharArray()
+        val root = org.json.JSONObject(String(decrypt(service.create(password), password)))
+        root.put("databaseVersion", database.openHelper.writableDatabase.version + 1)
+        root.getJSONObject("tables").put("child_profiles", org.json.JSONArray())
+        val result = runCatching { service.restore(encrypt(root.toString().toByteArray(), password), password) }
+        assertTrue(result.isFailure)
+        assertEquals("Ida", database.childProfileDao().getById("kept-child")?.name)
+    }
 }
