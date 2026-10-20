@@ -1,0 +1,119 @@
+## nursing with sides, shield and issue
+title: Amning
+summary: 00:15:00
+details: 00:15:00 · V 00:09:00 · H 00:06:00 · Ømme brystvorter · Rolig
+## nursing before side segments existed
+title: Amning
+summary: 00:10:00
+details: 00:10:00 · V 00:10:00 · H 00:00:00
+## bottle mixed with ratio
+title: Flaske
+summary: 90 ml
+details: 90 af 120 ml · Modermælk + erstatning · Modermælk : erstatning 1:1 · Bøvs
+## bottle without amounts
+title: Flaske
+summary: Ikke angivet
+details: 0 af 0 ml · Ikke angivet
+## pumping with old timer
+title: Pumpning
+summary: 80 ml pumpet
+details: 00:20:00 · 80 ml · Maskine
+## pumping without amount
+title: Pumpning
+summary: Mængde ikke angivet
+details: 
+## diaper full
+title: Ble – Begge
+summary: Begge
+details: Gul · Blød · Udslæt · Creme
+## diaper without type
+title: Ble – Ble
+summary: Ble
+details: Registreret
+## night sleep full
+title: Nattesøvn
+summary: 01:00:00
+details: 01:00:00 · Vugge · Vugget · 2 opvågninger · Rolig
+## sleep before sleep types
+title: Lur
+summary: 00:30:00
+details: 00:30:00
+## weight in kg
+title: Vægt
+summary: 5.2 kg
+details: 5.2 kg
+## weight in gram
+title: Vægt
+summary: 5200.0 g
+details: 5200.0 g
+## temperature without time
+title: Temperatur
+summary: 37.4 °C
+details: 37.4 °C
+## tummy time
+title: Mavetid
+summary: 00:05:00
+details: 00:05:00
+## activity before activity types
+title: Diverse
+summary: Aktivitet
+details: 
+## medicine without card
+title: Panodil
+summary: 2,5 ml
+details: Panodil · 2,5 ml
+## medicine blank
+title: Medicin
+summary: Medicin
+details: 
+## health visit
+title: 4-månedersbesøg
+summary: Sundhedsplejerske
+details: Gennemført · Sundhedsplejerske · Rutine
+## vaccination
+title: DiTeKiPol/Hib
+summary: 1. dosis
+details: Planlagt · 1. dosis
+## solid food
+title: Fast føde – Gulerod
+summary: 2 skefulde
+details: Gulerod · Mos · 2 skefulde · Glad
+## favourite side
+title: Favoritside – Venstre
+summary: Venstre
+details: Venstre
+## favourite side unknown
+title: Favoritside – Side ikke angivet
+summary: Side ikke angivet
+details: Side ikke angivet
+## day summary
+Amning | 2 | 25 min
+  Venstre | 2 | 19 min
+  Højre | 1 | 6 min
+Flaske | 2 | 90 ml spist
+  Modermælk + erstatning | 1 | 90 ml spist
+  Ikke angivet | 1 | 0 ml spist
+Pumpning | 2 | 80 ml · 20 min
+  Maskine | 1 | 80 ml · 20 min
+  Ikke angivet | 1 | 0 ml · 0 min
+Bleer | 2 | –
+  Begge | 1 | –
+  Ikke angivet | 1 | –
+Søvn | 2 | 90 min
+  Nattesøvn | 1 | 60 min
+  Ikke angivet | 1 | 30 min
+Mål | 3 | –
+  Vægt | 2 | 5.2 kg · 5200.0 g
+  Temperatur | 1 | 37.4 °C
+Diverse | 4 | –
+  Mavetid | 1 | 5 min
+  Ikke angivet | 1 | 0 min
+  Medicin | 2 | Panodil
+Sundhedsbesøg | 1 | –
+  Sundhedsplejerske | 1 | –
+Vaccination | 1 | –
+Fast føde | 1 | Gulerod
+Favoritside | 2 | –
+  Venstre | 1 | –
+  Højre | 0 | –
+  Side ikke angivet | 1 | –

@@ -99,7 +99,7 @@ internal fun CareEventEntity.details() = when (type) {
     CareEventType.Vaccination -> listOf(healthStatus?.displayLabel(), providerDisplayName, vaccineDose, vaccineBatchNumber, injectionSite, reactionNotes, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
 }
 
-private fun CareEventEntity.summary() = when (type) {
+internal fun CareEventEntity.summary() = when (type) {
     CareEventType.HeadSide -> headSide.displayLabel()
     CareEventType.SolidFood -> foodAmount.ifBlank { foodTexture.ifBlank { "Måltid" } }
     CareEventType.Pumping -> pumpedAmountMl?.let { "$it ml pumpet" } ?: "Mængde ikke angivet"
