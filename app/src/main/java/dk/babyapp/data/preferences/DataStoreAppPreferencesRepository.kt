@@ -26,6 +26,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             region = enumValueOrDefault(values[REGION], DanishRegion.Hovedstaden),
             units = enumValueOrDefault(values[UNITS], MeasurementUnits.Metric),
             theme = enumValueOrDefault(values[THEME], ThemePreference.System),
+            nightMode = enumValueOrDefault(values[NIGHT_MODE], NightModePreference.Off),
             showBreastfeedingQuickAction = values[SHOW_BREASTFEEDING] ?: true,
             showBottleQuickAction = values[SHOW_BOTTLE] ?: true,
             showPumpingQuickAction = values[SHOW_PUMPING] ?: true,
@@ -77,6 +78,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
 
     override suspend fun setTheme(theme: ThemePreference) {
         context.appPreferencesDataStore.edit { values -> values[THEME] = theme.name }
+    }
+
+    override suspend fun setNightMode(mode: NightModePreference) {
+        context.appPreferencesDataStore.edit { values -> values[NIGHT_MODE] = mode.name }
     }
 
     override suspend fun updateSettings(
@@ -168,6 +173,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val REGION = stringPreferencesKey("region")
         val UNITS = stringPreferencesKey("units")
         val THEME = stringPreferencesKey("theme")
+        val NIGHT_MODE = stringPreferencesKey("night_mode")
         val SHOW_BREASTFEEDING = booleanPreferencesKey("show_breastfeeding")
         val SHOW_BOTTLE = booleanPreferencesKey("show_bottle")
         val SHOW_PUMPING = booleanPreferencesKey("show_pumping")

@@ -1,6 +1,7 @@
 package dk.babyapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import android.graphics.Color as AndroidColor
 import dk.babyapp.data.color.ColorProfile
 import dk.babyapp.data.profile.ChildColorTheme
@@ -36,15 +37,22 @@ data class ChildPaletteColors(
     val tertiaryContainer: Color,
 )
 
-fun ColorProfile.colors() = ChildPaletteColors(
-    background = Color(AndroidColor.parseColor(background)),
-    primary = Color(AndroidColor.parseColor(primary)),
-    primaryContainer = Color(AndroidColor.parseColor(primaryContainer)),
-    secondary = Color(AndroidColor.parseColor(secondary)),
-    secondaryContainer = Color(AndroidColor.parseColor(secondary)),
-    tertiary = Color(AndroidColor.parseColor(tertiary)),
-    tertiaryContainer = Color(AndroidColor.parseColor(tertiary)),
-)
+fun ColorProfile.colors(): ChildPaletteColors {
+    val background = Color(AndroidColor.parseColor(background))
+    val secondary = Color(AndroidColor.parseColor(secondary))
+    val tertiary = Color(AndroidColor.parseColor(tertiary))
+    // Dark profiles have light accents; their containers must be dark tints so light text stays readable on them.
+    fun container(accent: Color) = if (isDark) lerp(background, accent, 0.28f) else accent
+    return ChildPaletteColors(
+        background = background,
+        primary = Color(AndroidColor.parseColor(primary)),
+        primaryContainer = Color(AndroidColor.parseColor(primaryContainer)),
+        secondary = secondary,
+        secondaryContainer = container(secondary),
+        tertiary = tertiary,
+        tertiaryContainer = container(tertiary),
+    )
+}
 
 private val palettes = mapOf(
     ChildColorTheme.NeutralLight to ChildPaletteDefinition(

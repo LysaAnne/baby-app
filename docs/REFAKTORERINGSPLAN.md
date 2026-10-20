@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 2 – Designsystem**, punkt 2.2: mørk tilstand og nattilstand.
+**Fase 2 – Designsystem**, punkt 2.3: typografi og afstande.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -18,7 +18,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 |---|---|---|
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
-| 2 | Designsystem | 🔄 I gang · 2.1 færdig |
+| 2 | Designsystem | 🔄 I gang · 2.1 og 2.2 færdige |
 | 3 | Skærmene redesignes én ad gangen | Venter |
 | 4 | Nye funktioner | Venter |
 
@@ -68,7 +68,10 @@ Færdig: farvetokens (`BabyColors`), røde fejl og slet-knapper, fast farve og i
 - Barnets farvetema bevares og bruges som accent.
 - Fast farve og ikon pr. registreringstype (madning, søvn, ble, sundhed, mål, diverse), som går igen overalt.
 
-### 2.2 Mørk tilstand og nattilstand
+### 2.2 Mørk tilstand og nattilstand ✅
+
+Færdig: Indstillinger → Udseende (System/Lys/Mørk) og Nattilstand (Fra/Til/Automatisk kl. 21–06). Lyse farveprofiler får en mørk udgave; mørke containerfarver er rettet; statusbjælken følger appens tema. Systemets dato- og tidsvælgere følger stadig telefonens tema.
+
 - **Mørk tilstand virker ikke i dag.** Valget i Indstillinger gemmes, men bruges aldrig. Det rettes, så System, Lys og Mørk virker.
 - **Ny nattilstand:** dæmpede, varme farver og lav lysstyrke til natlig brug. Den kan slås til manuelt eller automatisk om aftenen.
 

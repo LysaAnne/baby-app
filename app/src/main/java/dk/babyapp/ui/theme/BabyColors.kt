@@ -63,7 +63,7 @@ data class CategoryColors(val accent: Color, val container: Color)
 @Immutable
 data class BabyColors(
     val categories: Map<CareCategory, CategoryColors>,
-    /** Form fields stay light with dark text in every theme. */
+    /** Form fields: light with dark text in light themes, a faint lift of the background in dark themes. */
     val fieldContainer: Color,
     val fieldText: Color,
     val fieldLabel: Color,
@@ -113,6 +113,19 @@ internal val LightBabyColors = sharedColors.copy(
 )
 
 internal val DarkBabyColors = sharedColors.copy(
+    fieldContainer = Color(0x14FFFFFF),
+    fieldText = Color(0xFFECECEC),
+    fieldLabel = Color(0xFFC4C4C4),
+    fieldLabelFocused = Color(0xFFFFFFFF),
+    fieldIcon = Color(0xFFC4C4C4),
+    fieldPlaceholder = Color(0xFF9A9A9A),
+    hiddenContainer = Color(0xFF2B2B2B),
+    hiddenContent = Color(0xFF9A9A9A),
+    temperatureNormalBand = Color(0xFF66A780),
+    temperatureLow = Color(0xFF90C2EC),
+    temperatureNormal = Color(0xFF9BD1AE),
+    temperatureElevated = Color(0xFFF2C277),
+    temperatureFever = Color(0xFFF2958C),
     categories = mapOf(
         CareCategory.Feeding to CategoryColors(Color(0xFFF2B98A), Color(0xFF4A3220)),
         CareCategory.Sleep to CategoryColors(Color(0xFFB9BFF0), Color(0xFF2D3254)),
@@ -122,6 +135,18 @@ internal val DarkBabyColors = sharedColors.copy(
         CareCategory.SolidFood to CategoryColors(Color(0xFFB5D88F), Color(0xFF2F4220)),
         CareCategory.Misc to CategoryColors(Color(0xFFD1B3EC), Color(0xFF3C2A4D)),
     ),
+)
+
+/** Night mode: the dark category colours, with warm, dim fields so nothing on screen is bright. */
+internal val NightBabyColors = DarkBabyColors.copy(
+    fieldContainer = Color(0xFF24170F),
+    fieldText = Color(0xFFE3D2C2),
+    fieldLabel = Color(0xFFBFA894),
+    fieldLabelFocused = Color(0xFFE3D2C2),
+    fieldIcon = Color(0xFFBFA894),
+    fieldPlaceholder = Color(0xFF8C7865),
+    hiddenContainer = Color(0xFF24170F),
+    hiddenContent = Color(0xFF8C7865),
 )
 
 internal val LocalBabyColors = staticCompositionLocalOf { LightBabyColors }

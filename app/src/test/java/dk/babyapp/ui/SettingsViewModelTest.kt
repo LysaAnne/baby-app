@@ -89,4 +89,11 @@ class SettingsViewModelTest {
 
         assertEquals(profileToMove.id, colorProfiles.profiles.first().filterNot { it.isDark }.first().id)
     }
+
+    @Test fun `night mode choice is saved`() = runTest(dispatcher) {
+        val preferences = FakePreferencesRepository()
+        val viewModel = dk.babyapp.ui.settings.SettingsViewModel(preferences, FakeProfilesRepository(), FakeColorProfileRepository())
+        viewModel.updateNightMode(dk.babyapp.data.preferences.NightModePreference.Automatic); advanceUntilIdle()
+        assertEquals(dk.babyapp.data.preferences.NightModePreference.Automatic, preferences.items.value.nightMode)
+    }
 }

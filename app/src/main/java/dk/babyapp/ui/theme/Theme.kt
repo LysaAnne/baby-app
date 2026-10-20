@@ -24,14 +24,82 @@ private val DefaultColors = lightColorScheme(
     onErrorContainer = Color(0xFF410002),
 )
 
+private val DefaultDarkColors = darkColorScheme(
+    primary = Sage80,
+    onPrimary = Color(0xFF0F2018),
+    primaryContainer = Color(0xFF29483A),
+    onPrimaryContainer = Color.White,
+    secondary = Blush80,
+    tertiary = Sky80,
+    background = WarmSurfaceDark,
+    surface = WarmSurfaceDark,
+    error = DarkError,
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+)
+
+// Night: warm and dim. Text is softened instead of pure white so the screen stays gentle in a dark room.
+private val NightText = Color(0xFFE3D2C2)
+private val NightColors = darkColorScheme(
+    primary = Color(0xFFD9A270),
+    onPrimary = Color(0xFF2A1508),
+    primaryContainer = Color(0xFF3D2618),
+    onPrimaryContainer = NightText,
+    secondary = Color(0xFFC8A487),
+    onSecondary = Color(0xFF2A1508),
+    secondaryContainer = Color(0xFF33231A),
+    onSecondaryContainer = NightText,
+    tertiary = Color(0xFFD6B08E),
+    onTertiary = Color(0xFF2A1508),
+    tertiaryContainer = Color(0xFF3A2A1E),
+    onTertiaryContainer = NightText,
+    error = Color(0xFFF2958C),
+    onError = Color(0xFF3B0A06),
+    errorContainer = Color(0xFF5C1A14),
+    onErrorContainer = NightText,
+    background = Color(0xFF120B08),
+    onBackground = NightText,
+    surface = Color(0xFF120B08),
+    onSurface = NightText,
+    surfaceVariant = Color(0xFF2A1D16),
+    onSurfaceVariant = Color(0xFFBFA894),
+    outline = Color(0xFF7A6352),
+    outlineVariant = Color(0xFF4A3628),
+    surfaceContainerLowest = Color(0xFF0D0805),
+    surfaceContainerLow = Color(0xFF170F0B),
+    surfaceContainer = Color(0xFF1C130E),
+    surfaceContainerHigh = Color(0xFF241911),
+    surfaceContainerHighest = Color(0xFF2C1F16),
+    inverseSurface = NightText,
+    inverseOnSurface = Color(0xFF120B08),
+)
+
+/**
+ * [darkTheme] shows light colour profiles in their dark counterpart; [night] replaces every profile
+ * with the warm night colours. Dark profiles the user made are always shown as they are.
+ */
 @Composable
 fun BabyAppTheme(
     childColorTheme: ColorProfile? = null,
+    darkTheme: Boolean = false,
+    night: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    CompositionLocalProvider(LocalBabyColors provides if (childColorTheme?.isDark == true) DarkBabyColors else LightBabyColors) {
+    val profile = childColorTheme.forAppearance(darkTheme, night)
+    val babyColors = when {
+        night -> NightBabyColors
+        profile?.isDark == true || (profile == null && darkTheme) -> DarkBabyColors
+        else -> LightBabyColors
+    }
+    CompositionLocalProvider(LocalBabyColors provides babyColors) {
         MaterialTheme(
-            colorScheme = childColorTheme?.let(::childColors) ?: DefaultColors,
+            colorScheme = when {
+                night -> NightColors
+                profile != null -> childColors(profile)
+                darkTheme -> DefaultDarkColors
+                else -> DefaultColors
+            },
             typography = BabyTypography,
             shapes = BabyShapes,
             content = content,

@@ -45,6 +45,8 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateNightMode(mode: dk.babyapp.data.preferences.NightModePreference) = viewModelScope.launch { preferencesRepository.setNightMode(mode) }
+
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
     }
