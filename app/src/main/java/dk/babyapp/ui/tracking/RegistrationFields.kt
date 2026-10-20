@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import dk.babyapp.ui.theme.babyColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,13 +20,15 @@ internal fun RegistrationTextField(value: String, onValueChange: (String) -> Uni
     OutlinedTextField(value, onValueChange, modifier, label = label, placeholder = placeholder, readOnly = readOnly,
         enabled = enabled, singleLine = singleLine, isError = isError, minLines = minLines, maxLines = maxLines,
         trailingIcon = trailingIcon, keyboardOptions = keyboardOptions,
-        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
-            disabledContainerColor = Color.White, errorContainerColor = Color.White,
-            cursorColor = Color.DarkGray, errorTextColor = Color(0xFF202520), disabledTextColor = Color.DarkGray,
-            focusedTextColor = Color(0xFF202520), unfocusedTextColor = Color(0xFF202520),
-            focusedLabelColor = Color(0xFF364B3D), unfocusedLabelColor = Color(0xFF4A514C),
-            focusedTrailingIconColor = Color.DarkGray, unfocusedTrailingIconColor = Color.DarkGray,
-            focusedPlaceholderColor = Color.Gray, unfocusedPlaceholderColor = Color.Gray))
+        colors = MaterialTheme.babyColors.let { field ->
+            OutlinedTextFieldDefaults.colors(focusedContainerColor = field.fieldContainer, unfocusedContainerColor = field.fieldContainer,
+                disabledContainerColor = field.fieldContainer, errorContainerColor = field.fieldContainer,
+                cursorColor = field.fieldIcon, errorTextColor = field.fieldText, disabledTextColor = field.fieldIcon,
+                focusedTextColor = field.fieldText, unfocusedTextColor = field.fieldText,
+                focusedLabelColor = field.fieldLabelFocused, unfocusedLabelColor = field.fieldLabel,
+                focusedTrailingIconColor = field.fieldIcon, unfocusedTrailingIconColor = field.fieldIcon,
+                focusedPlaceholderColor = field.fieldPlaceholder, unfocusedPlaceholderColor = field.fieldPlaceholder)
+        })
 }
 
 @Composable

@@ -1,5 +1,7 @@
 package dk.babyapp.ui.tracking
 
+import dk.babyapp.ui.theme.babyColors
+import dk.babyapp.ui.theme.careCategory
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import dk.babyapp.domain.changeNippleShield
@@ -197,8 +199,8 @@ fun TodayScreen(
             Card(
                 Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 ),
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -226,14 +228,7 @@ fun TodayScreen(
             val actions = QuickAction.entries.filter { visible(it) && it.category == category }
             if (actions.isEmpty()) return@forEach
             item {
-                QuickActionCard(when (category) {
-                    QuickActionCategory.Sleep -> Icons.Outlined.Bedtime
-                    QuickActionCategory.Diaper -> Icons.Outlined.BabyChangingStation
-                    QuickActionCategory.Measurements -> Icons.Outlined.Straighten
-                    QuickActionCategory.Health -> Icons.Outlined.HealthAndSafety
-                    QuickActionCategory.Misc -> Icons.Outlined.ChildCare
-                    else -> Icons.Outlined.Restaurant
-                }, category.label, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
+                QuickActionCard(category.careCategory.icon, category.label, MaterialTheme.babyColors.category(category.careCategory).accent, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
                     if (QuickAction.Breastfeeding in actions) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BreastSide.entries.forEach { side ->
@@ -475,7 +470,7 @@ internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: ()
 }
 
 @Composable
-private fun QuickActionCard(icon: ImageVector, title: String, onChart: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx.compose.ui.graphics.Color, onChart: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -484,7 +479,7 @@ private fun QuickActionCard(icon: ImageVector, title: String, onChart: (() -> Un
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { BabySectionHeader(title, icon) }
+                Box(Modifier.weight(1f)) { BabySectionHeader(title, icon, iconTint) }
                 if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, if (title == "Søvn") "Åbn favoritside" else "Vis målegrafer") }
             }
             content()
@@ -539,13 +534,13 @@ internal fun DateTimeFields(value: Long, onChange: (Long) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             Text("Dato *", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
                 DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
             }) { Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value))) }
         }
         Column(Modifier.weight(1f)) {
             Text("Tid *", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
             }) { Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))) }
         }
@@ -558,7 +553,7 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
     val calendar = java.util.Calendar.getInstance().apply { timeInMillis = value }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Dato *", style = MaterialTheme.typography.labelMedium)
-        OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
+        OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
             DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }) { Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value))) }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -567,7 +562,7 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
         }
         if (timeSpecified) {
             Text("Tid", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = androidx.compose.ui.graphics.Color.DarkGray), modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
             }) { Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))) }
         }

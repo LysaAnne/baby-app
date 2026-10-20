@@ -14,3 +14,6 @@ internal val WarmSurface = Color(0xFFFFF8F5)
 internal val WarmSurfaceDark = Color(0xFF121412)
 internal val NightSurface = Color(0xFF090B0A)
 
+// Errors and destructive actions are always red, whatever the child's colour theme.
+internal val LightError = Color(0xFFBA1A1A)
+internal val DarkError = Color(0xFFFFB4AB)

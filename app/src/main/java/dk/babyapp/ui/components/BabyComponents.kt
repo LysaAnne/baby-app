@@ -14,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.dp
 fun BabySectionHeader(
     title: String,
     icon: ImageVector? = null,
+    iconTint: Color = Color.Unspecified,
     actionIcon: ImageVector? = null,
     actionDescription: String? = null,
     onAction: (() -> Unit)? = null,
@@ -31,7 +34,7 @@ fun BabySectionHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            if (icon != null) Icon(icon, contentDescription = null, tint = iconTint.takeOrElse { MaterialTheme.colorScheme.primary })
             Text(title, style = MaterialTheme.typography.titleLarge)
         }
         if (actionIcon != null && onAction != null) {

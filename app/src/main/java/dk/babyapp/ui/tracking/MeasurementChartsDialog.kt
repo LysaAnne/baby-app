@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import dk.babyapp.ui.theme.babyColors
 import android.app.DatePickerDialog
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
@@ -102,13 +103,14 @@ private fun MeasurementChartCard(type: MeasurementType, points: List<Measurement
                 val high = maxValue + margin
                 val start = (from ?: Instant.ofEpochMilli(points.first().at).atZone(zone).toLocalDate()).atStartOfDay(zone).toInstant().toEpochMilli()
                 val end = through.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+                val chartColors = MaterialTheme.babyColors
                 Canvas(Modifier.fillMaxWidth().height(190.dp).semantics { contentDescription = "${type.displayLabel()}: ${points.size} målinger, fra ${points.first().value} til ${points.last().value} $unit" }) {
                     val left = 46.dp.toPx(); val top = 8.dp.toPx(); val bottom = size.height - 26.dp.toPx(); val right = size.width - 8.dp.toPx()
                     fun x(at: Long) = left + ((at - start).toDouble() / (end - start).coerceAtLeast(1)).toFloat() * (right - left)
                     fun y(value: Double) = bottom - ((value - low) / (high - low)).toFloat() * (bottom - top)
                     if (temperature) {
-                        drawRect(Color(0xFF66A780).copy(alpha = 0.22f), Offset(left, y(37.5)), Size(right - left, y(36.5) - y(37.5)))
-                        drawLine(Color(0xFFB54B4B), Offset(left, y(38.0)), Offset(right, y(38.0)), 1.dp.toPx())
+                        drawRect(chartColors.temperatureNormalBand.copy(alpha = 0.22f), Offset(left, y(37.5)), Size(right - left, y(36.5) - y(37.5)))
+                        drawLine(chartColors.temperatureFever, Offset(left, y(38.0)), Offset(right, y(38.0)), 1.dp.toPx())
                     }
                     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(255, (axis.red * 255).toInt(), (axis.green * 255).toInt(), (axis.blue * 255).toInt()); textSize = 10.dp.toPx() }
                     listOf(low, (low + high) / 2, high).forEach { value ->
@@ -116,7 +118,7 @@ private fun MeasurementChartCard(type: MeasurementType, points: List<Measurement
                         drawContext.canvas.nativeCanvas.drawText(String.format(locale, "%.1f", value), 0f, y(value) + 4.dp.toPx(), paint)
                     }
                     if (temperature) points.forEach { point ->
-                        val color = when { point.value >= 38 -> Color(0xFFB54B4B); point.value > 37.5 -> Color(0xFFB47B24); point.value < 36.5 -> Color(0xFF4380B1); else -> Color(0xFF4E8C65) }
+                        val color = when { point.value >= 38 -> chartColors.temperatureFever; point.value > 37.5 -> chartColors.temperatureElevated; point.value < 36.5 -> chartColors.temperatureLow; else -> chartColors.temperatureNormal }
                         val width = minOf(14.dp.toPx(), (right - left) / points.size.coerceAtLeast(1) * 0.7f).coerceAtLeast(2.dp.toPx())
                         drawRect(color, Offset((x(point.at) - width / 2).coerceAtLeast(left), y(point.value)), Size(width, (bottom - y(point.value)).coerceAtLeast(1f)))
                     } else {

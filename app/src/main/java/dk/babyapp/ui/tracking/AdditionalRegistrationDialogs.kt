@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import dk.babyapp.ui.theme.babyColors
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,7 +56,7 @@ internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.d
             selectedOrder.forEachIndexed { index, category ->
                 val actions = QuickAction.entries.filter { it.category == category }
                 val sectionHidden = actions.all { it.name in selectedHidden }
-                OutlinedCard(Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = if (sectionHidden) androidx.compose.ui.graphics.Color(0xFFE1E1E1) else MaterialTheme.colorScheme.surface, contentColor = if (sectionHidden) androidx.compose.ui.graphics.Color(0xFF737373) else MaterialTheme.colorScheme.onSurface)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedCard(Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = if (sectionHidden) MaterialTheme.babyColors.hiddenContainer else MaterialTheme.colorScheme.surface, contentColor = if (sectionHidden) MaterialTheme.babyColors.hiddenContent else MaterialTheme.colorScheme.onSurface)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(category.label, style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CustomizationIconButton("Flyt ${category.label} op", Icons.Outlined.ArrowUpward, index > 0) { selectedOrder = selectedOrder.toMutableList().apply { add(index - 1, removeAt(index)) } }

@@ -1,5 +1,11 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import dk.babyapp.ui.theme.babyColors
+import dk.babyapp.ui.theme.careCategory
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.IconButton
 
@@ -43,7 +49,10 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(event.icon(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(end = 10.dp))
+                Box(
+                    Modifier.padding(end = 10.dp).size(40.dp).background(MaterialTheme.babyColors.category(event.careCategory).container, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) { Text(event.icon(), style = MaterialTheme.typography.titleMedium) }
                 Column(Modifier.weight(1f)) {
                     Text(eventTitle(event), style = MaterialTheme.typography.titleSmall)
                     Text("${event.recordedAt()}  ·  ${event.summary()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

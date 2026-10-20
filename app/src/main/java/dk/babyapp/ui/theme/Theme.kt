@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import dk.babyapp.data.color.ColorProfile
 
@@ -18,6 +19,9 @@ private val DefaultColors = lightColorScheme(
     tertiaryContainer = Sky80,
     background = WarmSurface,
     surface = WarmSurface,
+    error = LightError,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
 )
 
 @Composable
@@ -25,12 +29,14 @@ fun BabyAppTheme(
     childColorTheme: ColorProfile? = null,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = childColorTheme?.let(::childColors) ?: DefaultColors,
-        typography = BabyTypography,
-        shapes = BabyShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalBabyColors provides if (childColorTheme?.isDark == true) DarkBabyColors else LightBabyColors) {
+        MaterialTheme(
+            colorScheme = childColorTheme?.let(::childColors) ?: DefaultColors,
+            typography = BabyTypography,
+            shapes = BabyShapes,
+            content = content,
+        )
+    }
 }
 
 fun childThemeSwatches(theme: ColorProfile): List<Color> = theme.colors().let {
@@ -52,10 +58,10 @@ private fun childColors(theme: ColorProfile) = theme.colors().let {
             onTertiary = Color(0xFF1F1605),
             tertiaryContainer = it.tertiaryContainer,
             onTertiaryContainer = Color.White,
-            error = it.tertiary,
-            onError = Color(0xFF071315),
-            errorContainer = it.tertiary,
-            onErrorContainer = Color.White,
+            error = DarkError,
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6),
             background = it.background,
             onBackground = Color.White,
             surface = it.background,
@@ -91,10 +97,10 @@ private fun childColors(theme: ColorProfile) = theme.colors().let {
             onTertiary = Color.White,
             tertiaryContainer = it.tertiaryContainer,
             onTertiaryContainer = Color(0xFF151515),
-            error = it.tertiary,
+            error = LightError,
             onError = Color.White,
-            errorContainer = it.tertiary,
-            onErrorContainer = Color(0xFF151515),
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002),
             background = it.background,
             onBackground = Color(0xFF151515),
             surface = it.background,

@@ -2,11 +2,11 @@
 
 Planen for at gøre appen flottere, enklere og hurtigere, uden at den mister noget, den kan i dag. Opdateres, når en fase eller et punkt er færdigt.
 
-Sidst opdateret: 20. oktober 2026 · seneste commit `b67e66b`
+Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 2 – Designsystem**, punkt 2.1: farver og tema.
+**Fase 2 – Designsystem**, punkt 2.2: mørk tilstand og nattilstand.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -18,7 +18,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 |---|---|---|
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
-| 2 | Designsystem | ⏭️ Næste |
+| 2 | Designsystem | 🔄 I gang · 2.1 færdig |
 | 3 | Skærmene redesignes én ad gangen | Venter |
 | 4 | Nye funktioner | Venter |
 
@@ -55,11 +55,14 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 
 ---
 
-## Fase 2 – Designsystem ⏭️
+## Fase 2 – Designsystem 🔄
 
 Målet er et fælles, roligt udtryk, som alle skærme bygges af i fase 3. Det, der ses på skærmen, ændres kun lidt i denne fase. Det er især farver, skrift og mørk tilstand.
 
-### 2.1 Farver og tema
+### 2.1 Farver og tema ✅
+
+Færdig: farvetokens (`BabyColors`), røde fejl og slet-knapper, fast farve og ikon pr. kategori på I dag og i Journal, kontrast testet mod alle profilbaggrunde.
+
 - Farver samles i navngivne tokens: baggrund, flader, tekst, accent, advarsel osv.
 - **Fejlfarven rettes.** Lige nu bruger advarsler barnets tredjefarve og er derfor ikke røde.
 - Barnets farvetema bevares og bruges som accent.
