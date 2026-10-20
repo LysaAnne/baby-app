@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FloatingActionButton
 import dk.babyapp.data.preferences.orderedQuickActionCategories
 import dk.babyapp.data.preferences.QuickAction
+import dk.babyapp.data.preferences.QuickActionCategory
 import dk.babyapp.data.medicine.MedicinePlan
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -138,7 +139,7 @@ fun TodayScreen(
     scrollToTopRequest: Int = 0,
     keepTimerAwake: Boolean = false,
     onKeepTimerAwake: (Boolean) -> Unit = {},
-    onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
+    onUpdateQuickActionCategoryOrder: (List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateHeadSideStatistics: (dk.babyapp.data.preferences.HeadSideStatisticsSettings) -> Unit = {},
     onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
@@ -221,13 +222,13 @@ fun TodayScreen(
             if (actions.isEmpty()) return@forEach
             item {
                 QuickActionCard(when (category) {
-                    "Søvn" -> Icons.Outlined.Bedtime
-                    "Ble" -> Icons.Outlined.BabyChangingStation
-                    "Mål" -> Icons.Outlined.Straighten
-                    "Sundhed" -> Icons.Outlined.HealthAndSafety
-                    "Diverse" -> Icons.Outlined.ChildCare
+                    QuickActionCategory.Sleep -> Icons.Outlined.Bedtime
+                    QuickActionCategory.Diaper -> Icons.Outlined.BabyChangingStation
+                    QuickActionCategory.Measurements -> Icons.Outlined.Straighten
+                    QuickActionCategory.Health -> Icons.Outlined.HealthAndSafety
+                    QuickActionCategory.Misc -> Icons.Outlined.ChildCare
                     else -> Icons.Outlined.Restaurant
-                }, category, onChart = when (category) { "Mål" -> ({ chartsOpen = true }); "Søvn" -> ({ headSideOpen = true }); else -> null }) {
+                }, category.label, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
                     if (QuickAction.Breastfeeding in actions) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BreastSide.entries.forEach { side ->
@@ -252,7 +253,7 @@ fun TodayScreen(
                             }
                         }
                     }
-                    if (category == "Søvn") Text("Søvn", style = MaterialTheme.typography.labelMedium)
+                    if (category == QuickActionCategory.Sleep) Text("Søvn", style = MaterialTheme.typography.labelMedium)
                     actions.filterNot { it == QuickAction.Breastfeeding || it == QuickAction.Diaper || it == QuickAction.HeadSide }.chunked(2).forEach { row ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { action ->
@@ -280,8 +281,8 @@ fun TodayScreen(
                             }
                         }
                     }
-                    if (category == "Sundhed") OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
-                    if (category == "Sundhed") TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
+                    if (category == QuickActionCategory.Health) OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
+                    if (category == QuickActionCategory.Health) TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
                 }
             }
         }

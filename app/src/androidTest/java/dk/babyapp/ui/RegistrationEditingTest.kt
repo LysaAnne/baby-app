@@ -93,7 +93,7 @@ class RegistrationEditingTest {
         compose.onAllNodesWithText("Skjul").onFirst().performClick()
         compose.onNodeWithContentDescription("Fjern Amning").assertDoesNotExist()
         compose.onNodeWithText("Gem").performClick()
-        compose.runOnIdle { assertTrue(dk.babyapp.data.preferences.QuickAction.entries.filter { it.category == "Madning" }.all { it.name in hidden }) }
+        compose.runOnIdle { assertTrue(dk.babyapp.data.preferences.QuickAction.entries.filter { it.category == dk.babyapp.data.preferences.QuickActionCategory.Feeding }.all { it.name in hidden }) }
     }
 
     @Test fun dashboardIconButtonsReorderAndRemoveFields() {

@@ -42,10 +42,10 @@ internal fun ManualRegistrationMenu(options: List<Pair<String, () -> Unit>>, onD
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Manuel registrering") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             dk.babyapp.data.preferences.orderedQuickActionCategories(emptyList()).forEach { title ->
-                val items = options.filter { category(it.first) == title }
+                val items = options.filter { category(it.first) == title.label }
                 if (items.isNotEmpty()) OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(title, style = MaterialTheme.typography.titleMedium)
+                        Text(title.label, style = MaterialTheme.typography.titleMedium)
                         items.forEach { (label, select) -> FilledTonalButton(onClick = select, modifier = Modifier.fillMaxWidth()) { Text(label) } }
                     }
                 }

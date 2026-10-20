@@ -106,7 +106,7 @@ fun TimelineScreen(
     val groups = remember(events, activeChildId, typeFilters, zone) {
         events.asSequence()
         .filter { it.childId == activeChildId && !it.isDraft && it.deletedAt == null }
-        .filter { typeFilters.isEmpty() || journalFilters.any { filter -> filter.label in typeFilters && filter.matches(it) } }
+        .filter { typeFilters.isEmpty() || journalFilters.any { filter -> filter.id in typeFilters && filter.matches(it) } }
         .sortedByDescending { it.startedAt }
         .groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }
         .toSortedMap(compareByDescending { it })
@@ -194,8 +194,8 @@ fun TimelineScreen(
             Text("Registreringstyper", style = MaterialTheme.typography.titleSmall)
             journalFilters.forEach { filter ->
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    androidx.compose.material3.Checkbox(filter.label in typeFilters, { selected -> typeFilters = if (selected) typeFilters + filter.label else typeFilters - filter.label })
-                    Text(journalFilterLabel(filter.label))
+                    androidx.compose.material3.Checkbox(filter.id in typeFilters, { selected -> typeFilters = if (selected) typeFilters + filter.id else typeFilters - filter.id })
+                    Text(journalFilterLabel(filter.id))
                 }
             }
             TextButton(onClick = { typeFilters = emptySet() }) { Text("Nulstil filtre") }
@@ -260,13 +260,6 @@ fun TimelineScreen(
     )
 }
 
-private fun journalFilterLabel(label: String) = when (label) {
-    "Madning · alle" -> "Madning"
-    "Sundhed · alle" -> "Sundhed"
-    "Ble" -> "Bleer"
-    else -> label
-}
-
 @Composable
 private fun JournalQuickFiltersDialog(current: List<String>, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
     var selected by remember { mutableStateOf(current) }
@@ -274,7 +267,7 @@ private fun JournalQuickFiltersDialog(current: List<String>, onDismiss: () -> Un
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Vælg de fire filtre, der vises i Journal.")
             selected.forEachIndexed { index, label ->
-                SelectionDropdown("Filter ${index + 1}", journalFilterLabel(label), journalFilters.map { it.label to journalFilterLabel(it.label) }) { replacement ->
+                SelectionDropdown("Filter ${index + 1}", journalFilterLabel(label), journalFilters.map { it.id to journalFilterLabel(it.id) }) { replacement ->
                     selected = selected.toMutableList().apply {
                         val other = indexOf(replacement)
                         if (other >= 0) this[other] = label

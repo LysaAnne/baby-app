@@ -19,9 +19,9 @@ data class AppPreferences(
     val dailyReminderHour: Int = 20,
     val dailyReminderMinute: Int = 0,
     val insightDashboardMetrics: List<String> = listOf("Sleep", "Feedings", "Diapers", "TummyTime"),
-    val quickActionCategoryOrder: List<String> = emptyList(),
+    val quickActionCategoryOrder: List<QuickActionCategory> = emptyList(),
     val defaultNippleShield: Boolean = false,
-    val journalQuickFilters: List<String> = listOf("Madning · alle", "Ble", "Søvn", "Sundhed · alle"),
+    val journalQuickFilters: List<String> = JournalFilterKeys.defaults,
     val hiddenQuickActions: Set<String> = emptySet(),
     val headSideStatistics: HeadSideStatisticsSettings = HeadSideStatisticsSettings(),
     val measurementChartSettings: MeasurementChartSettings = MeasurementChartSettings(),
@@ -31,15 +31,15 @@ data class AppPreferences(
 @kotlinx.serialization.Serializable
 data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null)
 
-enum class QuickAction(val label: String, val category: String) {
-    Breastfeeding("Amning", "Madning"), Bottle("Flaske", "Madning"), Pumping("Pumpning", "Madning"),
-    HeadSide("Favoritside", "Søvn"), Diaper("Ble", "Ble"), Nap("Lur", "Søvn"), Night("Nattesøvn", "Søvn"),
-    Weight("Vægt", "Mål"), Height("Højde", "Mål"), HeadCircumference("Hovedomkreds", "Mål"), Temperature("Temperatur", "Mål"),
-    HealthVisit("Sundhedsbesøg", "Sundhed"), Vaccination("Vaccination", "Sundhed"), Medicine("Medicin", "Sundhed"), HealthNote("Helbredsnotat", "Sundhed"),
-    SolidFood("Måltid / smagsprøve", "Fast føde"), TummyTime("Mavetid", "Diverse"), Bath("Bad", "Diverse"), Play("Leg", "Diverse"), OutdoorTime("Udetid", "Diverse"), Activity("Andet", "Diverse"),
+enum class QuickAction(val label: String, val category: QuickActionCategory) {
+    Breastfeeding("Amning", QuickActionCategory.Feeding), Bottle("Flaske", QuickActionCategory.Feeding), Pumping("Pumpning", QuickActionCategory.Feeding),
+    HeadSide("Favoritside", QuickActionCategory.Sleep), Diaper("Ble", QuickActionCategory.Diaper), Nap("Lur", QuickActionCategory.Sleep), Night("Nattesøvn", QuickActionCategory.Sleep),
+    Weight("Vægt", QuickActionCategory.Measurements), Height("Højde", QuickActionCategory.Measurements), HeadCircumference("Hovedomkreds", QuickActionCategory.Measurements), Temperature("Temperatur", QuickActionCategory.Measurements),
+    HealthVisit("Sundhedsbesøg", QuickActionCategory.Health), Vaccination("Vaccination", QuickActionCategory.Health), Medicine("Medicin", QuickActionCategory.Health), HealthNote("Helbredsnotat", QuickActionCategory.Health),
+    SolidFood("Måltid / smagsprøve", QuickActionCategory.SolidFood), TummyTime("Mavetid", QuickActionCategory.Misc), Bath("Bad", QuickActionCategory.Misc), Play("Leg", QuickActionCategory.Misc), OutdoorTime("Udetid", QuickActionCategory.Misc), Activity("Andet", QuickActionCategory.Misc),
 }
 
-fun orderedQuickActionCategories(saved: List<String>): List<String> {
+fun orderedQuickActionCategories(saved: List<QuickActionCategory>): List<QuickActionCategory> {
     val categories = QuickAction.entries.map { it.category }.distinct()
     return (saved.filter { it in categories } + categories).distinct()
 }

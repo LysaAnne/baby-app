@@ -48,7 +48,7 @@ class SettingsViewModel @Inject constructor(
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
     }
-    fun updateQuickActionCategoryOrder(order: List<String>) = viewModelScope.launch { preferencesRepository.updateQuickActionCategoryOrder(order) }
+    fun updateQuickActionCategoryOrder(order: List<dk.babyapp.data.preferences.QuickActionCategory>) = viewModelScope.launch { preferencesRepository.updateQuickActionCategoryOrder(order) }
     fun updateHiddenQuickActions(hidden: Set<String>) = viewModelScope.launch { preferencesRepository.updateHiddenQuickActions(hidden) }
     fun updateDashboardMetrics(metrics: List<DashboardMetric>) = viewModelScope.launch { preferencesRepository.updateDashboardMetrics(metrics) }
     fun updateJournalQuickFilters(filters: List<String>) = viewModelScope.launch { preferencesRepository.updateJournalQuickFilters(filters) }

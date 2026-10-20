@@ -47,7 +47,7 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
 }
 
 @Composable
-internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<String>, onDismiss: () -> Unit, onSave: (Set<String>, List<String>) -> Unit) {
+internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.data.preferences.QuickActionCategory>, onDismiss: () -> Unit, onSave: (Set<String>, List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit) {
     var selectedHidden by remember { mutableStateOf(hidden) }
     var selectedOrder by remember { mutableStateOf(orderedQuickActionCategories(order)) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilpas hurtig registrering") }, text = {
@@ -56,10 +56,10 @@ internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<String>, onD
                 val actions = QuickAction.entries.filter { it.category == category }
                 val sectionHidden = actions.all { it.name in selectedHidden }
                 OutlinedCard(Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = if (sectionHidden) androidx.compose.ui.graphics.Color(0xFFE1E1E1) else MaterialTheme.colorScheme.surface, contentColor = if (sectionHidden) androidx.compose.ui.graphics.Color(0xFF737373) else MaterialTheme.colorScheme.onSurface)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(category, style = MaterialTheme.typography.titleMedium)
+                    Text(category.label, style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CustomizationIconButton("Flyt $category op", Icons.Outlined.ArrowUpward, index > 0) { selectedOrder = selectedOrder.toMutableList().apply { add(index - 1, removeAt(index)) } }
-                        CustomizationIconButton("Flyt $category ned", Icons.Outlined.ArrowDownward, index < selectedOrder.lastIndex) { selectedOrder = selectedOrder.toMutableList().apply { add(index + 1, removeAt(index)) } }
+                        CustomizationIconButton("Flyt ${category.label} op", Icons.Outlined.ArrowUpward, index > 0) { selectedOrder = selectedOrder.toMutableList().apply { add(index - 1, removeAt(index)) } }
+                        CustomizationIconButton("Flyt ${category.label} ned", Icons.Outlined.ArrowDownward, index < selectedOrder.lastIndex) { selectedOrder = selectedOrder.toMutableList().apply { add(index + 1, removeAt(index)) } }
                         FilledTonalButton(onClick = { selectedHidden = if (sectionHidden) selectedHidden - actions.map { it.name }.toSet() else selectedHidden + actions.map { it.name } }) {
                             Icon(if (sectionHidden) Icons.Outlined.Add else Icons.Outlined.Close, null)
                             Text(if (sectionHidden) "Vis" else "Skjul")

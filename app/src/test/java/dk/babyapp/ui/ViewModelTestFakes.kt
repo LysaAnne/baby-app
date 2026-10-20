@@ -97,7 +97,7 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
         items.value = items.value.copy(dailyReminderEnabled = enabled, dailyReminderHour = hour, dailyReminderMinute = minute)
     }
     override suspend fun updateInsightDashboardMetrics(metrics: List<String>) { items.value = items.value.copy(insightDashboardMetrics = metrics) }
-    override suspend fun updateQuickActionCategoryOrder(order: List<String>) { items.value = items.value.copy(quickActionCategoryOrder = order) }
+    override suspend fun updateQuickActionCategoryOrder(order: List<dk.babyapp.data.preferences.QuickActionCategory>) { items.value = items.value.copy(quickActionCategoryOrder = order) }
     override suspend fun updateDefaultNippleShield(enabled: Boolean) { items.value = items.value.copy(defaultNippleShield = enabled) }
     override suspend fun updateJournalQuickFilters(filters: List<String>) { items.value = items.value.copy(journalQuickFilters = filters) }
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }

@@ -120,7 +120,7 @@ fun BabyAppNavigation(
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _ -> },
     onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit = {},
-    onUpdateQuickActionCategoryOrder: (List<String>) -> Unit = {},
+    onUpdateQuickActionCategoryOrder: (List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit = {},
     onUpdateJournalQuickFilters: (List<String>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateHeadSideStatistics: (dk.babyapp.data.preferences.HeadSideStatisticsSettings) -> Unit = {},

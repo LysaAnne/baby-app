@@ -42,12 +42,12 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             dailyReminderHour = values[DAILY_REMINDER_HOUR] ?: 20,
             dailyReminderMinute = values[DAILY_REMINDER_MINUTE] ?: 0,
             insightDashboardMetrics = values[INSIGHT_DASHBOARD_METRICS]?.split(',')?.filter(String::isNotBlank)?.takeIf { it.size in 3..6 } ?: listOf("Sleep", "Feedings", "Diapers", "TummyTime"),
-            quickActionCategoryOrder = values[QUICK_ACTION_CATEGORY_ORDER]?.split(',') ?: emptyList(),
+            quickActionCategoryOrder = values[QUICK_ACTION_CATEGORY_ORDER]?.split(',')?.mapNotNull(QuickActionCategory::fromStored) ?: emptyList(),
             defaultNippleShield = values[DEFAULT_NIPPLE_SHIELD] ?: false,
             headSideStatistics = values[HEAD_SIDE_STATISTICS]?.let { Json.decodeFromString<HeadSideStatisticsSettings>(it) } ?: HeadSideStatisticsSettings(),
             measurementChartSettings = values[MEASUREMENT_CHART_SETTINGS]?.let { runCatching { Json.decodeFromString<MeasurementChartSettings>(it) }.getOrNull() } ?: MeasurementChartSettings(),
             lastPumpingMethod = values[LAST_PUMPING_METHOD] ?: "",
-            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',') ?: AppPreferences().journalQuickFilters,
+            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize) ?: AppPreferences().journalQuickFilters,
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
         )
     }
@@ -123,8 +123,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { values -> values[GETTING_STARTED_SEEN] = true }
     }
 
-    override suspend fun updateQuickActionCategoryOrder(order: List<String>) {
-        context.appPreferencesDataStore.edit { it[QUICK_ACTION_CATEGORY_ORDER] = order.joinToString(",") }
+    override suspend fun updateQuickActionCategoryOrder(order: List<QuickActionCategory>) {
+        context.appPreferencesDataStore.edit { it[QUICK_ACTION_CATEGORY_ORDER] = order.joinToString(",") { category -> category.name } }
     }
 
     override suspend fun updateBookReminderFrequency(frequency: BookReminderFrequency) {
