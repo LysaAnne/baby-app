@@ -26,7 +26,7 @@ internal fun HeadSideQuickButtons(events: List<CareEventEntity>, childId: String
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HeadSide.entries.forEach { side ->
-                FilledTonalButton(modifier = Modifier.weight(1f).semantics { contentDescription = "Registrer hovedside ${side.displayLabel().lowercase()}" }, enabled = childId != null, onClick = {
+                FilledTonalButton(modifier = Modifier.weight(1f).heightIn(min = dk.babyapp.ui.theme.BabyTouch.primary).semantics { contentDescription = "Registrer hovedside ${side.displayLabel().lowercase()}" }, enabled = childId != null, onClick = {
                     childId?.let { onSave(headSideObservation(it, side)) }
                 }) { Text("${side.displayLabel()} · ${if (side == HeadSide.Left) counts.left else counts.right}") }
             }

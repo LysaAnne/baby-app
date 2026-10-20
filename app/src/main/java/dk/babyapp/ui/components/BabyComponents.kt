@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import dk.babyapp.ui.theme.BabySpacing
 
 @Composable
 fun BabySectionHeader(
@@ -33,7 +33,7 @@ fun BabySectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) Icon(icon, contentDescription = null, tint = iconTint.takeOrElse { MaterialTheme.colorScheme.primary })
             Text(title, style = MaterialTheme.typography.titleLarge)
         }
@@ -50,9 +50,9 @@ fun BabyEmptyState(icon: ImageVector, title: String, description: String) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(20.dp),
+            Modifier.fillMaxWidth().padding(BabySpacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(BabySpacing.s),
         ) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleMedium)
