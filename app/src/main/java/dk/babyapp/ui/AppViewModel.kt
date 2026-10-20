@@ -1,72 +1,34 @@
 package dk.babyapp.ui
 
-import kotlinx.coroutines.sync.withLock
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dk.babyapp.data.book.BabyBookPage
+import dk.babyapp.data.book.BabyBookRepository
+import dk.babyapp.data.color.ColorProfile
+import dk.babyapp.data.color.ColorProfileRepository
 import dk.babyapp.data.preferences.AppPreferences
 import dk.babyapp.data.preferences.AppPreferencesRepository
 import dk.babyapp.data.preferences.DanishRegion
 import dk.babyapp.data.preferences.MeasurementUnits
 import dk.babyapp.data.preferences.ThemePreference
-import dk.babyapp.data.backup.EncryptedBackupService
-import dk.babyapp.reminders.DailyReminderScheduler
-import dk.babyapp.data.color.ColorProfile
-import dk.babyapp.data.color.ColorProfileRepository
-import dk.babyapp.data.color.normalizedHex
+import dk.babyapp.data.profile.CareProvider
+import dk.babyapp.data.profile.ChildParentLink
 import dk.babyapp.data.profile.ChildProfile
 import dk.babyapp.data.profile.ChildProfileRepository
-import dk.babyapp.data.profile.ProfileImageStorage
 import dk.babyapp.data.profile.ParentProfile
 import dk.babyapp.data.profile.ParentProfileRepository
-import dk.babyapp.data.profile.ChildParentLink
-import dk.babyapp.data.profile.CareProvider
-import dk.babyapp.data.profile.CareProviderType
-import dk.babyapp.data.profile.BiologicalSex
-import dk.babyapp.data.profile.BirthStatus
-import dk.babyapp.data.profile.ChildColorTheme
-import dk.babyapp.data.profile.FamilyMemberRole
-import dk.babyapp.data.profile.ProfileAvatar
-import dk.babyapp.data.tracking.BottleContent
-import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
-import dk.babyapp.data.tracking.CareEventType
-import dk.babyapp.data.tracking.DiaperType
-import dk.babyapp.data.tracking.DiaperColor
-import dk.babyapp.data.tracking.DiaperConsistency
-import dk.babyapp.data.tracking.SleepQuality
-import dk.babyapp.data.tracking.SleepType
-import dk.babyapp.data.tracking.MeasurementType
-import dk.babyapp.data.tracking.ActivityType
-import dk.babyapp.data.tracking.closeSegment
-import dk.babyapp.data.tracking.startSegment
-import dk.babyapp.domain.switchNursingSide
-import dk.babyapp.domain.resumeNursing
-import dk.babyapp.domain.accrueUntil
-import dk.babyapp.domain.overlapsSleep
+import dk.babyapp.reminders.DailyReminderScheduler
 import dk.babyapp.tracking.TimerNotificationController
-import dk.babyapp.ui.profile.ProfileDraft
-import dk.babyapp.ui.profile.ProfileValidationError
-import dk.babyapp.ui.profile.toProfile
-import dk.babyapp.ui.profile.validate
-import java.io.File
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 
 data class AppUiState(
     val preferences: AppPreferences = AppPreferences(),
@@ -76,7 +38,7 @@ data class AppUiState(
     val parentLinks: List<ChildParentLink> = emptyList(),
     val careProviders: List<CareProvider> = emptyList(),
     val careEvents: List<CareEventEntity> = emptyList(),
-    val bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
+    val bookPages: List<BabyBookPage> = emptyList(),
     val colorProfiles: List<ColorProfile> = emptyList(),
 ) {
     val activeChild: ChildProfile?
@@ -90,20 +52,21 @@ data class OnboardingSettings(
     val theme: ThemePreference = ThemePreference.System,
 )
 
+/**
+ * The state every screen reads, plus app-wide actions (onboarding, active child, reminders).
+ * Changes to data live in the feature ViewModels: tracking, family, settings, book and developer.
+ */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val profilesRepository: ChildProfileRepository,
+    profilesRepository: ChildProfileRepository,
     private val preferencesRepository: AppPreferencesRepository,
-    private val photoStore: ProfileImageStorage,
-    private val parentRepository: ParentProfileRepository,
-    private val careEventRepository: CareEventRepository,
+    parentRepository: ParentProfileRepository,
+    careEventRepository: CareEventRepository,
     private val timerNotifications: TimerNotificationController,
-    private val colorProfileRepository: ColorProfileRepository,
-    private val backupService: EncryptedBackupService? = null,
-    private val bookRepository: dk.babyapp.data.book.BabyBookRepository? = null,
+    colorProfileRepository: ColorProfileRepository,
+    bookRepository: BabyBookRepository? = null,
     private val reminderScheduler: DailyReminderScheduler? = null,
 ) : ViewModel() {
-    private val colorProfileJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val profileState = combine(
         preferencesRepository.preferences,
         profilesRepository.profiles,
@@ -118,12 +81,10 @@ class AppViewModel @Inject constructor(
         profilesRepository.careProviders,
         careEventRepository.events,
         colorProfileRepository.profiles,
-        bookRepository?.pages ?: kotlinx.coroutines.flow.flowOf(emptyList()),
+        bookRepository?.pages ?: flowOf(emptyList()),
     ) { base, careProviders, careEvents, colorProfiles, bookPages ->
         base.copy(loaded = true, bookPages = bookPages, careProviders = careProviders, careEvents = careEvents, colorProfiles = colorProfiles)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppUiState())
-
-    suspend fun saveBookPage(page: dk.babyapp.data.book.BabyBookPage) { requireNotNull(bookRepository).save(page) }
 
     fun completeOnboarding(
         settings: OnboardingSettings,
@@ -141,417 +102,16 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    fun saveProfile(
-        draft: ProfileDraft,
-        onResult: (ProfileValidationError?) -> Unit,
-    ) {
-        val units = state.value.preferences.units
-        val error = draft.validate(units = units)
-        if (error != null) {
-            onResult(error)
-            return
-        }
-        viewModelScope.launch {
-            val existing = draft.id?.let { profilesRepository.get(it) }
-            val profile = draft.toProfile(existing, units)
-            profilesRepository.save(profile)
-            profilesRepository.setCareProviders(profile.id, draft.careProviders)
-            parentRepository.setParents(profile.id, draft.parentIds)
-            if (state.value.preferences.activeChildId == null) {
-                preferencesRepository.setActiveChild(profile.id)
-            }
-            onResult(null)
-        }
-    }
-
     fun selectChild(id: String) {
         viewModelScope.launch { preferencesRepository.setActiveChild(id) }
     }
 
-    fun updateSettings(settings: OnboardingSettings) {
-        viewModelScope.launch {
-            preferencesRepository.updateSettings(settings.languageTag, settings.region, settings.units, settings.theme)
-        }
-    }
+    fun dismissGettingStarted() = viewModelScope.launch { preferencesRepository.markGettingStartedSeen() }
 
-    fun deleteProfile(profile: ChildProfile) {
-        viewModelScope.launch {
-            profilesRepository.delete(profile)
-            val currentPreferences = preferencesRepository.preferences.first()
-            preferencesRepository.updateMedicines(currentPreferences.medicines.filterNot { it.childId == profile.id })
-            preferencesRepository.replaceTeeth(currentPreferences.teeth.filterNot { it.childId == profile.id })
-            preferencesRepository.updateHeadSideStatistics(currentPreferences.headSideStatistics.copy(correctionDates = currentPreferences.headSideStatistics.correctionDates - profile.id))
-            val next = state.value.profiles.firstOrNull { it.id != profile.id }
-            if (state.value.preferences.activeChildId == profile.id) {
-                preferencesRepository.setActiveChild(next?.id)
-            }
-        }
-    }
-
-    fun saveParent(parent: ParentProfile) { viewModelScope.launch { parentRepository.save(parent) } }
-    fun saveFamilyMember(parent: ParentProfile, childIds: Set<String>) { viewModelScope.launch { parentRepository.save(parent); parentRepository.setChildren(parent.id, childIds) } }
-    fun deleteParent(parent: ParentProfile) { viewModelScope.launch { parentRepository.delete(parent) } }
-    fun reorderChildren(ids: List<String>) { viewModelScope.launch { profilesRepository.setOrder(ids) } }
-    fun reorderFamily(ids: List<String>) { viewModelScope.launch { parentRepository.setOrder(ids) } }
-
-    suspend fun importPhoto(uri: Uri): String = withContext(Dispatchers.IO) { photoStore.import(uri) }
-
-    fun photoFile(fileName: String?): File? = fileName?.let(photoStore::file)?.takeIf(File::exists)
-
-    fun updateBookReminderFrequency(frequency: dk.babyapp.data.preferences.BookReminderFrequency) = viewModelScope.launch { preferencesRepository.updateBookReminderFrequency(frequency) }
-    fun saveTooth(record: dk.babyapp.data.teeth.ToothRecord) = viewModelScope.launch { preferencesRepository.saveTooth(record) }
-
-    fun updateBookReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateBookReminders(enabled) }
-
-    fun updateDefaultNippleShield(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateDefaultNippleShield(enabled) }
-
-    private val timerStartMutex = kotlinx.coroutines.sync.Mutex()
-
-    private suspend fun canStartTimer(childId: String, type: CareEventType) =
-        dk.babyapp.domain.canStartTimer(careEventRepository.events.first(), childId, type)
-
-    fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch { timerStartMutex.withLock {
-        if (!canStartTimer(childId, CareEventType.Breastfeeding)) return@withLock
-        val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side, nippleShield = false).startSegment(now)
-        careEventRepository.save(event); timerNotifications.show(event.id)
-    } }
-
-    fun startPumping(childId: String, method: String = "") = viewModelScope.launch { timerStartMutex.withLock {
-        if (!canStartTimer(childId, CareEventType.Pumping)) return@withLock
-        val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = now, runningSince = now, pumpingMethod = method).startSegment(now)
-        careEventRepository.save(event); timerNotifications.show(event.id)
-    } }
-
-    fun startSleep(childId: String, sleepType: SleepType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch { timerStartMutex.withLock {
-        if (!canStartTimer(childId, CareEventType.Sleep)) {
-            onResult(false)
-        } else {
-            val now = System.currentTimeMillis()
-            val event = CareEventEntity(childId = childId, type = CareEventType.Sleep, sleepType = sleepType, startedAt = now, runningSince = now).startSegment(now)
-            careEventRepository.save(event)
-            timerNotifications.show(event.id)
-            onResult(true)
-        }
-    } }
-
-    fun startActivity(childId: String, activityType: ActivityType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch { timerStartMutex.withLock {
-        if (!canStartTimer(childId, CareEventType.Activity)) {
-            onResult(false)
-        } else {
-            val now = System.currentTimeMillis()
-            val event = CareEventEntity(childId = childId, type = CareEventType.Activity, activityType = activityType, startedAt = now, runningSince = now).startSegment(now)
-            careEventRepository.save(event)
-            timerNotifications.show(event.id)
-            onResult(true)
-        }
-    } }
-
-    fun toggleTimer(event: CareEventEntity) = viewModelScope.launch {
-        val now = System.currentTimeMillis()
-        if (event.runningSince == null) {
-            careEventRepository.save(event.startSegment(now).copy(runningSince = now))
-        } else {
-            careEventRepository.save(event.accrueUntil(now).closeSegment(now).copy(runningSince = null))
-        }
-    }
-
-    fun switchBreastSide(event: CareEventEntity) = viewModelScope.launch {
-        val now = System.currentTimeMillis()
-        careEventRepository.save(event.switchNursingSide(now))
-    }
-
-    fun resumeBreastfeeding(event: CareEventEntity, side: BreastSide, onResult: (Boolean) -> Unit) = viewModelScope.launch { timerStartMutex.withLock {
-        val saved = careEventRepository.get(event.id)
-        val now = System.currentTimeMillis()
-        if (saved == null || saved.type != CareEventType.Breastfeeding || saved.deletedAt != null || saved.endedAt == null || saved.endedAt > now || !canStartTimer(saved.childId, CareEventType.Breastfeeding)) {
-            onResult(false)
-        } else {
-            careEventRepository.save(saved.resumeNursing(side, now))
-            timerNotifications.show(saved.id)
-            onResult(true)
-        }
-    } }
-
-    fun stopTimer(event: CareEventEntity, amountMl: Int? = null, onComplete: (CareEventEntity) -> Unit = {}) = viewModelScope.launch {
-        val now = System.currentTimeMillis()
-        val accrued = event.accrueUntil(now).closeSegment(now)
-        val completed = accrued.copy(
-            isDraft = !event.nursingContinued,
-            endedAt = now,
-            runningSince = null,
-            pumpedAmountMl = amountMl ?: event.pumpedAmountMl,
-            activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds,
-        )
-        careEventRepository.save(completed)
-        timerNotifications.hide()
-        onComplete(careEventRepository.get(completed.id) ?: completed)
-    }
-
-    fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String, ratio: String = "") =
-        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = listOfNotNull(offered, consumed).maxOrNull(), amountConsumedMl = consumed, notes = notes, bottleMixRatio = if (content == BottleContent.Mixed) ratio.trim() else "")) }
-
-    fun addDiaper(childId: String, time: Long, type: DiaperType, color: DiaperColor?, consistency: DiaperConsistency?, observation: String, notes: String, onComplete: (CareEventEntity) -> Unit = {}) =
-        viewModelScope.launch {
-            val event = CareEventEntity(childId = childId, type = CareEventType.Diaper, startedAt = time, endedAt = time, diaperType = type, diaperColor = color, diaperConsistency = consistency, observation = observation, notes = notes)
-            careEventRepository.save(event); onComplete(event)
-        }
-
-    fun addMeasurement(childId: String, time: Long, timeSpecified: Boolean, type: MeasurementType, value: Double, unit: String, notes: String) = viewModelScope.launch {
-        careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Measurement, startedAt = time, endedAt = time, timeSpecified = timeSpecified, measurementType = type, measurementValue = value, measurementUnit = unit, notes = notes))
-    }
-
-    fun addActivity(childId: String, start: Long, end: Long, type: ActivityType, notes: String) = viewModelScope.launch {
-        careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = start, endedAt = end, activityType = type, activityDurationSeconds = ((end - start).coerceAtLeast(0) / 1_000), notes = notes))
-    }
-
-    fun addManualTimer(childId: String, type: CareEventType, start: Long, end: Long, side: BreastSide?, amountMl: Int?, notes: String) = viewModelScope.launch {
-        val seconds = ((end - start).coerceAtLeast(0) / 1_000)
-        careEventRepository.save(CareEventEntity(childId = childId, type = type, startedAt = start, endedAt = end, activeSide = side, leftSeconds = if (side != BreastSide.Right) seconds else 0, rightSeconds = if (side == BreastSide.Right) seconds else 0, pumpedAmountMl = amountMl, notes = notes))
-    }
-
-    fun addSleep(
-        childId: String,
-        start: Long,
-        end: Long,
-        sleepType: SleepType,
-        location: String,
-        settlingMethod: String,
-        awakenings: Int?,
-        quality: SleepQuality?,
-        notes: String,
-        onResult: (Boolean) -> Unit = {},
-    ) = viewModelScope.launch {
-        val candidate = CareEventEntity(childId = childId, type = CareEventType.Sleep, startedAt = start, endedAt = end)
-        val overlaps = overlapsSleep(candidate, state.value.careEvents)
-        if (end <= start || overlaps) {
-            onResult(false)
-        } else {
-            careEventRepository.save(
-                CareEventEntity(
-                    childId = childId, type = CareEventType.Sleep, startedAt = start, endedAt = end,
-                    leftSeconds = (end - start) / 1_000, sleepType = sleepType, sleepLocation = location,
-                    settlingMethod = settlingMethod, awakenings = awakenings, sleepQuality = quality, notes = notes,
-                ),
-            )
-            onResult(true)
-        }
-    }
-
-    fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
-        val current = careEventRepository.get(event.id)
-        val changedDuringEdit = event.type == CareEventType.Breastfeeding && current != null && current.updatedAt != event.updatedAt
-        val overlaps = overlapsSleep(event, state.value.careEvents)
-        if (overlaps || changedDuringEdit) onResult(false) else {
-            careEventRepository.save(event.copy(isDraft = false))
-            if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
-            onResult(true)
-        }
-    }
-    fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch {
-        careEventRepository.softDelete(event)
-        if (event.endedAt == null) timerNotifications.hide()
-    }
-    fun saveHealthRecord(event: CareEventEntity, onComplete: () -> Unit = {}) = viewModelScope.launch {
-        careEventRepository.save(event)
-        if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
-        onComplete()
-    }
-    fun updateHeadSideStatistics(settings: dk.babyapp.data.preferences.HeadSideStatisticsSettings) = viewModelScope.launch { preferencesRepository.updateHeadSideStatistics(settings) }
-    fun updateMeasurementChartSettings(settings: dk.babyapp.data.preferences.MeasurementChartSettings) = viewModelScope.launch { preferencesRepository.updateMeasurementChartSettings(settings) }
-    fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
-        preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
-    }
-    fun updateQuickActionCategoryOrder(order: List<String>) = viewModelScope.launch { preferencesRepository.updateQuickActionCategoryOrder(order) }
-    fun updateJournalQuickFilters(filters: List<String>) = viewModelScope.launch { preferencesRepository.updateJournalQuickFilters(filters) }
-    fun updateHiddenQuickActions(hidden: Set<String>) = viewModelScope.launch { preferencesRepository.updateHiddenQuickActions(hidden) }
-    fun updateMedicines(medicines: List<dk.babyapp.data.medicine.MedicinePlan>) = viewModelScope.launch { preferencesRepository.updateMedicines(medicines) }
-
-    fun updateDashboardMetrics(metrics: List<dk.babyapp.data.preferences.DashboardMetric>) = viewModelScope.launch {
-        preferencesRepository.updateDashboardMetrics(metrics)
-    }
-    fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) = viewModelScope.launch {
-        preferencesRepository.updateDailyReminder(enabled, hour, minute)
-        reminderScheduler?.update(enabled, hour, minute)
-    }
-    fun updateInsightDashboardMetrics(metrics: List<String>) = viewModelScope.launch { preferencesRepository.updateInsightDashboardMetrics(metrics) }
     fun syncDailyReminder() {
         val preferences = state.value.preferences
         reminderScheduler?.update(preferences.dailyReminderEnabled, preferences.dailyReminderHour, preferences.dailyReminderMinute)
     }
-    suspend fun createEncryptedBackup(password: CharArray): ByteArray = withContext(Dispatchers.IO) { requireNotNull(backupService).create(password) }
-    suspend fun restoreEncryptedBackup(bytes: ByteArray, password: CharArray) = withContext(Dispatchers.IO) { requireNotNull(backupService).restore(bytes, password) }
+
     fun restoreTimerNotification(event: CareEventEntity?) { if (event != null && event.endedAt == null) timerNotifications.show(event.id) }
-    fun dismissGettingStarted() = viewModelScope.launch { preferencesRepository.markGettingStartedSeen() }
-
-    fun saveColorProfile(profile: ColorProfile, onComplete: () -> Unit = {}) = viewModelScope.launch {
-        colorProfileRepository.save(profile)
-        onComplete()
-    }
-
-    fun deleteColorProfile(id: String, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
-        if (state.value.profiles.any { it.colorTheme == id }) {
-            onResult(false)
-        } else {
-            colorProfileRepository.delete(id)
-            onResult(true)
-        }
-    }
-
-    fun moveColorProfile(id: String, direction: Int) = viewModelScope.launch {
-        colorProfileRepository.move(id, direction)
-    }
-
-    fun exportColorProfiles(): String = colorProfileJson.encodeToString(state.value.colorProfiles)
-
-    fun importColorProfiles(value: String, onResult: (Boolean) -> Unit) = viewModelScope.launch {
-        val imported = runCatching {
-            colorProfileJson.decodeFromString<List<ColorProfile>>(value)
-        }.getOrNull()
-        val valid = imported?.takeIf { profiles ->
-            val usedIds = state.value.profiles.map { it.colorTheme }.toSet()
-            profiles.isNotEmpty() && profiles.map { it.id }.toSet().containsAll(usedIds) && profiles.map { it.id }.distinct().size == profiles.size && profiles.all { profile ->
-                profile.id.isNotBlank() && profile.name.isNotBlank() && listOf(
-                    profile.background, profile.primary, profile.primaryContainer, profile.secondary, profile.tertiary,
-                ).all { it.normalizedHex() != null }
-            }
-        }
-        if (valid == null) onResult(false) else {
-            colorProfileRepository.replaceAll(valid)
-            onResult(true)
-        }
-    }
-
-    fun createDeveloperTestFamily(onComplete: () -> Unit = {}) = viewModelScope.launch {
-        val childId = "developer-test-child-freja"
-        val hectorId = "developer-test-child-hector"
-        val child = ChildProfile(
-            id = childId,
-            name = "Freja",
-            nickname = "Fre",
-            birthStatus = BirthStatus.Born,
-            birthDate = LocalDate.now().minusMonths(4),
-            birthTime = LocalTime.of(9, 42),
-            dueDate = LocalDate.now().minusMonths(4).plusDays(5),
-            sex = BiologicalSex.Female,
-            birthWeightGrams = 3_480,
-            birthLengthCm = 52.0,
-            birthHeadCircumferenceCm = 35.0,
-            gestationalWeeks = 39,
-            gestationalDays = 2,
-            cprNumber = "TEST-FREJA",
-            fullName = "Freja Testfamilie Jensen",
-            registeredAddress = "Testvej 12, 2100 København Ø",
-            nationality = "Dansk",
-            allergies = "Ingen kendte allergier",
-            medicalNotes = "Dette er en testprofil og indeholder ikke rigtige helbredsoplysninger.",
-            avatar = ProfileAvatar.Bunny,
-            colorTheme = ChildColorTheme.GirlLight.name,
-        )
-        profilesRepository.save(child)
-        profilesRepository.save(
-            ChildProfile(
-                id = hectorId,
-                name = "Hector",
-                nickname = "Hec",
-                birthStatus = BirthStatus.Born,
-                birthDate = LocalDate.now().minusYears(2),
-                sex = BiologicalSex.Male,
-                cprNumber = "TEST-HECTOR",
-                fullName = "Hector Testfamilie Jensen",
-                registeredAddress = "Testvej 12, 2100 København Ø",
-                nationality = "Dansk",
-                avatar = ProfileAvatar.Fox,
-                colorTheme = ChildColorTheme.BoyLight.name,
-            ),
-        )
-        profilesRepository.setCareProviders(
-            childId,
-            listOf(
-                CareProvider(id = "developer-provider-hospital", childId = childId, type = CareProviderType.Hospital, name = "Rigshospitalet – test", phone = "+45 35 45 35 45", address = "Blegdamsvej 9, 2100 København Ø", notes = "Testfødested"),
-                CareProvider(id = "developer-provider-gp", childId = childId, type = CareProviderType.Gp, name = "Lægehuset Solsikken", phone = "+45 12 34 56 78", email = "test@laegehuset.example", notes = "Fiktiv testkontakt"),
-                CareProvider(id = "developer-provider-health", childId = childId, type = CareProviderType.HealthVisitor, name = "Mette Testsen", phone = "+45 22 33 44 55"),
-                CareProvider(id = "developer-provider-midwife", childId = childId, type = CareProviderType.Midwife, name = "Anne Jordemoder", phone = "+45 33 44 55 66"),
-            ),
-        )
-        val members = listOf(
-            ParentProfile(id = "developer-parent-sofie", name = "Sofie", phone = "+45 20 11 22 33", email = "sofie@example.test", cprNumber = "TEST-SOFIE", avatar = ProfileAvatar.Butterfly, role = FamilyMemberRole.Mother, notes = "Freja og Hectors mor · testprofil"),
-            ParentProfile(id = "developer-parent-jonas", name = "Jonas", phone = "+45 21 44 55 66", email = "jonas@example.test", cprNumber = "TEST-JONAS", avatar = ProfileAvatar.Fox, role = FamilyMemberRole.Father, notes = "Freja og Hectors far · testprofil"),
-            ParentProfile(id = "developer-grandparent-karen", name = "Karen", phone = "+45 24 55 66 77", email = "karen@example.test", avatar = ProfileAvatar.Panda, role = FamilyMemberRole.Grandmother, notes = "Mormor · testprofil"),
-            ParentProfile(id = "developer-grandparent-poul", name = "Poul", phone = "+45 26 77 88 99", email = "poul@example.test", avatar = ProfileAvatar.Lion, role = FamilyMemberRole.Grandfather, notes = "Morfar · testprofil"),
-        )
-        members.forEach { parentRepository.save(it) }
-        parentRepository.setParents(childId, members.map { it.id }.toSet())
-        parentRepository.setParents(hectorId, members.map { it.id }.toSet())
-        val now = System.currentTimeMillis()
-        listOf(
-            CareEventEntity(id = "developer-event-breast", childId = childId, type = CareEventType.Breastfeeding, startedAt = now - 3 * 60 * 60 * 1_000, endedAt = now - 2 * 60 * 60 * 1_000 - 42 * 60 * 1_000, activeSide = BreastSide.Right, leftSeconds = 480, rightSeconds = 600, notes = "Rolig amning"),
-            dk.babyapp.domain.headSideObservation(childId, dk.babyapp.data.tracking.HeadSide.Left, now - 60 * 60 * 1000).copy(id = "developer-head-left"),
-            dk.babyapp.domain.headSideObservation(childId, dk.babyapp.data.tracking.HeadSide.Right, now - 30 * 60 * 1000).copy(id = "developer-head-right"),
-            CareEventEntity(id = "developer-event-bottle", childId = childId, type = CareEventType.Bottle, startedAt = now - 90 * 60 * 1_000, endedAt = now - 90 * 60 * 1_000, bottleContent = BottleContent.BreastMilk, amountOfferedMl = 120, amountConsumedMl = 105, notes = "Testregistrering"),
-            CareEventEntity(id = "developer-event-diaper", childId = childId, type = CareEventType.Diaper, startedAt = now - 35 * 60 * 1_000, endedAt = now - 35 * 60 * 1_000, diaperType = DiaperType.Both, observation = "Normal", notes = "Testregistrering"),
-            CareEventEntity(id = "developer-event-pump", childId = childId, type = CareEventType.Pumping, startedAt = now - 5 * 60 * 60 * 1_000, endedAt = now - 5 * 60 * 60 * 1_000 + 15 * 60 * 1_000, leftSeconds = 900, pumpedAmountMl = 85),
-        ).plus(developerFrejaHistory(childId)).forEach { careEventRepository.save(it) }
-        preferencesRepository.setActiveChild(childId)
-        onComplete()
-    }
-
-    private fun developerFrejaHistory(childId: String): List<CareEventEntity> {
-        val zone = ZoneId.systemDefault()
-        fun timestamp(date: LocalDate, hour: Int, minute: Int = 0): Long =
-            date.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
-
-        return (1L..60L).flatMap { daysAgo ->
-            val date = LocalDate.now().minusDays(daysAgo)
-            val variation = (daysAgo % 5).toInt()
-            val prefix = "developer-freja-day-$daysAgo"
-            val breastMinutes = 14 + variation
-            val napMinutes = 55 + variation * 8
-            val nightMinutes = 500 + variation * 12
-            val tummyMinutes = 8 + (daysAgo % 6).toInt() * 3
-            val events = mutableListOf(
-                CareEventEntity(id = "$prefix-breast-morning", childId = childId, type = CareEventType.Breastfeeding, startedAt = timestamp(date, 7, 10), endedAt = timestamp(date, 7, 10).plus(breastMinutes * 60_000L), activeSide = if (daysAgo % 2L == 0L) BreastSide.Left else BreastSide.Right, leftSeconds = if (daysAgo % 2L == 0L) breastMinutes * 60L else 0, rightSeconds = if (daysAgo % 2L == 0L) 0 else breastMinutes * 60L),
-                CareEventEntity(id = "$prefix-bottle", childId = childId, type = CareEventType.Bottle, startedAt = timestamp(date, 11, 45), endedAt = timestamp(date, 11, 45), bottleContent = BottleContent.BreastMilk, amountOfferedMl = 130, amountConsumedMl = 95 + variation * 5),
-                CareEventEntity(id = "$prefix-breast-evening", childId = childId, type = CareEventType.Breastfeeding, startedAt = timestamp(date, 18, 20), endedAt = timestamp(date, 18, 20).plus((breastMinutes + 3) * 60_000L), activeSide = BreastSide.Left, leftSeconds = (breastMinutes + 3) * 60L),
-                CareEventEntity(id = "$prefix-nap", childId = childId, type = CareEventType.Sleep, startedAt = timestamp(date, 12, 50), endedAt = timestamp(date, 12, 50).plus(napMinutes * 60_000L), leftSeconds = napMinutes * 60L, sleepType = SleepType.Nap, sleepQuality = if (variation == 0) SleepQuality.Mixed else SleepQuality.Restful),
-                CareEventEntity(id = "$prefix-night", childId = childId, type = CareEventType.Sleep, startedAt = timestamp(date, 20, 15), endedAt = timestamp(date, 20, 15).plus(nightMinutes * 60_000L), leftSeconds = nightMinutes * 60L, sleepType = SleepType.Night, awakenings = variation % 3, sleepQuality = if (variation == 4) SleepQuality.Mixed else SleepQuality.Restful),
-                CareEventEntity(id = "$prefix-diaper-1", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 8, 5), endedAt = timestamp(date, 8, 5), diaperType = DiaperType.Wet),
-                CareEventEntity(id = "$prefix-diaper-2", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 13, 20), endedAt = timestamp(date, 13, 20), diaperType = if (daysAgo % 3L == 0L) DiaperType.Both else DiaperType.Dirty, diaperColor = DiaperColor.Yellow, diaperConsistency = DiaperConsistency.Soft),
-                CareEventEntity(id = "$prefix-diaper-3", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 17, 15), endedAt = timestamp(date, 17, 15), diaperType = DiaperType.Wet),
-                CareEventEntity(id = "$prefix-diaper-4", childId = childId, type = CareEventType.Diaper, startedAt = timestamp(date, 20, 0), endedAt = timestamp(date, 20, 0), diaperType = DiaperType.Wet),
-                CareEventEntity(id = "$prefix-tummy", childId = childId, type = CareEventType.Activity, startedAt = timestamp(date, 15, 10), endedAt = timestamp(date, 15, 10).plus(tummyMinutes * 60_000L), activityType = ActivityType.TummyTime, activityDurationSeconds = tummyMinutes * 60L),
-            )
-            if (daysAgo % 7L == 0L) {
-                events += CareEventEntity(id = "$prefix-weight", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 10), endedAt = timestamp(date, 10), timeSpecified = false, measurementType = MeasurementType.Weight, measurementValue = 6.8 - daysAgo * 0.018, measurementUnit = "kg")
-            }
-            if (daysAgo % 14L == 0L) {
-                events += CareEventEntity(id = "$prefix-height", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 10), endedAt = timestamp(date, 10), timeSpecified = false, measurementType = MeasurementType.Height, measurementValue = 64.0 - daysAgo * 0.055, measurementUnit = "cm")
-                events += CareEventEntity(id = "$prefix-head", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 10), endedAt = timestamp(date, 10), timeSpecified = false, measurementType = MeasurementType.HeadCircumference, measurementValue = 41.5 - daysAgo * 0.025, measurementUnit = "cm")
-            }
-            if (daysAgo % 6L == 0L) {
-                events += CareEventEntity(id = "$prefix-temperature", childId = childId, type = CareEventType.Measurement, startedAt = timestamp(date, 16, 30), endedAt = timestamp(date, 16, 30), measurementType = MeasurementType.Temperature, measurementValue = 36.6 + variation * 0.12, measurementUnit = "°C")
-            }
-            events
-        }
-    }
-
-    fun createDeveloperPaletteChildren(onComplete: () -> Unit = {}) = viewModelScope.launch {
-        val colorProfiles = colorProfileRepository.profiles.first()
-        colorProfiles.forEach { profile ->
-            profilesRepository.save(
-                ChildProfile(
-                    id = "developer-palette-${profile.id}",
-                    name = profile.name,
-                    birthDate = LocalDate.now().minusMonths(1),
-                    sex = BiologicalSex.PreferNotToSay,
-                    colorTheme = profile.id,
-                ),
-            )
-        }
-        colorProfiles.firstOrNull()?.let { preferencesRepository.setActiveChild("developer-palette-${it.id}") }
-        onComplete()
-    }
-
-
 }
