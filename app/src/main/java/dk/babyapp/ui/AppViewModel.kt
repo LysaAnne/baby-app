@@ -213,7 +213,7 @@ class AppViewModel @Inject constructor(
     fun startBreastfeeding(childId: String, side: BreastSide) = viewModelScope.launch { timerStartMutex.withLock {
         if (!canStartTimer(childId, CareEventType.Breastfeeding)) return@withLock
         val now = System.currentTimeMillis()
-        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side, nippleShield = preferencesRepository.preferences.first().defaultNippleShield).startSegment(now)
+        val event = CareEventEntity(childId = childId, type = CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = side, nippleShield = false).startSegment(now)
         careEventRepository.save(event); timerNotifications.show(event.id)
     } }
 
@@ -290,7 +290,7 @@ class AppViewModel @Inject constructor(
     }
 
     fun addBottle(childId: String, time: Long, content: BottleContent, offered: Int?, consumed: Int?, notes: String, ratio: String = "") =
-        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = offered ?: consumed, amountConsumedMl = consumed, notes = notes, bottleMixRatio = if (content == BottleContent.Mixed) ratio.trim() else "")) }
+        viewModelScope.launch { careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Bottle, startedAt = time, endedAt = time, bottleContent = content, amountOfferedMl = listOfNotNull(offered, consumed).maxOrNull(), amountConsumedMl = consumed, notes = notes, bottleMixRatio = if (content == BottleContent.Mixed) ratio.trim() else "")) }
 
     fun addDiaper(childId: String, time: Long, type: DiaperType, color: DiaperColor?, consistency: DiaperConsistency?, observation: String, notes: String, onComplete: (CareEventEntity) -> Unit = {}) =
         viewModelScope.launch {

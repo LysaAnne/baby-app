@@ -60,7 +60,7 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
                     Text("Tidsintervaller", style = MaterialTheme.typography.labelLarge)
                     intervals.forEachIndexed { index, (start, end) ->
                         val side = when ((if (recordedIntervals.isEmpty() && (event.leftSeconds == 0L || event.rightSeconds == 0L)) event.activeSide?.name else event.timerSegmentSides.split(';').getOrNull(index))) { "Left" -> "Venstre"; "Right" -> "Højre"; else -> "Side ikke registreret" }
-                        Text(compactInterval(start, end, anchor = event.startedAt) + if (event.type == CareEventType.Breastfeeding) (" · $side" + if (event.shieldForInterval(index)) " · Ammebrik" else "") else "", style = MaterialTheme.typography.bodySmall)
+                        Text(compactInterval(start, end, anchor = event.startedAt) + if (event.type == CareEventType.Breastfeeding) (" · $side") else "", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 if (onResume != null && event.type == CareEventType.Breastfeeding && event.endedAt != null) TextButton(onClick = onResume) { Text("Fortsæt amning") }
@@ -102,7 +102,8 @@ internal fun CareEventEntity.details() = when (type) {
 private fun CareEventEntity.summary() = when (type) {
     CareEventType.HeadSide -> headSide.displayLabel()
     CareEventType.SolidFood -> foodAmount.ifBlank { foodTexture.ifBlank { "Måltid" } }
-    CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep -> formatDuration(elapsedSeconds())
+    CareEventType.Pumping -> pumpedAmountMl?.let { "$it ml pumpet" } ?: "Mængde ikke angivet"
+    CareEventType.Breastfeeding, CareEventType.Sleep -> formatDuration(elapsedSeconds())
     CareEventType.Bottle -> amountConsumedMl?.let { "$it ml" } ?: bottleContent.displayLabel()
     CareEventType.Diaper -> diaperType.displayLabel()
     CareEventType.Measurement -> measurementValue?.let { "$it $measurementUnit" } ?: "Måling"

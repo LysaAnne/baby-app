@@ -1,5 +1,20 @@
 # Feature Roadmap
 
+### Registrering og medicin — 20. oktober 2026
+
+- Tal- og decimaltastatur til numeriske registreringsfelter.
+- Favoritsidegraf ved Søvn-overskriften; kompakt Favoritside og en Søvn-underoverskrift over Lur/Nattesøvn.
+- Nye vægtmålinger starter i gram; gram/kg kan vælges og omregnes ved oprettelse og redigering. Eksisterende måleenheder og grafnormalisering bevares.
+- Medicin vælges fra barnets aktive medicinkort. Aktivér/Gør inaktiv er direkte tilgængeligt på kortet; historiske registreringer bevares og kan redigeres.
+- Medicinpåmindelser: Taget gemmer dosis og tidspunkt i journalen, Snooze udsætter 10 minutter, Skip lukker påmindelsen uden logning. Faste fremtidige påmindelser fortsætter.
+- Ammebrik er fjernet fra brugerfladen og bruges ikke ved ny amning; historiske data bevares.
+- Pumpehistorikkens oversigt viser ml pumpet i stedet for en timer.
+- Verifikation: 86 enhedstests og 30 UI-tests (RegistrationEditingTest/BabyAppNavigationTest) på Pixel_8 bestået; debug-build, Android-testkompilering, checkCodeStyle, lintDebug og git diff --check bestået. Notifikationshandlinger er ikke afprøvet på fysisk telefon.
+- Manuel telefonkontrol: tastatur, kompakt layout, gram/kg, aktiv/inaktiv medicin og alle tre notifikationshandlinger, inklusive låst skærm og snooze-levering.
+
+
+- Flaske: Ved oprettelse og redigering hæves Tilbudt automatisk til Spist ved gemning, hvis Tilbudt er mindre.
+
 This document is the staged implementation contract for Baby App.
 
 Each stage produces a usable, tested increment. Stages are implemented one at a time and only when the project owner explicitly asks for that stage. When product scope changes, update both this roadmap and [README.md](README.md).

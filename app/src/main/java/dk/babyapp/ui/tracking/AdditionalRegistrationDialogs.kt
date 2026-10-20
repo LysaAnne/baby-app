@@ -38,7 +38,7 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateTimeFields(time) { time = it }
             SelectionDropdown("Pumpetype", method.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { method = it }
-            RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") })
+            RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         }
     }, confirmButton = { Button(enabled = amount.isBlank() || amount.toIntOrNull() != null, onClick = {

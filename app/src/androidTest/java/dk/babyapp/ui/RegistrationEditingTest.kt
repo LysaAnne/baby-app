@@ -15,6 +15,29 @@ import org.junit.Test
 class RegistrationEditingTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun weightStartsInGramsAndConvertsWhenChangingUnit() {
+        var savedValue: Double? = null
+        var savedUnit: String? = null
+        compose.setContent { MaterialTheme {
+            dk.babyapp.ui.tracking.MeasurementDialog(MeasurementType.Weight, {}) { _, _, _, value, unit, _ -> savedValue = value; savedUnit = unit }
+        } }
+        compose.onNodeWithText("Værdi (g) *").performTextInput("4200")
+        compose.onNodeWithText("Gram").performClick()
+        compose.onNodeWithText("Kg").performClick()
+        compose.onNodeWithText("Værdi (kg) *").assertTextContains("4.2")
+        compose.onNodeWithText("Gem").performClick()
+        compose.runOnIdle { assertEquals(4.2, savedValue!!, 0.0001); assertEquals("kg", savedUnit) }
+    }
+
+    @Test fun medicineRequiresAnActiveCardEntry() {
+        val inactive = dk.babyapp.data.medicine.MedicinePlan(childId = "child", name = "Inaktiv medicin", active = false)
+        val otherChild = inactive.copy(id = "other", childId = "other", active = true)
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MedicineDialog("child", null, {}, listOf(inactive, otherChild)) {} } }
+        compose.onNodeWithText("Gem").assertIsNotEnabled()
+        compose.onNodeWithText("Navn på medicin *").assertDoesNotExist()
+        compose.onNodeWithText("Inaktiv medicin").assertDoesNotExist()
+    }
+
     @Test fun chartSelectionSurvivesClosingAndReopening() {
         var settings by androidx.compose.runtime.mutableStateOf(dk.babyapp.data.preferences.MeasurementChartSettings())
         var open by androidx.compose.runtime.mutableStateOf(true)
@@ -158,22 +181,22 @@ class RegistrationEditingTest {
             assertEquals("Hånd", saved?.pumpingMethod)
         }
     }
-    @Test fun nursingIntervalCanBeDeletedAndShieldSaved() {
+    @Test fun nursingIntervalCanBeDeletedWithoutShieldOption() {
         var saved: CareEventEntity? = null
         val event = CareEventEntity(childId = "freja", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 21000, leftSeconds = 10, rightSeconds = 5, timerSegments = "1000-11000;16000-21000", timerSegmentSides = "Left;Right")
         compose.setContent { MaterialTheme { EditEventDialog(event, {}) { saved = it } } }
         compose.onAllNodesWithText("Slet interval").onFirst().performScrollTo().performClick()
-        compose.onNodeWithContentDescription("Ammebrik").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Ammebrik").assertDoesNotExist()
         compose.onNodeWithText("Gem").performClick()
-        compose.runOnIdle { assertEquals(0L, saved?.leftSeconds); assertEquals(5L, saved?.rightSeconds); assertEquals(true, saved?.nippleShield); assertEquals("16000-21000", saved?.timerSegments) }
+        compose.runOnIdle { assertEquals(0L, saved?.leftSeconds); assertEquals(5L, saved?.rightSeconds); assertEquals(false, saved?.nippleShield); assertEquals("16000-21000", saved?.timerSegments) }
     }
 
-    @Test fun activeTimerHasDirectShieldToggleWithoutChangingKeepAwake() {
+    @Test fun activeTimerHasNoShieldOption() {
         var event by androidx.compose.runtime.mutableStateOf(CareEventEntity(childId = "freja", type = CareEventType.Breastfeeding, startedAt = 1000, runningSince = 1000, activeSide = BreastSide.Left).startSegment(1000))
         var awake by androidx.compose.runtime.mutableStateOf(false)
         compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.ActiveTimerCard(event, {}, {}, {}, {}, {}, { current, enabled -> event = current.changeNippleShield(enabled, 61000) }, awake, { awake = it }, minimized = false) } }
-        compose.onNodeWithContentDescription("Ammebrik").performClick()
-        compose.runOnIdle { assertTrue(event.nippleShield); assertFalse(awake); assertEquals("true", event.timerSegmentShields); assertEquals("1000-", event.timerSegments) }
+        compose.onNodeWithContentDescription("Ammebrik").assertDoesNotExist()
+        compose.runOnIdle { assertFalse(event.nippleShield); assertFalse(awake); assertEquals("false", event.timerSegmentShields); assertEquals("1000-", event.timerSegments) }
     }
 
     @Test fun compactTimerKeepsEssentialControls() {

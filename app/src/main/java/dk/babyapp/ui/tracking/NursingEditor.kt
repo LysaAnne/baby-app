@@ -25,7 +25,7 @@ internal fun NursingIntervalOverview(event: CareEventEntity, now: Long) {
             val side = when (interval.side) { BreastSide.Left -> "Venstre"; BreastSide.Right -> "Højre"; null -> "Side ikke registreret" }
             Column {
                 Text("Interval ${index + 1} · $side · ${formatDuration(((interval.end ?: now) - interval.start).coerceAtLeast(0) / 1000)}", style = MaterialTheme.typography.bodyMedium)
-                Text("${time(interval.start)} – ${interval.end?.let { time(it) } ?: "kører"}${if (interval.nippleShield) " · Ammebrik" else ""}", style = MaterialTheme.typography.bodySmall)
+                Text("${time(interval.start)} – ${interval.end?.let { time(it) } ?: "kører"}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -52,7 +52,6 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                             DateTimeFields(interval.start) { time -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(start = time) }; error = null }
                             if (interval.end != null) { Text("Slut"); DateTimeFields(interval.end) { time -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(end = time) }; error = null } }
                             SelectionDropdown("Brystside", interval.side?.let { if (it == BreastSide.Left) "Venstre" else "Højre" } ?: "Side ikke registreret", BreastSide.entries.map { it to if (it == BreastSide.Left) "Venstre" else "Højre" }) { side -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(side = side) }; error = null }
-                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) { Checkbox(interval.nippleShield, { enabled -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(nippleShield = enabled) } }, modifier = Modifier.semantics { contentDescription = "Ammebrik" }); Text("Ammebrik") }
                             TextButton(onClick = { intervals = intervals.filterIndexed { i, _ -> i != index }; error = null }) { Text("Slet interval", color = MaterialTheme.colorScheme.error) }
                         } }
                     }

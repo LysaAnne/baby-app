@@ -312,14 +312,14 @@ class AppViewModelTest {
         assertEquals(1, events.items.value.size)
     }
 
-    @Test fun `new nursing uses saved shield preference`() = runTest(dispatcher) {
+    @Test fun `new nursing ignores legacy shield preference`() = runTest(dispatcher) {
         val preferences = FakePreferencesRepository()
         val events = FakeCareEventRepository()
         val vm = AppViewModel(FakeProfilesRepository(), preferences, FakePhotoStorage(), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
         vm.updateDefaultNippleShield(true); advanceUntilIdle()
         vm.startBreastfeeding("child", dk.babyapp.data.tracking.BreastSide.Left); advanceUntilIdle()
-        assertTrue(events.items.value.single().nippleShield)
-        assertEquals("true", events.items.value.single().timerSegmentShields)
+        assertFalse(events.items.value.single().nippleShield)
+        assertEquals("false", events.items.value.single().timerSegmentShields)
         vm.updateDefaultNippleShield(false); advanceUntilIdle()
         vm.startBreastfeeding("other", dk.babyapp.data.tracking.BreastSide.Right); advanceUntilIdle()
         assertFalse(events.items.value.first { it.childId == "other" }.nippleShield)

@@ -30,8 +30,9 @@ internal fun MedicineCardDialog(childId: String, all: List<MedicinePlan>, onSave
                 Text(plan.name, style = MaterialTheme.typography.titleMedium)
                 Text(plan.dose)
                 Text(if (plan.asNeeded) "PN · efter behov" else plan.times.joinToString(" · ").ifBlank { "Ingen faste tidspunkter" })
-                Text(if (!plan.active) "Afsluttet" else if (plan.reminders && !plan.asNeeded) "Påmindelser slået til" else "Ingen påmindelser", style = MaterialTheme.typography.bodySmall)
+                Text(if (!plan.active) "Inaktiv" else if (plan.reminders && !plan.asNeeded) "Påmindelser slået til" else "Ingen påmindelser", style = MaterialTheme.typography.bodySmall)
                 if (plan.instructions.isNotBlank()) Text(plan.instructions)
+                Row { TextButton(onClick = { onSave(all.map { if (it.id == plan.id) it.copy(active = !it.active) else it }) }) { Text(if (plan.active) "Gør inaktiv" else "Aktivér") } }
                 Row { TextButton(onClick = { editing = plan }) { Text("Rediger") }; TextButton(onClick = { deleting = plan }) { Text("Slet") } }
             } } }
             Button(onClick = { editing = MedicinePlan(childId = childId, name = "") }) { Text("Tilføj medicin") }

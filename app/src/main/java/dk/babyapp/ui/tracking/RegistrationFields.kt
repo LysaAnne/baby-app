@@ -57,3 +57,14 @@ internal fun ManualRegistrationMenu(options: List<Pair<String, () -> Unit>>, onD
 internal fun manualActivityTypeFor(label: String): dk.babyapp.data.tracking.ActivityType =
     dk.babyapp.data.tracking.ActivityType.entries.firstOrNull { it != dk.babyapp.data.tracking.ActivityType.Medicine && it.displayLabel() == label }
         ?: dk.babyapp.data.tracking.ActivityType.Other
+
+@Composable
+internal fun WeightUnitSelector(unit: String, value: String, onChange: (String, String) -> Unit) {
+    SelectionDropdown("Enhed", if (unit == "g") "Gram" else "Kg", listOf("g" to "Gram", "kg" to "Kg")) { selected ->
+        val converted = value.toDoubleOrNull()?.let { amount ->
+            val result = if (unit == selected) amount else if (selected == "g") amount * 1000 else amount / 1000
+            java.math.BigDecimal.valueOf(result).stripTrailingZeros().toPlainString()
+        } ?: value
+        onChange(selected, converted)
+    }
+}

@@ -53,17 +53,15 @@ class BabyAppNavigationTest {
         }
     }
 
-    @Test fun nursingTimerShieldToggleUpdatesSavedDefault() {
+    @Test fun nursingTimerDoesNotOfferShield() {
         val child = ChildProfile(id = "child", name = "Freja")
         val now = System.currentTimeMillis()
         var event by mutableStateOf(dk.babyapp.data.tracking.CareEventEntity(childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Breastfeeding, startedAt = now, runningSince = now, activeSide = dk.babyapp.data.tracking.BreastSide.Left, timerSegments = "$now-", timerSegmentSides = "Left"))
         var savedDefault = false
         composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(event), preferences = AppPreferences(hasSeenGettingStarted = true), onUpdateCareEvent = { updated, done -> event = updated; done(true) }, onUpdateDefaultNippleShield = { savedDefault = it }) }
         composeRule.onNodeWithContentDescription("Udvid tæller").performClick()
-        composeRule.onNodeWithContentDescription("Ammebrik").performClick()
-        composeRule.runOnIdle { org.junit.Assert.assertTrue(savedDefault); org.junit.Assert.assertEquals("$now-", event.timerSegments) }
-        composeRule.onNodeWithContentDescription("Ammebrik").performClick()
-        composeRule.runOnIdle { org.junit.Assert.assertFalse(savedDefault) }
+        composeRule.onNodeWithContentDescription("Ammebrik").assertDoesNotExist()
+        composeRule.runOnIdle { org.junit.Assert.assertFalse(savedDefault); org.junit.Assert.assertEquals("$now-", event.timerSegments) }
     }
 
     @Test fun overviewOpensChartsAndBrowsesChildDailySummary() {
@@ -238,7 +236,8 @@ class BabyAppNavigationTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(hasClickAction()).onFirst().performClick()
         composeRule.onNodeWithText("Opsummer dag").performClick()
-        composeRule.onNodeWithText("125 ml spist").assertExists()
+        // Total and bottle-content subtotal both show the same amount.
+        composeRule.onAllNodesWithText("125 ml spist").assertCountEquals(2)
     }
 
     @Test fun tappingTodayScrollsBackToTop() {
