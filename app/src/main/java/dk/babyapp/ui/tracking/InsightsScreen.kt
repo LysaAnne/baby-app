@@ -99,6 +99,7 @@ private fun decimal(value: Double) = String.format(danish, "%.1f", value)
 @Composable
 internal fun InsightsScreen(
     childId: String?,
+    child: dk.babyapp.data.profile.ChildProfile? = null,
     events: List<CareEventEntity>,
     contentPadding: PaddingValues,
     cards: List<InsightCard>,
@@ -141,7 +142,7 @@ internal fun InsightsScreen(
         }
     }
     if (childId != null && insights != null) when (detail) {
-        InsightCard.Growth -> MeasurementChartsDialog(events, childId, chartSettings, onChartSettingsChange) { detail = null }
+        InsightCard.Growth -> MeasurementChartsDialog(events, childId, chartSettings, onChartSettingsChange, child) { detail = null }
         InsightCard.HeadSide -> HeadSideStatisticsDialog(childId, events, statisticsSettings, onStatisticsSettingsChange) { detail = null }
         null -> Unit
         else -> InsightDetail(detail!!, insights, periodDays, onPeriodChange) { detail = null }

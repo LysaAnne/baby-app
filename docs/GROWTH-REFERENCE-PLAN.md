@@ -1,6 +1,16 @@
 # Valgfrie vækstreferencer i målegrafer
 
-Status: undersøgt og planlagt 11. oktober 2026. Ikke implementeret i appen.
+Status: undersøgt og planlagt 11. oktober 2026. Første version bygget 21. oktober 2026.
+
+## Hvad der er bygget (21. oktober 2026)
+
+- Kontakten **Vis vækstkurver** i Vækst-skærmen, standard fra og husket i `MeasurementChartSettings.showGrowthReferences`.
+- WHO's udvidede percentiltabeller (dag for dag) for vægt, længde og hovedomkreds, piger og drenge, 0–730 dage, ligger i `app/src/main/assets/growth/` med kilde-URL, hentedato og SHA-256 af den originale fil. Længde er liggende længde; tabellerne stopper før skiftet til stående højde ved 2 år.
+- `domain/GrowthReference.kt`: LMS, z-score, kurveværdi, percentil (afrundet; »under p1«/»over p99« uden for 1–99) og sammenligning af første og sidste måling i perioden med tilvækst langs samme kurve. `GrowthReferenceTest` gengiver 60 publicerede WHO-percentiler (p3/p50/p97 ved 10 aldre, alle mål og køn) inden for 0,005 og plannens syntetiske kontrol.
+- Ingen percentiler de første 14 dage. Ingen kurver uden køn eller fødselsdato, og ingen kurver for børn født før uge 37 (korrigeret alder er ikke bygget). Flere målinger samme dag: den sidste tæller.
+- Fødselsmål fra profilen tegnes som et åbent punkt, når kurverne er slået til; de gemmes ikke som registreringer.
+
+Afvigelser fra planen: hovedomkreds bruger WHO-tabellen og er mærket WHO, fordi de danske referencers vilkår og opløsning ikke er afklaret. Måleposition registreres ikke endnu. Begge er åbne punkter.
 
 ## Kildegrundlag
 

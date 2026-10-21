@@ -427,7 +427,7 @@ fun SettingsDialog(
     if (aboutOpen) AlertDialog(
         onDismissRequest = { aboutOpen = false },
         title = { Text("Version og licenser") },
-        text = { Text("Version ${BuildConfig.VERSION_NAME}\n\nSkrifttypen Nunito er © The Nunito Project Authors og bruges under SIL Open Font License 1.1.") },
+        text = { Text("Version ${BuildConfig.VERSION_NAME}\n\nSkrifttypen Nunito er © The Nunito Project Authors og bruges under SIL Open Font License 1.1.\n\nVækstkurverne bygger på WHO Child Growth Standards (WHO, 2006), hentet fra who.int 21. oktober 2026. Tabellerne er indlagt i appen uændret for 0–2 år.") },
         confirmButton = { TextButton(onClick = { aboutOpen = false }) { Text(stringResource(R.string.close)) } },
     )
     if (developerToolsOpen) Dialog(onDismissRequest = { developerToolsOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {

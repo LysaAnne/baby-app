@@ -42,9 +42,8 @@ class RegistrationEditingTest {
         var settings by androidx.compose.runtime.mutableStateOf(dk.babyapp.data.preferences.MeasurementChartSettings())
         var open by androidx.compose.runtime.mutableStateOf(true)
         compose.setContent { MaterialTheme { if (open) dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", settings, { settings = it }) { open = false } } }
-        compose.onNodeWithText("En måned").performClick()
         compose.onNodeWithText("6 måneder").performClick()
-        compose.onNodeWithText("Luk").performClick()
+        compose.onNodeWithContentDescription("Luk").performClick()
         compose.runOnIdle { assertEquals("SixMonths", settings.period); open = true }
         compose.onNodeWithText("6 måneder").assertExists()
     }
@@ -73,15 +72,33 @@ class RegistrationEditingTest {
         compose.runOnIdle { assertFalse(enabled) }
     }
 
+    @Test fun growthCurvesShowPercentileOnlyWhenTurnedOnAndSexIsKnown() {
+        val birth = java.time.LocalDate.now().minusDays(120)
+        val child = dk.babyapp.data.profile.ChildProfile(id = "child", name = "Freja", birthDate = birth, sex = dk.babyapp.data.profile.BiologicalSex.Female)
+        fun weight(daysAgo: Long, kg: Double) = java.time.LocalDate.now().minusDays(daysAgo).atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli().let {
+            CareEventEntity(childId = "child", type = CareEventType.Measurement, startedAt = it, endedAt = it, measurementType = dk.babyapp.data.tracking.MeasurementType.Weight, measurementValue = kg, measurementUnit = "kg")
+        }
+        var settings by androidx.compose.runtime.mutableStateOf(dk.babyapp.data.preferences.MeasurementChartSettings())
+        var profile by androidx.compose.runtime.mutableStateOf(child)
+        compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MeasurementChartsDialog(listOf(weight(20, 6.2), weight(2, 6.6)), "child", settings, { settings = it }, profile, onDismiss = {}) } }
+        compose.onNodeWithText("omkring p", substring = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Vis vækstkurver").performClick()
+        compose.runOnIdle { assertTrue(settings.showGrowthReferences) }
+        compose.onNodeWithText("Sådan læses kurverne").assertExists()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("omkring p", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("siden", substring = true).assertExists()
+        compose.runOnIdle { profile = child.copy(sex = dk.babyapp.data.profile.BiologicalSex.Unselected) }
+        compose.onNodeWithText("Vælg køn i profilen").assertExists()
+        compose.onNodeWithText("omkring p", substring = true).assertDoesNotExist()
+    }
+
     @Test fun chartsOfferAllPeriodsAndCustomDates() {
         compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", onDismiss = {}) } }
         compose.onNodeWithText("Vægt (kg)").assertIsDisplayed()
-        compose.onNodeWithText("En måned").performClick()
-        compose.onNodeWithText("Al tid").performClick()
-        compose.onNodeWithText("Al tid").performClick()
-        compose.onNodeWithText("Valgfri periode").performClick()
+        compose.onNodeWithText("Al tid").performScrollTo().performClick()
+        compose.onNodeWithText("Valgfri periode").performScrollTo().performClick()
         compose.onNodeWithText("Fra ", substring = true).assertIsDisplayed()
-        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(5)
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Temperatur (°C)"))
         compose.onNodeWithText("Temperatur (°C)").assertIsDisplayed()
     }
 

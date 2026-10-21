@@ -121,6 +121,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun TodayScreen(
     childId: String?,
+    child: dk.babyapp.data.profile.ChildProfile? = null,
     events: List<CareEventEntity>,
     contentPadding: PaddingValues,
     preferences: AppPreferences,
@@ -275,7 +276,7 @@ fun TodayScreen(
     }
 
     if (headSideOpen && childId != null) HeadSideStatisticsDialog(childId, historyEvents ?: events, preferences.headSideStatistics, onUpdateHeadSideStatistics) { headSideOpen = false }
-    if (chartsOpen && childId != null) MeasurementChartsDialog(historyEvents ?: events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
+    if (chartsOpen && childId != null) MeasurementChartsDialog(historyEvents ?: events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings, child) { chartsOpen = false }
     if (manualMenuOpen) ManualRegistrationMenu(
         listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,
             "Ble" to EditorKind.Diaper, "Søvn" to EditorKind.Sleep, "Vægt" to EditorKind.Weight, "Højde" to EditorKind.Height, "Hovedomkreds" to EditorKind.HeadCircumference, "Temperatur" to EditorKind.Temperature, "Fast føde" to EditorKind.SolidFood,

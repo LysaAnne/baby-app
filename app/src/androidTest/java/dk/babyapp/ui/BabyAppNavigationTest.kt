@@ -149,12 +149,12 @@ class BabyAppNavigationTest {
         composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Vis målegrafer"))
         // Activated directly: after scrolling, the icon can sit under the floating + button.
         composeRule.onNodeWithContentDescription("Vis målegrafer").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
-        composeRule.onNodeWithText("Målenes udvikling").assertIsDisplayed()
-        composeRule.onNodeWithText("Luk").performClick()
+        composeRule.onNodeWithText("Vækst").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Luk").performClick()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(isSelectable()).onFirst().performClick()
         composeRule.onNodeWithContentDescription("Vis målegrafer").performClick()
-        composeRule.onNodeWithText("Målenes udvikling").assertIsDisplayed()
+        composeRule.onNodeWithText("Vækst").assertIsDisplayed()
     }
 
     @Test fun bookNotificationOpensExactChildAndPage() {

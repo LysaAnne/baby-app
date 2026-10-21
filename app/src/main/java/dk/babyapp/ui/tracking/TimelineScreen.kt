@@ -79,6 +79,7 @@ fun TimelineScreen(
     onUpdateMeasurementChartSettings: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {},
     lastPumpingMethod: String = "",
     activeChildId: String?,
+    activeChild: dk.babyapp.data.profile.ChildProfile? = null,
     events: List<CareEventEntity>,
     careProviders: List<CareProvider>,
     contentPadding: PaddingValues,
@@ -259,7 +260,7 @@ fun TimelineScreen(
     if (editQuickFilters) JournalQuickFiltersDialog(quickFilters, { editQuickFilters = false; filtersOpen = true }) {
         onUpdateQuickFilters(it); editQuickFilters = false; filtersOpen = true
     }
-    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(history(), activeChildId, chartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
+    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(history(), activeChildId, chartSettings, onUpdateMeasurementChartSettings, activeChild) { chartsOpen = false }
     if (addMenu) ManualRegistrationMenu(
         listOf("Amning" to AddKind.Breastfeeding, "Flaske" to AddKind.Bottle, "Pumpning" to AddKind.Pumping,
             "Ble" to AddKind.Diaper, "Søvn" to AddKind.Sleep, "Vægt" to AddKind.Measurement, "Højde" to AddKind.Measurement, "Hovedomkreds" to AddKind.Measurement, "Temperatur" to AddKind.Measurement, "Fast føde" to AddKind.SolidFood,

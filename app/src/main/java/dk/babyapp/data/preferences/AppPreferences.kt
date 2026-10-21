@@ -37,7 +37,7 @@ data class AppPreferences(
 enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Favoritside") }
 
 @kotlinx.serialization.Serializable
-data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null)
+data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null, val showGrowthReferences: Boolean = false)
 
 enum class QuickAction(val label: String, val category: QuickActionCategory) {
     Breastfeeding("Amning", QuickActionCategory.Feeding), Bottle("Flaske", QuickActionCategory.Feeding), Pumping("Pumpning", QuickActionCategory.Feeding),

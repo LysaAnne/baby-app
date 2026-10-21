@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, Fase 3 er færdig. Næste skridt aftales: WHO-vækstkurver (se GROWTH-REFERENCE-PLAN.md) eller fase 4.
+**Fase 3 – Skærmene redesignes**, Fase 3 og WHO-vækstkurverne er færdige. Næste skridt: fase 4 (aftales først med en skitse).
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 

@@ -285,7 +285,7 @@ fun BabyAppNavigation(
             composable<AppDestination.Today> {
                 TodayScreen(
                     scrollToTopRequest = todayScrollRequest,
-                    childId = activeChild?.id, events = careEvents, contentPadding = contentPadding, preferences = preferences,
+                    childId = activeChild?.id, child = activeChild, events = careEvents, contentPadding = contentPadding, preferences = preferences,
                     recentFrom = recentFrom, history = childHistory,
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
@@ -335,6 +335,7 @@ fun BabyAppNavigation(
                     quickFilters = preferences.journalQuickFilters,
                     onUpdateQuickFilters = onUpdateJournalQuickFilters,
                     activeChildId = activeChild?.id,
+                    activeChild = activeChild,
                     medicines = medicines,
                     events = journalSlice.events.let(::visible),
                     hasOlder = journalSlice.hasOlder,
@@ -356,6 +357,7 @@ fun BabyAppNavigation(
             composable<AppDestination.Overview> {
                 dk.babyapp.ui.tracking.InsightsScreen(
                     childId = activeChild?.id,
+                    child = activeChild,
                     events = visible(childHistory()),
                     contentPadding = contentPadding,
                     cards = preferences.insightCards,
