@@ -144,7 +144,7 @@ class TrackingViewModelTest {
     }
 
     @Test
-    fun `manual sleep rejects an overlapping interval`() = runTest(dispatcher) {
+    fun `manual sleep may overlap another sleep`() = runTest(dispatcher) {
         val existing = CareEventEntity(childId = "child-1", type = CareEventType.Sleep, sleepType = SleepType.Nap, startedAt = 1_000, endedAt = 5_000, leftSeconds = 4)
         val events = FakeCareEventRepository().also { it.items.value = listOf(existing) }
         val viewModel = dk.babyapp.ui.tracking.TrackingViewModel(events, FakePreferencesRepository(), FakeTimerNotifications())
@@ -154,8 +154,8 @@ class TrackingViewModelTest {
         viewModel.addSleep("child-1", 4_000, 7_000, SleepType.Nap, "", "", null, null, "") { saved = it }
         advanceUntilIdle()
 
-        assertEquals(false, saved)
-        assertEquals(1, events.items.value.size)
+        assertEquals(true, saved)
+        assertEquals(2, events.items.value.size)
     }
     @Test
     fun `continued nursing remains saved after stopping and rejects another nursing timer`() = runTest(dispatcher) {

@@ -130,6 +130,9 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
         }
     }
     fun pageOf(template: BookPageTemplate) = childPages.firstOrNull { it.pageId == template.id }
+    // Retired pages only show when something is written on them.
+    val chapters = bookChapters.mapValues { (_, templates) -> templates.filter { !it.retired || bookPageHasContent(pageOf(it)) } }
+    val allPages = chapters.values.flatten()
     val bookListState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(child?.id, chapter) { bookListState.scrollToItem(0) }
     LazyColumn(state = bookListState, contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + BabySpacing.l, bottom = contentPadding.calculateBottomPadding() + BabySpacing.xl, start = BabySpacing.l, end = BabySpacing.l), verticalArrangement = Arrangement.spacedBy(BabySpacing.m)) {
@@ -152,7 +155,7 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                 }
             }
             item {
-                val started = babyBookTemplates.count { bookPageHasContent(pageOf(it)) }
+                val started = allPages.count { bookPageHasContent(pageOf(it)) }
                 val photoCount = childPages.sumOf { it.photos().size }
                 val coverPhoto = pageOf(babyBookTemplates.first())?.photos()?.firstOrNull() ?: child.photoFileName ?: childPages.firstNotNullOfOrNull { it.photos().firstOrNull() }
                 Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.fillMaxWidth()) {
@@ -160,8 +163,8 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                         PhotoThumb(photoFile(coverPhoto), Icons.AutoMirrored.Outlined.MenuBook, 60.dp, CircleShape, MaterialTheme.colorScheme.surface)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("${child.name} · det første år", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text("$started af ${babyBookTemplates.size} sider · $photoCount ${if (photoCount == 1) "billede" else "billeder"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            LinearProgressIndicator(progress = { started / babyBookTemplates.size.toFloat() }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), trackColor = MaterialTheme.colorScheme.surface, drawStopIndicator = {})
+                            Text("$started af ${allPages.size} sider · $photoCount ${if (photoCount == 1) "billede" else "billeder"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            LinearProgressIndicator(progress = { started / allPages.size.toFloat() }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), trackColor = MaterialTheme.colorScheme.surface, drawStopIndicator = {})
                         }
                     }
                 }
@@ -183,7 +186,7 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                     }
                 }
             }
-            items(bookChapters.toList().chunked(2), key = { row -> row.first().first }) { row ->
+            items(chapters.toList().chunked(2), key = { row -> row.first().first }) { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(BabySpacing.m)) {
                     row.forEach { (title, templates) ->
                         val filled = templates.count { bookPageHasContent(pageOf(it)) }
@@ -202,7 +205,7 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
             }
             item { Text("Skriv lidt ad gangen. Alle felter er frivillige, og kapitlerne kan udfyldes i den rækkefølge, du vil.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            val templates = bookChapters[open].orEmpty()
+            val templates = chapters[open].orEmpty()
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { chapter = null }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Alle kapitler") }
@@ -213,6 +216,9 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                     LinearProgressIndicator(progress = { filled / templates.size.toFloat() }, modifier = Modifier.weight(1f), trackColor = MaterialTheme.colorScheme.primaryContainer, drawStopIndicator = {})
                     Text("$filled af ${templates.size}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            if (open == "Måned for måned") item {
+                GrowthPhotos(templates, ::pageOf, photoFile) { editingId = it }
             }
             item {
                 val months = child.bookAgeMonths(today)
@@ -269,7 +275,7 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
             }
         }
     }
-    if (exportOpen && child != null) AlertDialog(onDismissRequest = { exportOpen = false }, title = { Text("Eksportér Barnets bog") }, text = { Text("Du får en ZIP-fil med alle gemte tekster i en redigerbar tekstfil og billeder i en separat mappe. Pak den ud og kopiér teksten til din fotobog.") }, confirmButton = { Button(onClick = {
+    if (exportOpen && child != null) AlertDialog(onDismissRequest = { exportOpen = false }, title = { Text("Eksportér Barnets bog") }, text = { Text("Du får en ZIP-fil med alle tekster i en redigerbar fil og billederne i en mappe. Billederne i fuld størrelse ligger desuden i Billeder › Barnets bog på telefonen.") }, confirmButton = { Button(onClick = {
         exportText = exportBabyBook(child.name, childPages); exportPhotos = childPages.flatMap { it.photos() }.distinct()
         exportOpen = false; export.launch("Barnets-bog.zip")
     }) { Text("Vælg placering") } }, dismissButton = { TextButton(onClick = { exportOpen = false }) { Text("Annuller") } })
@@ -281,6 +287,41 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
             onDismiss = { editingId = null }, onOpenPage = { id -> editingId = id; chapter = babyBookTemplates.first { it.id == id }.chapter })
     }
     message?.let { text -> AlertDialog(onDismissRequest = { message = null }, title = { Text("Eksport") }, text = { Text(text) }, confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } }) }
+}
+
+/** "Se hvor meget du er vokset": the first and latest month photo side by side, then every month in a grid. */
+@Composable
+private fun GrowthPhotos(months: List<BookPageTemplate>, pageOf: (BookPageTemplate) -> BabyBookPage?, photoFile: (String?) -> File?, onOpen: (String) -> Unit) {
+    val withPhoto = months.filter { pageOf(it)?.photos()?.isNotEmpty() == true }
+    fun label(template: BookPageTemplate): String {
+        val weight = pageOf(template)?.answers()?.get("Vægt (kg)")?.takeIf(String::isNotBlank)
+        val month = template.id.removePrefix("month-")
+        return listOfNotNull(if (month == "1") "1 md." else "$month mdr.", weight?.let { "$it kg" }).joinToString(" · ")
+    }
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) {
+        Column(Modifier.fillMaxWidth().padding(BabySpacing.m), verticalArrangement = Arrangement.spacedBy(BabySpacing.s)) {
+            Text("Se hvor meget du er vokset", style = MaterialTheme.typography.titleMedium)
+            if (withPhoto.size >= 2) Row(horizontalArrangement = Arrangement.spacedBy(BabySpacing.s)) {
+                listOf(withPhoto.first(), withPhoto.last()).forEach { template ->
+                    Column(Modifier.weight(1f).clip(MaterialTheme.shapes.medium).clickable { onOpen(template.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                        PhotoThumb(photoFile(pageOf(template)?.photos()?.firstOrNull()), Icons.Outlined.CalendarMonth, 150.dp, MaterialTheme.shapes.medium, MaterialTheme.colorScheme.surface, fillWidth = true)
+                        Text(label(template), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            } else Text("Tilføj et billede på hver månedsside, så kan I se forskellen her.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            months.chunked(4).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { template ->
+                        Column(Modifier.weight(1f).clip(MaterialTheme.shapes.small).clickable { onOpen(template.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                            PhotoThumb(photoFile(pageOf(template)?.photos()?.firstOrNull()), Icons.Outlined.AddPhotoAlternate, 64.dp, MaterialTheme.shapes.small, MaterialTheme.colorScheme.surface, fillWidth = true)
+                            Text(template.id.removePrefix("month-").let { if (it == "1") "1 md." else "$it mdr." }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -340,13 +381,21 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
     val answers = Json.decodeFromString<Map<String, String>>(answersJson)
     val photos = Json.decodeFromString<List<String>>(photosJson)
     val scope = rememberCoroutineScope()
-    val chapterPages = bookChapters[template.chapter].orEmpty()
+    val chapterPages = bookChapters[template.chapter].orEmpty().filter { !it.retired || it.id == template.id }
     val position = chapterPages.indexOfFirst { it.id == template.id }
     val changed = answersJson != (saved?.answersJson ?: "{}") || photosJson != (saved?.photosJson ?: "[]")
+    val context = LocalContext.current
+    var savedTo by remember { mutableStateOf<String?>(null) }
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch {
             saving = true
-            runCatching { onPhotoSelected(uri) }.onSuccess { name -> photosJson = Json.encodeToString(Json.decodeFromString<List<String>>(photosJson) + name) }.onFailure { error = "Billedet kunne ikke tilføjes." }
+            runCatching { onPhotoSelected(uri) }.onSuccess { name ->
+                val number = Json.decodeFromString<List<String>>(photosJson).size + 1
+                photosJson = Json.encodeToString(Json.decodeFromString<List<String>>(photosJson) + name)
+                // The original, untouched, goes to the phone's Pictures folder named after the chapter and page.
+                runCatching { withContext(Dispatchers.IO) { BookOriginals.save(context, uri, child, template, number) } }
+                    .onSuccess { savedTo = it }.onFailure { error = "Billedet er tilføjet, men originalen kunne ikke gemmes i Billeder." }
+            }.onFailure { error = "Billedet kunne ikke tilføjes." }
             saving = false
         }
     }
@@ -387,12 +436,14 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
                             }
                         }
                     }
-                    Text("Appen gemmer billedkopier i reduceret størrelse; behold originalerne til tryk.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(savedTo?.let { "Originalen er gemt i fuld størrelse i $it." }
+                        ?: "Billeder gemmes i fuld størrelse i Billeder › ${BookOriginals.ROOT} › ${BookOriginals.folder(child, template).replace("/", " › ")}.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (template.id == "birth-facts") AssistChip(enabled = !saving, onClick = {
                         val birth = mapOf("Dato" to child.birthDate?.toString().orEmpty(), "Klokkeslæt" to child.birthTime?.toString().orEmpty(), "Fødested" to child.hospital, "Graviditetsuge" to listOfNotNull(child.gestationalWeeks?.toString(), child.gestationalDays?.toString()).joinToString(" + "), "Vægt (g)" to child.birthWeightGrams?.toString().orEmpty(), "Længde (cm)" to child.birthLengthCm?.toString().orEmpty(), "Hovedomfang (cm)" to child.birthHeadCircumferenceCm?.toString().orEmpty())
                         answersJson = Json.encodeToString(birth + answers.filterValues(String::isNotBlank))
                     }, label = { Text("Udfyld tomme felter fra barnets profil") })
-                    (template.prompts + answers.keys).distinct().forEach { prompt -> OutlinedTextField(value = answers[prompt].orEmpty(), onValueChange = { answersJson = Json.encodeToString(answers + (prompt to it)) }, label = { Text(prompt) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, minLines = if (prompt.contains("historien", true) || prompt.contains("minde", true)) 4 else 2, enabled = !saving) }
+                    (template.prompts + answers.keys).distinct().forEach { prompt -> OutlinedTextField(value = answers[prompt].orEmpty(), onValueChange = { answersJson = Json.encodeToString(answers + (prompt to it)) }, label = { Text(prompt) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, minLines = if (isShortBookPrompt(prompt)) 1 else 3, enabled = !saving) }
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

@@ -1,5 +1,9 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.draw.rotate
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,7 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
@@ -138,7 +141,7 @@ internal fun FormDialog(
     }
 }
 
-/** A full-screen registration with the same coloured header, tinted body and footer as [FormDialog]. */
+/** A longer registration: the same rounded card as [FormDialog], only taller, so every form looks alike. */
 @Composable
 internal fun FormScreen(
     title: String,
@@ -148,18 +151,20 @@ internal fun FormScreen(
     subtitle: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         CategoryFormTheme(category) {
-            Surface(Modifier.fillMaxSize(), color = formBody(category)) {
-                Column(Modifier.fillMaxSize().systemBarsPadding().imePadding()) {
+            Box(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(vertical = BabySpacing.l), contentAlignment = Alignment.Center) {
+            Surface(Modifier.fillMaxWidth(0.92f).widthIn(max = 560.dp), shape = MaterialTheme.shapes.extraLarge, color = formBody(category), shadowElevation = 8.dp) {
+                Column {
                     FormBand({ Text(title) }, category, subtitle)
-                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = BabySpacing.l, vertical = BabySpacing.m), verticalArrangement = Arrangement.spacedBy(BabySpacing.m), content = content)
+                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = BabySpacing.l, vertical = BabySpacing.m), verticalArrangement = Arrangement.spacedBy(BabySpacing.m), content = content)
                     Row(
                         Modifier.fillMaxWidth().background(formBand(category).copy(alpha = 0.6f)).padding(horizontal = BabySpacing.l, vertical = BabySpacing.s),
                         horizontalArrangement = Arrangement.spacedBy(BabySpacing.s, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
                     ) { footer() }
                 }
+            }
             }
         }
     }
@@ -208,12 +213,24 @@ internal fun <T> ChoiceChips(options: List<Pair<T, String>>, selected: T?, allow
 @Composable
 internal fun MoreDetails(summary: String, hasContent: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     var open by rememberSaveable { mutableStateOf(hasContent) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) "Skjul detaljer" else "Vis flere detaljer") { open = !open }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(if (open) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = MaterialTheme.colorScheme.primary)
-            Text(if (open) "Færre detaljer" else "Flere detaljer · $summary", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    val turn by androidx.compose.animation.core.animateFloatAsState(if (open) 180f else 0f, label = "chevron")
+    val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    LaunchedEffect(open) { if (open) { kotlinx.coroutines.delay(250); bring.bringIntoView() } }
+    // A clear, tappable bar; the fields slide open below it and are scrolled into view.
+    Column(Modifier.bringIntoViewRequester(bring)) {
+        Surface(onClick = { open = !open }, shape = MaterialTheme.shapes.medium, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (open) "Færre detaljer" else "Flere detaljer", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    if (!open) Text(summary.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Outlined.ExpandMore, if (open) "Skjul detaljer" else "Vis flere detaljer", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.rotate(turn))
+            }
         }
-        AnimatedVisibility(open) { Column(verticalArrangement = Arrangement.spacedBy(8.dp), content = content) }
+        AnimatedVisibility(open, enter = androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(250)) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(250)),
+            exit = androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(200)) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150))) {
+            Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+        }
     }
 }
 

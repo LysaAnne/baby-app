@@ -10,6 +10,8 @@ fun bookPageHasContent(page: BabyBookPage?) = page != null &&
     (page.answers().values.any(String::isNotBlank) || page.photos().isNotEmpty())
 
 fun bookPageAvailable(template: BookPageTemplate, child: ChildProfile, today: LocalDate): Boolean {
+    // Pages that repeat another page are never suggested.
+    if (template.retired) return false
     if (template.chapter == "Før du kom") {
         return template.id != "before-12" || child.birthStatus == BirthStatus.Born || child.dueDate?.minusWeeks(4)?.let { today >= it } == true
     }

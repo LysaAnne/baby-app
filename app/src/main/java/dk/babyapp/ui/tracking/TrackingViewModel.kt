@@ -23,7 +23,6 @@ import dk.babyapp.data.tracking.SleepType
 import dk.babyapp.data.tracking.closeSegment
 import dk.babyapp.data.tracking.startSegment
 import dk.babyapp.domain.accrueUntil
-import dk.babyapp.domain.overlapsSleep
 import dk.babyapp.domain.resumeNursing
 import dk.babyapp.domain.switchNursingSide
 import dk.babyapp.tracking.TimerNotificationController
@@ -42,9 +41,6 @@ class TrackingViewModel @Inject constructor(
     private val teethRepository: TeethRepository? = null,
 ) : ViewModel() {
     private val timerStartMutex = Mutex()
-
-    private suspend fun sleepsNear(event: CareEventEntity) =
-        careEventRepository.sleepsOverlapping(event.childId, event.startedAt, event.endedAt ?: System.currentTimeMillis())
 
     private suspend fun canStartTimer(childId: String, type: CareEventType) =
         dk.babyapp.domain.canStartTimer(careEventRepository.unfinished(), childId, type)
@@ -163,9 +159,8 @@ class TrackingViewModel @Inject constructor(
         notes: String,
         onResult: (Boolean) -> Unit = {},
     ) = viewModelScope.launch {
-        val candidate = CareEventEntity(childId = childId, type = CareEventType.Sleep, startedAt = start, endedAt = end)
-        val overlaps = overlapsSleep(candidate, sleepsNear(candidate))
-        if (end <= start || overlaps) {
+        // Sleep may overlap other registrations; only an end before the start is refused.
+        if (end <= start) {
             onResult(false)
         } else {
             careEventRepository.save(
@@ -180,14 +175,11 @@ class TrackingViewModel @Inject constructor(
     }
 
     fun updateCareEvent(event: CareEventEntity, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
-        val current = careEventRepository.get(event.id)
-        val changedDuringEdit = event.type == CareEventType.Breastfeeding && current != null && current.updatedAt != event.updatedAt
-        val overlaps = overlapsSleep(event, sleepsNear(event))
-        if (overlaps || changedDuringEdit) onResult(false) else {
-            careEventRepository.save(event.copy(isDraft = false))
-            if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
-            onResult(true)
-        }
+        // The edit is saved as it is: overlapping registrations are allowed, and an edit made while the
+        // timer moved on (or just after it was saved) is not refused.
+        careEventRepository.save(event.copy(isDraft = false))
+        if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)
+        onResult(true)
     }
 
     fun deleteCareEvent(event: CareEventEntity) = viewModelScope.launch {

@@ -57,7 +57,7 @@ internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.d
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("Vælg kortene og knapperne, og flyt kortene op eller ned.", style = MaterialTheme.typography.bodyMedium)
             selectedOrder.forEachIndexed { index, category ->
-                val actions = QuickAction.entries.filter { it.category == category }
+                val actions = QuickAction.entries.filter { it.category == category && it != QuickAction.HealthNote }
                 val sectionShown = actions.any { it.name !in selectedHidden }
                 val (up, down) = selectedOrder.moveCallbacks(index) { selectedOrder = it }
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

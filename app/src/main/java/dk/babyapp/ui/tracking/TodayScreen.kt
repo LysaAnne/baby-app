@@ -54,8 +54,8 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Medication
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -279,7 +279,13 @@ fun TodayScreen(
                             QuickButtonSpec(if (questionCount == 0) "Spørgsmål" else "Spørgsmål · $questionCount", childId != null) { questionsOpen = true },
                         )
                     } else emptyList()
-                    QuickButtonRows(buttons + healthExtras, columns = 2)
+                    // Health in a fixed order; the old Helbredsnotat button is gone (existing notes stay in the journal).
+                    val shown = if (category == QuickActionCategory.Health) {
+                        val all = (buttons + healthExtras).filterNot { it.label == QuickAction.HealthNote.label }
+                        val order = listOf(QuickAction.HealthVisit.label, healthExtras[1].label, QuickAction.Medicine.label, QuickAction.Vaccination.label, healthExtras[0].label)
+                        order.mapNotNull { label -> all.firstOrNull { it.label == label } } + all.filter { it.label !in order }
+                    } else buttons
+                    QuickButtonRows(shown, columns = 2)
                     if (category == QuickActionCategory.Health && childId != null) MedicineStatus(medicines.filter { it.childId == childId && it.active }, childEvents)
                     if (category == QuickActionCategory.Health && child != null) HealthProgrammeStatus(dk.babyapp.domain.upcomingProgramme(child, historyEvents ?: events, today).take(3), today)
                 }
@@ -296,7 +302,7 @@ fun TodayScreen(
         listOf("Amning" to EditorKind.ManualBreastfeeding, "Flaske" to EditorKind.Bottle, "Pumpning" to EditorKind.ManualPumping,
             "Ble" to EditorKind.Diaper, "Søvn" to EditorKind.Sleep, "Vægt" to EditorKind.Weight, "Højde" to EditorKind.Height, "Hovedomkreds" to EditorKind.HeadCircumference, "Temperatur" to EditorKind.Temperature, "Fast føde" to EditorKind.SolidFood,
             "Medicin" to EditorKind.Medicine, "Sundhedsbesøg" to EditorKind.HealthVisit, "Vaccination" to EditorKind.Vaccination,
-            "Helbredsnotat" to EditorKind.HealthNote, "Mavetid" to EditorKind.Activity, "Bad" to EditorKind.Activity, "Leg" to EditorKind.Activity, "Udetid" to EditorKind.Activity, "Andet" to EditorKind.Activity).map { (label, kind) -> label to { manualActivityType = manualActivityTypeFor(label); manualMenuOpen = false; dialog = kind } },
+            "Mavetid" to EditorKind.Activity, "Bad" to EditorKind.Activity, "Leg" to EditorKind.Activity, "Udetid" to EditorKind.Activity, "Andet" to EditorKind.Activity).map { (label, kind) -> label to { manualActivityType = manualActivityTypeFor(label); manualMenuOpen = false; dialog = kind } },
         { manualMenuOpen = false })
     when (dialog) {
         EditorKind.StartBreast -> FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = { dialog = null }, title = { Text("Start amning") },
@@ -533,8 +539,8 @@ private fun QuickButtonRows(buttons: List<QuickButtonSpec>, columns: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         buttons.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // A button alone on its row takes the whole width.
                 row.forEach { button -> QuickButton(button.label, Modifier.weight(1f), button.enabled, button.onClick) }
-                repeat(columns - row.size) { androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -581,7 +587,7 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                 if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
                 // Screen on/off as an icon only; the expanded timer spells it out.
                 androidx.compose.material3.IconToggleButton(keepAwake, onKeepAwake, modifier = Modifier.size(40.dp)) {
-                    Icon(if (keepAwake) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt", tint = if (keepAwake) category.accent else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(if (keepAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb, if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt", tint = if (keepAwake) androidx.compose.ui.graphics.Color(0xFFE0A100) else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 toggle()
                 androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Stop, "Stop") }
@@ -634,7 +640,7 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                 val awakeColors = if (keepAwake) androidx.compose.material3.ButtonDefaults.filledTonalButtonColors() else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                 androidx.compose.material3.FilledTonalButton(onClick = { onKeepAwake(!keepAwake) }, colors = awakeColors, modifier = Modifier.fillMaxWidth().semantics { contentDescription = if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt" },
                     border = if (keepAwake) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Icon(if (keepAwake) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, null, Modifier.size(18.dp)); Text(if (keepAwake) " Skærmen holdes tændt" else " Hold skærmen tændt")
+                    Icon(if (keepAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb, null, Modifier.size(18.dp)); Text(if (keepAwake) " Skærmen holdes tændt" else " Hold skærmen tændt")
                 }
             }
         }

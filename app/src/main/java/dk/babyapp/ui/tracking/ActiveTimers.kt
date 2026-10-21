@@ -118,7 +118,7 @@ internal fun ActiveTimers(
     if (saveFailed) AlertDialog(
         onDismissRequest = { saveFailed = false },
         title = { Text("Registreringen kan ikke gemmes") },
-        text = { Text("Der kan være overlappende søvn, eller amningen er ændret imens. Kontrollér tiderne, eller luk redigeringen og åbn den igen.") },
+        text = { Text("Kontrollér at slut er efter start, og prøv igen.") },
         confirmButton = { Button(onClick = { saveFailed = false }) { Text("OK") } },
     )
 }

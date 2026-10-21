@@ -15,7 +15,7 @@ class BookReminderPlanTest {
         assertTrue(bookPageAvailable(page("month-1"), child, LocalDate.of(2026, 2, 28)))
         assertFalse(bookPageAvailable(page("month-2"), child, LocalDate.of(2026, 3, 30)))
         assertTrue(bookPageAvailable(page("month-2"), child, LocalDate.of(2026, 3, 31)))
-        val birthdayPages = babyBookTemplates.filter { it.chapter == "Din første fødselsdag" || it.title == "Første fødselsdag" || it.title == "Dit første år i billeder" }
+        val birthdayPages = babyBookTemplates.filter { !it.retired && (it.chapter == "Din første fødselsdag" || it.title == "Dit første år i billeder") }
         birthdayPages.forEach {
             assertFalse(bookPageAvailable(it, child, birth.plusYears(1).minusDays(1)))
             assertTrue(bookPageAvailable(it, child, birth.plusYears(1)))
@@ -59,5 +59,12 @@ class BookReminderPlanTest {
         val filled = listOf(BabyBookPage("child", "month-4", "{\"Dato\":\"2. juni\"}"), BabyBookPage("child", "cover", "{\"Barnets navn\":\"Freja\"}"))
         assertEquals(babyBookTemplates[1].id, nextBookPage(child, filled, today)?.id)
         assertEquals("month-4", nextBookPage(child, filled.map { it.copy(childId = "other") }, today)?.id)
+    }
+    @Test fun retiredPagesAreNeverSuggestedButStayWhenWrittenOn() {
+        val retired = babyBookTemplates.first { it.retired }
+        assertFalse(bookPageAvailable(retired, child, LocalDate.of(2027, 6, 1)))
+        val written = BabyBookPage("child", retired.id, "{\"Gammelt spørgsmål\":\"Vores tekst\"}")
+        assertTrue(exportBabyBook("Freja", listOf(written)).contains("Vores tekst"))
+        assertFalse(exportBabyBook("Freja", emptyList()).contains("## ${retired.title}\n"))
     }
 }

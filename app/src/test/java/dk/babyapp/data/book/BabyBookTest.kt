@@ -24,7 +24,8 @@ class BabyBookTest {
         assertTrue(exportBabyBook("Freja", listOf(page)).contains("Mors gamle historie"))
         val mother = babyBookTemplates.first { it.id == "before-0" }
         val name = babyBookTemplates.first { it.title == "Dit navn" }
-        assertTrue(mother.prompts.size >= 5)
+        // Few, short writing starters per page.
+        assertTrue(mother.prompts.size in 1..3)
         assertNotEquals(mother.prompts, name.prompts)
         assertFalse("Fortæl historien" in mother.prompts)
     }

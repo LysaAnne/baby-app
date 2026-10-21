@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, Fase 3 og WHO-vækstkurverne er færdige. Fase 4 punkt 1, 3, 5, 6 og 7 er bygget. Tænderne er redesignet. Næste skridt: fase 4 punkt 2, 4, 8 og 10.
+**Fase 3 – Skærmene redesignes**, Fase 3 og WHO-vækstkurverne er færdige. Fase 4 punkt 1, 3, 5, 6 og 7 er bygget. Fase 4 er afsluttet: punkt 10 er bygget, og punkt 2, 4, 8 og 9 er fravalgt. Barnets bog er gentænket med færre, kortere spørgsmål.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -147,15 +147,15 @@ Færdig: forsiden viser fremdrift for hele bogen, et forslag til næste side (m�
 Prioriteret forslag. Rækkefølgen aftales, før hver funktion påbegyndes.
 
 1. ✅ **Fortryd** ved sletning og ændring (Journal).
-2. **Hjemmeskærm-widget og genveje** (langt tryk på app-ikonet): start amning eller registrér ble uden at åbne appen.
+2. ✗ Fravalgt: **Hjemmeskærm-widget og genveje** (langt tryk på app-ikonet): start amning eller registrér ble uden at åbne appen.
 3. ✅ **"Tid siden sidst"** på I dag (widgeten mangler).
-4. **Rapport til sundhedsplejersken:** PDF med de seneste 1–4 uger, vækstkurve og spørgsmål.
+4. ✗ Fravalgt: **Rapport til sundhedsplejersken:** PDF med de seneste 1–4 uger, vækstkurve og spørgsmål.
 5. ✅ **Spørgsmål til sundhedsplejersken eller lægen,** som kobles til næste besøg.
 6. ✅ **Medicinoverblik:** "Sidste dosis kl. 14.30 (for 3 t siden)". Kun information; appen beregner aldrig doser.
 7. ✅ **Påmindelser om vaccinationer og børneundersøgelser** ud fra det danske program.
-8. **Lager af modermælk:** pumpet ind, brugt ud, holdbarhed.
-9. **Deling mellem forældre og synkronisering.** Den største opgave, og den kræver konto og server.
-10. **Månedlige fotos i Barnets bog** med en "se hvor meget du er vokset"-sammenligning.
+8. ✗ Fravalgt: **Lager af modermælk:** pumpet ind, brugt ud, holdbarhed.
+9. ✗ Fravalgt: **Deling mellem forældre og synkronisering.** Den største opgave, og den kræver konto og server.
+10. ✅ **Månedlige fotos i Barnets bog** med en "se hvor meget du er vokset"-sammenligning.
 
 ---
 

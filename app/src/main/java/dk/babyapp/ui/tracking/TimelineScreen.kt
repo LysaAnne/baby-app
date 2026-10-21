@@ -310,7 +310,7 @@ fun TimelineScreen(
     }
     if (overlapError) AlertDialog(
         onDismissRequest = { overlapError = false }, title = { Text("Registreringen kunne ikke gemmes") },
-        text = { Text("Søvntider må ikke overlappe. Hvis ammetimeren er ændret imens, skal du lukke redigeringen og åbne den igen.") },
+        text = { Text("Kontrollér at slut er efter start, og prøv igen.") },
         confirmButton = { Button(onClick = { overlapError = false }) { Text("OK") } },
     )
     if (selectChildError) AlertDialog(
