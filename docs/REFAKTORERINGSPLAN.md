@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 2 – Designsystem**, punkt 2.3: typografi og afstande.
+**Fase 2 – Designsystem**, punkt 2.4: fælles komponenter.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -18,7 +18,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 |---|---|---|
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
-| 2 | Designsystem | 🔄 I gang · 2.1 og 2.2 færdige |
+| 2 | Designsystem | 🔄 I gang · 2.1–2.3 færdige |
 | 3 | Skærmene redesignes én ad gangen | Venter |
 | 4 | Nye funktioner | Venter |
 
@@ -75,7 +75,10 @@ Færdig: Indstillinger → Udseende (System/Lys/Mørk) og Nattilstand (Fra/Til/A
 - **Mørk tilstand virker ikke i dag.** Valget i Indstillinger gemmes, men bruges aldrig. Det rettes, så System, Lys og Mørk virker.
 - **Ny nattilstand:** dæmpede, varme farver og lav lysstyrke til natlig brug. Den kan slås til manuelt eller automatisk om aftenen.
 
-### 2.3 Typografi og afstande
+### 2.3 Typografi og afstande ✅
+
+Færdig: Nunito i hele appen (lagt ind, virker offline), afstande (`BabySpacing`) og trykflader (`BabyTouch`), hurtigknapper 56 dp. `TouchTargetTest` kræver mindst 48 dp for alt, der kan trykkes på, på I dag og i Journal. Skærmene tager afstandene i brug, efterhånden som de redesignes i fase 3.
+
 - Én afrundet skrifttype (forslag: Nunito) og færre tekststørrelser.
 - Faste afstande og hjørner, så kort, knapper og dialoger står ens.
 - Store trykflader: mindst 48 dp, og de vigtigste knapper 56 dp.
