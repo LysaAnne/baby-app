@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, punkt 3.2: Registrer-arket (aftales først med en skitse).
+**Fase 3 – Skærmene redesignes**, punkt 3.2 og 3.3: +-menuen og Journal (aftales først med en skitse).
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -112,15 +112,13 @@ Aftalt ud fra skitse 2 (samme struktur, mere kompakt). Færdig:
 
 Backup af udseendet før 3.1: git-mærket `for-redesign-i-dag` og `backups/babyapp-for-redesign-i-dag-d585cba.apk`.
 
-### 3.2 Ét samlet "Registrer"-ark
-- Erstatter både kategorikortene og den separate "+"-menu.
-- Kategorier og søgning.
-- Formularer som bundark med smarte standardværdier: "nu" som tidspunkt og sidst brugte værdier.
+### 3.2 +-menuen
+- Samme indhold og funktion som i dag; kategorikortene på I dag bevares.
+- Menuen bag + får det nye design: bundark, kategorier med farvede ikoner, knapper to pr. række.
 
 ### 3.3 Journal
-- Dagsoverskrifter, farvede ikoner og filterchips på én linje.
-- Swipe for at redigere eller slette.
-- **Fortryd** via snackbar efter sletning.
+- Samme struktur, mere kompakt: registreringer i samme stil som I dag.
+- Swipe for at redigere eller slette, og **fortryd** via snackbar efter sletning.
 - **Gradvis indlæsning** mens man scroller, i stedet for hele historikken på én gang (i dag ca. 600 ms med 3 års data).
 
 ### 3.4 Overblik → Indsigt
