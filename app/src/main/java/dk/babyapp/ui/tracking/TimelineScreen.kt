@@ -114,6 +114,17 @@ fun TimelineScreen(
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) onRestore(event)
         }
     }
+    // Saved edits can be undone the same way: the snackbar puts the previous version back.
+    fun saveEditWithUndo(old: CareEventEntity, updated: CareEventEntity, onResult: (Boolean) -> Unit) {
+        onUpdate(updated) { success ->
+            onResult(success)
+            if (success && updated != old) scope.launch {
+                snackbar.currentSnackbarData?.dismiss()
+                val result = snackbar.showSnackbar("${eventTitle(updated)} ændret", actionLabel = "Fortryd", duration = androidx.compose.material3.SnackbarDuration.Long)
+                if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) onUpdate(old) {}
+            }
+        }
+    }
     var typeFilters by remember { mutableStateOf(emptySet<String>()) }
     var editQuickFilters by remember { mutableStateOf(false) }
     var resumeEvent by remember { mutableStateOf<CareEventEntity?>(null) }
@@ -290,11 +301,11 @@ fun TimelineScreen(
     editing?.let { event ->
         if (event.type == CareEventType.HealthVisit || event.type == CareEventType.Vaccination) {
             HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, { editing = null }) { updated ->
-                onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
+                saveEditWithUndo(event, updated) { success -> overlapError = !success; if (success) editing = null }
             }
-        } else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, { editing = null }, medicines) { updated -> onUpdate(updated) { success -> if (success) editing = null } }
+        } else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, { editing = null }, medicines) { updated -> saveEditWithUndo(event, updated) { success -> if (success) editing = null } }
         else EditEventDialog(event, { editing = null }) { updated ->
-            onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
+            saveEditWithUndo(event, updated) { success -> overlapError = !success; if (success) editing = null }
         }
     }
     if (overlapError) AlertDialog(

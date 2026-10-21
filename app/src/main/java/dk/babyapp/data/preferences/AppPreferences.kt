@@ -31,7 +31,14 @@ data class AppPreferences(
     val insightPeriodDays: Int = 7,
     /** When an encrypted backup was last saved to a file, or null if never. */
     val lastBackupAt: Long? = null,
+    /** Questions for the next health visit, per child; attached to a visit when it is registered. */
+    val healthQuestions: List<HealthQuestion> = emptyList(),
+    /** Reminders a week before and on the day of examinations and vaccinations in the Danish programme. */
+    val healthRemindersEnabled: Boolean = true,
 )
+
+@kotlinx.serialization.Serializable
+data class HealthQuestion(val id: String = java.util.UUID.randomUUID().toString(), val childId: String, val text: String, val createdAt: Long = System.currentTimeMillis())
 
 /** The cards on Indsigt. Stored by name, so names must not change. */
 enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Favoritside") }

@@ -411,12 +411,8 @@ private fun InsightCardsDialog(current: List<InsightCard>, onDismiss: () -> Unit
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Vælg kortene, og flyt dem op eller ned.", style = MaterialTheme.typography.bodyMedium)
                 order.forEachIndexed { index, card ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Switch(card in shown, { on -> shown = if (on) shown + card else shown - card }, modifier = Modifier.semantics { contentDescription = "Vis ${card.label}" })
-                        Text(card.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
-                        IconButton(enabled = index > 0, onClick = { order = order.toMutableList().apply { add(index - 1, removeAt(index)) } }) { Icon(Icons.Outlined.ArrowUpward, "Flyt ${card.label} op") }
-                        IconButton(enabled = index < order.lastIndex, onClick = { order = order.toMutableList().apply { add(index + 1, removeAt(index)) } }) { Icon(Icons.Outlined.ArrowDownward, "Flyt ${card.label} ned") }
-                    }
+                    val (up, down) = order.moveCallbacks(index) { order = it }
+                    CustomizeRow(card.label, card in shown, { on -> shown = if (on) shown + card else shown - card }, up, down)
                 }
             }
         },

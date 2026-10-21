@@ -107,8 +107,8 @@ class RegistrationEditingTest {
         compose.setContent { MaterialTheme {
             dk.babyapp.ui.tracking.AllQuickActionsDialog(emptySet(), emptyList(), {}) { value, _ -> hidden = value }
         } }
-        compose.onAllNodesWithText("Skjul").onFirst().performClick()
-        compose.onNodeWithContentDescription("Fjern Amning").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Vis Madning").performClick()
+        compose.onNodeWithContentDescription("Vis Amning").assertDoesNotExist()
         compose.onNodeWithText("Gem").performClick()
         compose.runOnIdle { assertTrue(dk.babyapp.data.preferences.QuickAction.entries.filter { it.category == dk.babyapp.data.preferences.QuickActionCategory.Feeding }.all { it.name in hidden }) }
     }
@@ -118,8 +118,8 @@ class RegistrationEditingTest {
         compose.setContent { MaterialTheme {
             dk.babyapp.ui.tracking.DashboardMetricDialog(listOf(dk.babyapp.data.preferences.DashboardMetric.Feeding, dk.babyapp.data.preferences.DashboardMetric.Diapers), {}) { saved = it }
         } }
-        compose.onNodeWithContentDescription("Flyt felt 1 ned").performClick()
-        compose.onNodeWithContentDescription("Fjern felt 2").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Flyt Madning ned").performClick()
+        compose.onNodeWithContentDescription("Vis Madning").performScrollTo().performClick()
         compose.onNodeWithText("Gem").performClick()
         compose.runOnIdle { assertEquals(listOf(dk.babyapp.data.preferences.DashboardMetric.Diapers), saved) }
     }

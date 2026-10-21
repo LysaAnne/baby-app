@@ -48,6 +48,8 @@ class SettingsViewModel @Inject constructor(
     fun updateInsightCards(cards: List<dk.babyapp.data.preferences.InsightCard>) = viewModelScope.launch { preferencesRepository.updateInsightCards(cards) }
     fun markBackupSaved() = viewModelScope.launch { preferencesRepository.markBackupSaved(System.currentTimeMillis()) }
     fun updateInsightPeriod(days: Int) = viewModelScope.launch { preferencesRepository.updateInsightPeriod(days) }
+    fun updateHealthQuestions(questions: List<dk.babyapp.data.preferences.HealthQuestion>) = viewModelScope.launch { preferencesRepository.updateHealthQuestions(questions) }
+    fun updateHealthReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateHealthReminders(enabled) }
 
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)

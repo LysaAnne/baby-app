@@ -51,6 +51,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } } ?: InsightCard.entries,
             insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it == 7 || it == 30 } ?: 7,
             lastBackupAt = values[LAST_BACKUP_AT],
+            healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
+            healthRemindersEnabled = values[HEALTH_REMINDERS_ENABLED] ?: true,
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
         )
     }
@@ -163,6 +165,14 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[INSIGHT_CARDS] = cards.joinToString(",") { card -> card.name } }
     }
 
+    override suspend fun updateHealthQuestions(questions: List<HealthQuestion>) {
+        context.appPreferencesDataStore.edit { it[HEALTH_QUESTIONS] = Json.encodeToString(questions) }
+    }
+
+    override suspend fun updateHealthReminders(enabled: Boolean) {
+        context.appPreferencesDataStore.edit { it[HEALTH_REMINDERS_ENABLED] = enabled }
+    }
+
     override suspend fun markBackupSaved(at: Long) {
         context.appPreferencesDataStore.edit { it[LAST_BACKUP_AT] = at }
     }
@@ -205,6 +215,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val INSIGHT_CARDS = stringPreferencesKey("insight_cards")
         val INSIGHT_PERIOD = intPreferencesKey("insight_period")
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
+        val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")
+        val HEALTH_REMINDERS_ENABLED = booleanPreferencesKey("health_reminders_enabled")
     }
 }
 

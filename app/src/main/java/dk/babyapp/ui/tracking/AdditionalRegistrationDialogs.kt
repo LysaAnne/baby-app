@@ -53,35 +53,22 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
 internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.data.preferences.QuickActionCategory>, onDismiss: () -> Unit, onSave: (Set<String>, List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit) {
     var selectedHidden by remember { mutableStateOf(hidden) }
     var selectedOrder by remember { mutableStateOf(orderedQuickActionCategories(order)) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilpas hurtig registrering") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    FormDialog(onDismissRequest = onDismiss, title = { Text("Tilpas hurtig registrering") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Vælg kortene og knapperne, og flyt kortene op eller ned.", style = MaterialTheme.typography.bodyMedium)
             selectedOrder.forEachIndexed { index, category ->
                 val actions = QuickAction.entries.filter { it.category == category }
-                val sectionHidden = actions.all { it.name in selectedHidden }
-                OutlinedCard(Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = if (sectionHidden) MaterialTheme.babyColors.hiddenContainer else MaterialTheme.colorScheme.surface, contentColor = if (sectionHidden) MaterialTheme.babyColors.hiddenContent else MaterialTheme.colorScheme.onSurface)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(category.label, style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CustomizationIconButton("Flyt ${category.label} op", Icons.Outlined.ArrowUpward, index > 0) { selectedOrder = selectedOrder.toMutableList().apply { add(index - 1, removeAt(index)) } }
-                        CustomizationIconButton("Flyt ${category.label} ned", Icons.Outlined.ArrowDownward, index < selectedOrder.lastIndex) { selectedOrder = selectedOrder.toMutableList().apply { add(index + 1, removeAt(index)) } }
-                        FilledTonalButton(onClick = { selectedHidden = if (sectionHidden) selectedHidden - actions.map { it.name }.toSet() else selectedHidden + actions.map { it.name } }) {
-                            Icon(if (sectionHidden) Icons.Outlined.Add else Icons.Outlined.Close, null)
-                            Text(if (sectionHidden) "Vis" else "Skjul")
-                        }
-                    }
-                    if (!sectionHidden) actions.forEach { action ->
-                        HorizontalDivider()
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Text(action.label, Modifier.weight(1f))
-                            val visible = action.name !in selectedHidden
-                            CustomizationIconButton(if (visible) "Fjern ${action.label}" else "Tilføj ${action.label}", if (visible) Icons.Outlined.Close else Icons.Outlined.Add) {
-                                selectedHidden = if (visible) selectedHidden + action.name else selectedHidden - action.name
-                            }
-                        }
-                    }
-                } }
+                val sectionShown = actions.any { it.name !in selectedHidden }
+                val (up, down) = selectedOrder.moveCallbacks(index) { selectedOrder = it }
+                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                CustomizeRow(category.label, sectionShown, { on -> selectedHidden = if (on) selectedHidden - actions.map { it.name }.toSet() else selectedHidden + actions.map { it.name } }, up, down)
+                // Single-button cards have no separate row for the button.
+                if (sectionShown && actions.size > 1) actions.forEach { action ->
+                    CustomizeRow(action.label, action.name !in selectedHidden, { on -> selectedHidden = if (on) selectedHidden - action.name else selectedHidden + action.name }, indent = true)
+                }
             }
         }
-    }, confirmButton = { Button(onClick = { onSave(selectedHidden, selectedOrder) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }, confirmButton = { Button(onClick = { onSave(selectedHidden, selectedOrder) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

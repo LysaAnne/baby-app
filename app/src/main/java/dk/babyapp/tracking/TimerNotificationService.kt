@@ -16,6 +16,7 @@ import dk.babyapp.R
 import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventRepository
+import dk.babyapp.data.tracking.segmentIntervals
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.domain.switchNursingSide
 import dk.babyapp.data.tracking.closeSegment
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -50,6 +52,7 @@ class AndroidTimerNotificationController @Inject constructor(
 @AndroidEntryPoint
 class TimerNotificationService : Service() {
     @Inject lateinit var repository: CareEventRepository
+    @Inject lateinit var profiles: dk.babyapp.data.profile.ChildProfileRepository
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val actionMutex = Mutex()
     private var updateJob: Job? = null
@@ -89,7 +92,8 @@ class TimerNotificationService : Service() {
     private fun beginUpdates() {
         updateJob?.cancel()
         updateJob = scope.launch {
-            repository.unfinishedEvents.collect { active ->
+            repository.unfinishedEvents.combine(profiles.profiles) { active, children -> active to children }.collect { (active, children) ->
+                names = children.associate { it.id to it.name }
                 val manager = getSystemService(NotificationManager::class.java)
                 val nextIds = active.drop(1).map { 0x40000000 or (it.id.hashCode() and 0x3fffffff) }.toSet()
                 (secondaryIds - nextIds).forEach(manager::cancel)
@@ -102,10 +106,12 @@ class TimerNotificationService : Service() {
         }
     }
 
+    private var names: Map<String, String> = emptyMap()
+
     private fun notification(event: CareEventEntity): android.app.Notification {
-        val title = when (event.type) {
-            CareEventType.Breastfeeding -> "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"}"
-            CareEventType.Sleep -> "Søvn"
+        val what = when (event.type) {
+            CareEventType.Breastfeeding -> "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"} side"
+            CareEventType.Sleep -> if (event.sleepType == dk.babyapp.data.tracking.SleepType.Night) "Nattesøvn" else "Lur"
             CareEventType.Activity -> event.activityType?.let { type -> when (type) {
                 dk.babyapp.data.tracking.ActivityType.TummyTime -> "Mavetid"
                 dk.babyapp.data.tracking.ActivityType.Bath -> "Bad"
@@ -116,13 +122,24 @@ class TimerNotificationService : Service() {
             } } ?: "Aktivitet"
             else -> "Pumpning"
         }
+        val title = listOfNotNull(names[event.childId], what).joinToString(" · ")
         val elapsed = event.elapsedSeconds()
         val text = "%02d:%02d:%02d".format(elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60)
+        // What is running in plain words: when it started, pauses so far and, for nursing, the time per side.
+        val clock = java.text.SimpleDateFormat("HH.mm", java.util.Locale.forLanguageTag("da")).format(java.util.Date(event.startedAt))
+        val pauses = (event.segmentIntervals().size - 1).coerceAtLeast(0)
+        val details = listOfNotNull(
+            "startet kl. $clock",
+            // Per-side totals are only exact while paused; a running side keeps counting in the clock.
+            if (event.type == CareEventType.Breastfeeding && event.runningSince == null) "venstre ${event.leftSeconds / 60} min · højre ${event.rightSeconds / 60} min" else null,
+            pauses.takeIf { it > 0 }?.let { if (it == 1) "1 pause" else "$it pauser" },
+        ).joinToString(" · ")
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val toggleAction = if (event.runningSince == null) ACTION_RESUME else ACTION_PAUSE
         val toggleLabel = if (event.runningSince == null) "Fortsæt" else "Pause"
         val builder = NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_timer_notification).setContentTitle(title).setContentText(if (event.runningSince == null) "På pause · $text" else "Kører")
+            .setSmallIcon(R.drawable.ic_timer_notification).setContentTitle(title).setContentText(if (event.runningSince == null) "På pause · $text i alt · $details" else details.replaceFirstChar { it.uppercase() })
+            .setStyle(NotificationCompat.BigTextStyle().bigText(if (event.runningSince == null) "På pause · $text i alt\n${details.replaceFirstChar { it.uppercase() }}" else details.replaceFirstChar { it.uppercase() }))
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setWhen(System.currentTimeMillis() - elapsed * 1_000).setUsesChronometer(event.runningSince != null)

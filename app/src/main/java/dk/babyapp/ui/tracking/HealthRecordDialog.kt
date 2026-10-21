@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -49,8 +50,13 @@ fun HealthRecordDialog(
     providers: List<CareProvider>,
     existing: CareEventEntity? = null,
     onDismiss: () -> Unit,
+    openQuestions: List<dk.babyapp.data.preferences.HealthQuestion> = emptyList(),
+    onQuestionsAttached: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
     onSave: (CareEventEntity) -> Unit,
 ) {
+    // Open questions for this child, ticked by default; ticked ones are added to the visit when it is saved.
+    val childQuestions = openQuestions.filter { it.childId == childId }
+    var attach by remember { mutableStateOf(childQuestions.map { it.id }.toSet()) }
     var time by remember { mutableLongStateOf(existing?.startedAt ?: System.currentTimeMillis()) }
     var timeSpecified by remember { mutableStateOf(existing?.timeSpecified ?: false) }
     var status by remember { mutableStateOf(existing?.healthStatus ?: HealthRecordStatus.Completed) }
@@ -116,6 +122,16 @@ fun HealthRecordDialog(
                 RegistrationTextField(reason, { reason = it }, label = { Text("Årsag til besøget") })
                 RegistrationTextField(observations, { observations = it }, label = { Text("Observationer og målinger") })
                 RegistrationTextField(advice, { advice = it }, label = { Text("Råd og aftaler") })
+                if (childQuestions.isNotEmpty()) {
+                    Text("Dine spørgsmål", style = MaterialTheme.typography.titleSmall)
+                    childQuestions.forEach { question ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(question.id in attach, { on -> attach = if (on) attach + question.id else attach - question.id })
+                            Text(question.text, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    Text("De afkrydsede spørgsmål gemmes på besøget og fjernes fra listen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 RegistrationTextField(questions, { questions = it }, label = { Text("Spørgsmål") })
                 RegistrationTextField(followUp, { followUp = it }, label = { Text("Opfølgning") })
             }
@@ -124,10 +140,11 @@ fun HealthRecordDialog(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.OutlinedButton(onClick = onDismiss) { Text("Annuller") }
                     Button(enabled = !vaccination || vaccine.isNotBlank(), onClick = {
+                        if (!vaccination) childQuestions.filter { it.id in attach }.takeIf { it.isNotEmpty() }?.let(onQuestionsAttached)
                         onSave((existing ?: CareEventEntity(childId = childId, type = if (vaccination) CareEventType.Vaccination else CareEventType.HealthVisit, startedAt = time, endedAt = time)).copy(
                             startedAt = time, endedAt = time, healthStatus = status, healthVisitType = if (vaccination) null else visitType,
                             providerId = providerId, providerDisplayName = providerName, healthTitle = title, healthReason = reason,
-                            healthObservations = observations, healthAdvice = advice, healthQuestions = questions, followUp = followUp,
+                            healthObservations = observations, healthAdvice = advice, healthQuestions = if (vaccination) questions else (listOf(questions.trim()) + childQuestions.filter { it.id in attach }.map { "• ${it.text}" }).filter(String::isNotBlank).joinToString("\n"), followUp = followUp,
                             vaccineName = vaccine, vaccineDose = dose, vaccineBatchNumber = batch, injectionSite = site,
                             reactionNotes = reactions, notes = notes, officialScheduleKey = officialKey, timeSpecified = timeSpecified,
                         ))

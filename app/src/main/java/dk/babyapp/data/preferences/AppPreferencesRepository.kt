@@ -27,6 +27,8 @@ interface AppPreferencesRepository {
     suspend fun updateInsightCards(cards: List<InsightCard>)
     suspend fun updateInsightPeriod(days: Int)
     suspend fun markBackupSaved(at: Long)
+    suspend fun updateHealthQuestions(questions: List<HealthQuestion>)
+    suspend fun updateHealthReminders(enabled: Boolean)
     suspend fun updateQuickActionCategoryOrder(order: List<QuickActionCategory>)
     suspend fun updateDefaultNippleShield(enabled: Boolean)
     suspend fun updateJournalQuickFilters(filters: List<String>)

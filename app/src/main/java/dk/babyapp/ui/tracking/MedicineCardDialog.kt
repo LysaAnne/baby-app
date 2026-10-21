@@ -18,7 +18,7 @@ import dk.babyapp.data.medicine.MedicinePlan
 import java.time.LocalTime
 
 @Composable
-internal fun MedicineCardDialog(childId: String, all: List<MedicinePlan>, onSave: (List<MedicinePlan>) -> Unit, onDismiss: () -> Unit) {
+internal fun MedicineCardDialog(childId: String, all: List<MedicinePlan>, onSave: (List<MedicinePlan>) -> Unit, onDismiss: () -> Unit, events: List<dk.babyapp.data.tracking.CareEventEntity> = emptyList()) {
     var editing by remember { mutableStateOf<MedicinePlan?>(null) }
     var deleting by remember { mutableStateOf<MedicinePlan?>(null) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Medicinkort") }, text = {
@@ -29,6 +29,9 @@ internal fun MedicineCardDialog(childId: String, all: List<MedicinePlan>, onSave
             plans.forEach { plan -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
                 Text(plan.name, style = MaterialTheme.typography.titleMedium)
                 Text(plan.dose)
+                dk.babyapp.domain.lastDose(plan, events)?.let { dose ->
+                    Text("Sidste dosis ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(dose.startedAt))} · for ${dk.babyapp.domain.timeSinceLabel(dose.startedAt, System.currentTimeMillis())} siden", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                }
                 Text(if (plan.asNeeded) "PN · efter behov" else plan.times.joinToString(" · ").ifBlank { "Ingen faste tidspunkter" })
                 Text(if (!plan.active) "Inaktiv" else if (plan.reminders && !plan.asNeeded) "Påmindelser slået til" else "Ingen påmindelser", style = MaterialTheme.typography.bodySmall)
                 if (plan.instructions.isNotBlank()) Text(plan.instructions)

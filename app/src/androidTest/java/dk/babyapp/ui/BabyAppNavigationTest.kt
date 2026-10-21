@@ -228,7 +228,7 @@ class BabyAppNavigationTest {
         }
 
         composeRule.onAllNodesWithText(context.getString(R.string.nav_today)).filter(isSelectable()).assertCountEquals(1)
-        composeRule.onAllNodesWithText("Dagens overblik").assertCountEquals(1)
+        composeRule.onAllNodesWithContentDescription("Tilpas overblikket").assertCountEquals(1)
 
         listOf(R.string.nav_timeline, R.string.nav_guide).forEach { navigationLabel ->
             val destination = context.getString(navigationLabel)
@@ -271,7 +271,7 @@ class BabyAppNavigationTest {
         }
         composeRule.onAllNodesWithText(context.getString(R.string.nav_today)).filter(hasClickAction()).onFirst().performClick()
 
-        composeRule.onAllNodesWithText("Dagens overblik").assertCountEquals(1)
+        composeRule.onAllNodesWithContentDescription("Tilpas overblikket").assertCountEquals(1)
         composeRule.onAllNodesWithText(context.getString(R.string.child_profiles)).assertCountEquals(0)
     }
     @Test fun previousDayOverviewMatchesJournalDateOverview() {
@@ -300,8 +300,8 @@ class BabyAppNavigationTest {
                 preferences = AppPreferences(hasSeenGettingStarted = true))
         }
         composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(3)
-        composeRule.onNodeWithText("Dagens overblik").assertIsNotDisplayed()
+        composeRule.onNodeWithContentDescription("Tilpas overblikket").assertIsNotDisplayed()
         composeRule.onAllNodesWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.nav_today)).filter(isSelectable()).onFirst().performClick()
-        composeRule.onNodeWithText("Dagens overblik").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Tilpas overblikket").assertIsDisplayed()
     }
 }

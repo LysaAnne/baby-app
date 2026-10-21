@@ -4,6 +4,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.Vaccines
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.MedicalServices
@@ -11,6 +12,8 @@ import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.ChildFriendly
 import androidx.compose.material.icons.outlined.Person
 import dk.babyapp.domain.ageLabel
+import dk.babyapp.ui.tracking.CustomizeRow
+import dk.babyapp.ui.tracking.moveCallbacks
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
@@ -365,6 +368,7 @@ fun SettingsDialog(
     importColorProfiles: (String, (Boolean) -> Unit) -> Unit,
     onDismiss: () -> Unit,
     onBackupSaved: () -> Unit = {},
+    onUpdateHealthReminders: (Boolean) -> Unit = {},
 ) {
     var aboutOpen by remember { mutableStateOf(false) }
     var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
@@ -404,6 +408,7 @@ fun SettingsDialog(
                     SettingsGroup("Påmindelser") {
                         SettingsRow(Icons.Outlined.NotificationsActive, "Daglig påmindelse", value = if (preferences.dailyReminderEnabled) "Kl. %02d.%02d".format(preferences.dailyReminderHour, preferences.dailyReminderMinute) else "Fra") { reminderSettingsOpen = true }
                         SettingsRow(Icons.AutoMirrored.Outlined.MenuBook, "Barnets bog", value = if (preferences.bookRemindersEnabled) preferences.bookReminderFrequency.label else "Fra") { reminderSettingsOpen = true }
+                        SettingsRow(Icons.Outlined.Vaccines, "Vaccinationer og undersøgelser", subtitle = "En uge før og på dagen", value = if (preferences.healthRemindersEnabled) "Til" else "Fra") { onUpdateHealthReminders(!preferences.healthRemindersEnabled) }
                         SettingsRow(Icons.Outlined.PhoneAndroid, "Notifikationer i Android", divider = false) {
                             context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
                         }
@@ -591,48 +596,21 @@ private fun ReorderProfilesDialog(
     onDismiss: () -> Unit,
 ) {
     var ordered by remember(items) { mutableStateOf(items) }
-    AlertDialog(
+    // Same look as the other Tilpas windows: name and arrows, one row per person.
+    dk.babyapp.ui.tracking.FormDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.drag_to_reorder))
-                ordered.forEach { item ->
-                    var dragDistance by remember(item.first) { mutableStateOf(0f) }
-                    Card(
-                        modifier = Modifier.fillMaxWidth().pointerInput(item.first, ordered) {
-                            detectDragGestures(
-                                onDragEnd = { dragDistance = 0f },
-                                onDragCancel = { dragDistance = 0f },
-                            ) { change, amount ->
-                                change.consume()
-                                dragDistance += amount.y
-                                if (abs(dragDistance) > 48f) {
-                                    val from = ordered.indexOfFirst { it.first == item.first }
-                                    val to = (from + if (dragDistance > 0) 1 else -1).coerceIn(0, ordered.lastIndex)
-                                    if (from != to) {
-                                        ordered = ordered.toMutableList().apply { add(to, removeAt(from)) }
-                                    }
-                                    dragDistance = 0f
-                                }
-                            }
-                        },
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Icon(Icons.Outlined.DragHandle, null)
-                            Text(item.third, style = MaterialTheme.typography.titleLarge)
-                            Text(item.second, style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Flyt op eller ned for at ændre rækkefølgen.", style = MaterialTheme.typography.bodyMedium)
+                ordered.forEachIndexed { index, item ->
+                    val (up, down) = ordered.moveCallbacks(index) { ordered = it }
+                    CustomizeRow(item.second, onMoveUp = up, onMoveDown = down, leading = { Text(item.third, style = MaterialTheme.typography.titleMedium) })
                 }
             }
         },
         confirmButton = { Button(onClick = { onSave(ordered.map { it.first }) }) { Text(stringResource(R.string.save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
