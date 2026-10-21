@@ -162,6 +162,8 @@ class RegistrationEditingTest {
     @Test fun nursingEditorShowsIntervalMinutes() {
         val event = CareEventEntity(childId = "child", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 121000, timerSegments = "1000-121000", timerSegmentSides = "Left", leftSeconds = 120)
         compose.setContent { MaterialTheme { EditEventDialog(event, {}) {} } }
+        compose.onNodeWithText("Interval 1 · 2 min").assertDoesNotExist()
+        compose.onNodeWithText("Flere detaljer").performClick()
         compose.onNodeWithText("Interval 1 · 2 min").assertExists()
     }
 
@@ -203,6 +205,7 @@ class RegistrationEditingTest {
         var saved: CareEventEntity? = null
         val event = CareEventEntity(childId = "freja", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 21000, leftSeconds = 10, rightSeconds = 5, timerSegments = "1000-11000;16000-21000", timerSegmentSides = "Left;Right")
         compose.setContent { MaterialTheme { EditEventDialog(event, {}) { saved = it } } }
+        compose.onNodeWithText("Flere detaljer").performClick()
         compose.onAllNodesWithContentDescription("Slet interval", substring = true).onFirst().performScrollTo().performClick()
         compose.onNodeWithContentDescription("Ammebrik").assertDoesNotExist()
         compose.onNodeWithText("Gem").performClick()

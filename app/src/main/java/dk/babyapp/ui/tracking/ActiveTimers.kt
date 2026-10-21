@@ -110,10 +110,11 @@ internal fun ActiveTimers(
         else EditEventDialog(event, dismiss, save)
     }
     done?.let { event ->
-        TimerDoneDialog(event,
-            onDone = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> saveFailed = !success; if (success) done = null } },
-            onDelete = { onDelete(event); done = null },
-            onMoreDetails = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> if (success) { done = null; editing = updated.copy(isDraft = false) } else saveFailed = true } })
+        // Medicine and health records keep their own windows; every timer gets the shared timer window.
+        val save: (CareEventEntity) -> Unit = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> saveFailed = !success; if (success) done = null } }
+        if (event.type in setOf(CareEventType.Breastfeeding, CareEventType.Sleep, CareEventType.Pumping, CareEventType.Activity) && event.activityType != ActivityType.Medicine)
+            NursingEditor(event, onDismiss = { done = null }, onSave = save, doneMode = true, onDelete = { onDelete(event); done = null })
+        else EditEventDialog(event, { onUpdate(event.copy(isDraft = false)) {}; done = null }, save)
     }
     if (saveFailed) AlertDialog(
         onDismissRequest = { saveFailed = false },
@@ -123,46 +124,3 @@ internal fun ActiveTimers(
     )
 }
 
-/** After a timer: already saved, so only quick optional choices, Færdig, or the bin to throw it away. */
-@Composable
-private fun TimerDoneDialog(event: CareEventEntity, onDone: (CareEventEntity) -> Unit, onDelete: () -> Unit, onMoreDetails: (CareEventEntity) -> Unit) {
-    var draft by remember(event.id) { mutableStateOf(event) }
-    var pumped by remember(event.id) { mutableStateOf(event.pumpedAmountMl?.toString().orEmpty()) }
-    val clock = java.time.format.DateTimeFormatter.ofPattern("HH.mm")
-    fun time(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).format(clock)
-    val pauses = (event.segmentIntervals().size - 1).coerceAtLeast(0)
-    val what = when (event.type) {
-        CareEventType.Breastfeeding -> "Amning"
-        CareEventType.Sleep -> if (event.sleepType == dk.babyapp.data.tracking.SleepType.Night) "Nattesøvn" else "Lur"
-        CareEventType.Pumping -> "Pumpning"
-        else -> event.activityType?.displayLabel() ?: "Aktivitet"
-    }
-    val subtitle = listOfNotNull("${time(event.startedAt)}–${time(event.endedAt ?: event.startedAt)}", formatDuration(event.elapsedSeconds()),
-        pauses.takeIf { it > 0 }?.let { if (it == 1) "1 pause" else "$it pauser" }).joinToString(" · ")
-    fun current() = draft.copy(pumpedAmountMl = if (event.type == CareEventType.Pumping) pumped.toIntOrNull() else draft.pumpedAmountMl)
-    FormDialog(onDismissRequest = { onDone(current()) }, category = event.careCategory, title = { Text("$what gemt") }, subtitle = subtitle, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            when (event.type) {
-                CareEventType.Breastfeeding -> {
-                    Text("Venstre ${event.leftSeconds / 60} min · højre ${event.rightSeconds / 60} min", style = MaterialTheme.typography.bodyMedium)
-                    ChoiceChips(dk.babyapp.data.tracking.BreastfeedingIssue.entries.map { it to it.displayLabel() }, draft.breastfeedingIssue, allowNone = true, label = "Gener (valgfrit)") { draft = draft.copy(breastfeedingIssue = it) }
-                }
-                CareEventType.Sleep -> {
-                    ChoiceChips(dk.babyapp.data.tracking.SleepQuality.entries.map { it to it.displayLabel() }, draft.sleepQuality, allowNone = true, label = "Hvordan gik det? (valgfrit)") { draft = draft.copy(sleepQuality = it) }
-                    SleepPlaceField(draft.sleepLocation) { draft = draft.copy(sleepLocation = it) }
-                }
-                CareEventType.Pumping -> {
-                    AmountField(pumped, { pumped = it }, "Pumpet (ml)")
-                    PumpingMethodChips(draft.pumpingMethod) { draft = draft.copy(pumpingMethod = it) }
-                }
-                else -> Text("Tiden er gemt.", style = MaterialTheme.typography.bodyMedium)
-            }
-            TextButton(onClick = { onMoreDetails(current()) }, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Icon(Icons.Outlined.ExpandMore, null); Text(" Flere detaljer · intervaller, noter")
-            }
-        }
-    }, dismissButton = {
-        IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Kassér registreringen", tint = MaterialTheme.colorScheme.error) }
-        Spacer(Modifier.weight(1f))
-    }, confirmButton = { Button(onClick = { onDone(current()) }) { Text("Færdig") } })
-}

@@ -6,8 +6,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class BabyBookTest {
-    @Test fun templatesCoverTwelveMonthsAndHaveStableUniqueIds() {
-        assertEquals(12, babyBookTemplates.count { it.id.startsWith("month-") })
+    @Test fun templatesCoverBirthAndTwelveMonthsAndHaveStableUniqueIds() {
+        assertEquals((0..12).map { "month-$it" }, babyBookTemplates.filter { it.id.startsWith("month-") }.map { it.id })
         assertEquals(babyBookTemplates.size, babyBookTemplates.map { it.id }.distinct().size)
     }
     @Test fun exportPreservesMultilineDanishTextAndPhotoReferences() {

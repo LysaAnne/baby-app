@@ -92,7 +92,7 @@ private fun pageStatus(template: BookPageTemplate, page: BabyBookPage?): PageSta
     return if (template.prompts.all { answers[it]?.isNotBlank() == true }) PageStatus.Done else PageStatus.Started
 }
 
-private fun monthsLabel(months: Int) = if (months == 1) "1 måned" else "$months måneder"
+private fun monthsLabel(months: Int) = when (months) { 0 -> "nyfødt"; 1 -> "1 måned"; else -> "$months måneder" }
 
 @Composable
 fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPadding: PaddingValues,
@@ -289,14 +289,15 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
     message?.let { text -> AlertDialog(onDismissRequest = { message = null }, title = { Text("Eksport") }, text = { Text(text) }, confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } }) }
 }
 
+private fun monthShort(template: BookPageTemplate) = when (val month = template.id.removePrefix("month-")) { "0" -> "Fødsel"; "1" -> "1 md."; else -> "$month mdr." }
+
 /** "Se hvor meget du er vokset": the first and latest month photo side by side, then every month in a grid. */
 @Composable
 private fun GrowthPhotos(months: List<BookPageTemplate>, pageOf: (BookPageTemplate) -> BabyBookPage?, photoFile: (String?) -> File?, onOpen: (String) -> Unit) {
     val withPhoto = months.filter { pageOf(it)?.photos()?.isNotEmpty() == true }
     fun label(template: BookPageTemplate): String {
         val weight = pageOf(template)?.answers()?.get("Vægt (kg)")?.takeIf(String::isNotBlank)
-        val month = template.id.removePrefix("month-")
-        return listOfNotNull(if (month == "1") "1 md." else "$month mdr.", weight?.let { "$it kg" }).joinToString(" · ")
+        return listOfNotNull(monthShort(template), weight?.let { "$it kg" }).joinToString(" · ")
     }
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) {
         Column(Modifier.fillMaxWidth().padding(BabySpacing.m), verticalArrangement = Arrangement.spacedBy(BabySpacing.s)) {
@@ -314,7 +315,7 @@ private fun GrowthPhotos(months: List<BookPageTemplate>, pageOf: (BookPageTempla
                     row.forEach { template ->
                         Column(Modifier.weight(1f).clip(MaterialTheme.shapes.small).clickable { onOpen(template.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
                             PhotoThumb(photoFile(pageOf(template)?.photos()?.firstOrNull()), Icons.Outlined.AddPhotoAlternate, 64.dp, MaterialTheme.shapes.small, MaterialTheme.colorScheme.surface, fillWidth = true)
-                            Text(template.id.removePrefix("month-").let { if (it == "1") "1 md." else "$it mdr." }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(monthShort(template), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -439,6 +440,10 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
                     Text(savedTo?.let { "Originalen er gemt i fuld størrelse i $it." }
                         ?: "Billeder gemmes i fuld størrelse i Billeder › ${BookOriginals.ROOT} › ${BookOriginals.folder(child, template).replace("/", " › ")}.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (template.id == "month-0") AssistChip(enabled = !saving, onClick = {
+                        val birth = mapOf("Vægt (kg)" to child.birthWeightGrams?.let { java.math.BigDecimal(it).movePointLeft(3).stripTrailingZeros().toPlainString().replace('.', ',') }.orEmpty(), "Længde (cm)" to child.birthLengthCm?.toString()?.removeSuffix(".0")?.replace('.', ',').orEmpty())
+                        answersJson = Json.encodeToString(birth.filterValues(String::isNotBlank) + answers.filterValues(String::isNotBlank))
+                    }, label = { Text("Udfyld vægt og længde fra barnets profil") })
                     if (template.id == "birth-facts") AssistChip(enabled = !saving, onClick = {
                         val birth = mapOf("Dato" to child.birthDate?.toString().orEmpty(), "Klokkeslæt" to child.birthTime?.toString().orEmpty(), "Fødested" to child.hospital, "Graviditetsuge" to listOfNotNull(child.gestationalWeeks?.toString(), child.gestationalDays?.toString()).joinToString(" + "), "Vægt (g)" to child.birthWeightGrams?.toString().orEmpty(), "Længde (cm)" to child.birthLengthCm?.toString().orEmpty(), "Hovedomfang (cm)" to child.birthHeadCircumferenceCm?.toString().orEmpty())
                         answersJson = Json.encodeToString(birth + answers.filterValues(String::isNotBlank))

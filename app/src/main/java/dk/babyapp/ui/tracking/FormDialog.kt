@@ -147,7 +147,7 @@ internal fun FormScreen(
     title: String,
     category: CareCategory?,
     onDismissRequest: () -> Unit,
-    footer: @Composable () -> Unit,
+    footer: @Composable RowScope.() -> Unit,
     subtitle: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -162,7 +162,7 @@ internal fun FormScreen(
                         Modifier.fillMaxWidth().background(formBand(category).copy(alpha = 0.6f)).padding(horizontal = BabySpacing.l, vertical = BabySpacing.s),
                         horizontalArrangement = Arrangement.spacedBy(BabySpacing.s, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
-                    ) { footer() }
+                    ) { footer(this) }
                 }
             }
             }

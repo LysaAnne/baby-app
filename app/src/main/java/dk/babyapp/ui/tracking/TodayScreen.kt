@@ -909,13 +909,14 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 
 @Composable internal fun EditEventDialog(event: CareEventEntity, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
     if (event.type == CareEventType.HeadSide) { HeadSideEditor(event, onDismiss, onSave); return }
-    if (event.type == CareEventType.Breastfeeding) { NursingEditor(event, onDismiss, onSave); return }
+    if (event.type == CareEventType.Breastfeeding) { NursingEditor(event, onDismiss, onSave, openDetails = event.endedAt == null); return }
     if (event.type == CareEventType.SolidFood) { SolidFoodDialog(event.childId, event, onDismiss, onSave); return }
     if (event.type == CareEventType.Activity && event.activityType == ActivityType.Medicine) {
         MedicineDialog(event.childId, event, onDismiss, onSave = onSave); return
     }
     // A timer that was paused, or is still running, is edited interval by interval like nursing.
-    if (event.type in setOf(CareEventType.Sleep, CareEventType.Activity, CareEventType.Pumping) && (event.endedAt == null || event.segmentIntervals().size > 1)) { NursingEditor(event, onDismiss, onSave); return }
+    // A timer that was paused, or is still running, uses the timer window; "Ret intervaller" on a running timer opens its details.
+    if (event.type in setOf(CareEventType.Sleep, CareEventType.Activity, CareEventType.Pumping) && (event.endedAt == null || event.segmentIntervals().size > 1)) { NursingEditor(event, onDismiss, onSave, openDetails = event.endedAt == null); return }
     if (event.type == CareEventType.Sleep) {
         SleepDialog(event, onDismiss) { start, end, type, location, settling, awakenings, quality, notes ->
             val changed = start != event.startedAt || end != event.endedAt
