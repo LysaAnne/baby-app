@@ -47,7 +47,7 @@ private fun summaryDetails(type: CareEventType, entries: List<CareEventEntity>, 
     CareEventType.Breastfeeding, CareEventType.Sleep -> "${entries.sumOf { it.elapsedSeconds() } / 60} min"
     CareEventType.Pumping -> "${entries.sumOf { it.pumpedAmountMl ?: 0 }} ml · ${entries.sumOf { it.elapsedSeconds() } / 60} min"
     CareEventType.Bottle -> "${entries.sumOf { it.amountConsumedMl ?: 0 }} ml spist"
-    CareEventType.Measurement -> if (subordinate) entries.joinToString(" · ") { "${it.measurementValue ?: "–"} ${it.measurementUnit}" } else "–"
+    CareEventType.Measurement -> if (subordinate) entries.joinToString(" · ") { entry -> entry.measurementValue?.let { formatMeasurement(it, entry.measurementUnit) } ?: "– ${entry.measurementUnit}" } else "–"
     CareEventType.Activity -> if (!subordinate) "–" else if (entries.first().activityType == ActivityType.Medicine) entries.map { it.medicationName }.filter { it.isNotBlank() }.distinct().joinToString(", ") else "${entries.sumOf { it.activityDurationSeconds ?: it.elapsedSeconds() } / 60} min"
     CareEventType.SolidFood -> entries.map { it.foodName }.filter { it.isNotBlank() }.distinct().joinToString(", ")
     else -> "–"

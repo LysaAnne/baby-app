@@ -110,10 +110,10 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
 internal fun eventTitle(event: CareEventEntity) = when (event.type) {
     CareEventType.HeadSide -> "Favoritside – ${event.headSide.displayLabel()}"
     CareEventType.SolidFood -> "Fast føde – ${event.foodName}"
-    CareEventType.Diaper -> "Ble – ${event.diaperType.displayLabel()}"
+    CareEventType.Diaper -> event.diaperType?.let { "Ble – ${it.displayLabel()}" } ?: "Ble"
     CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"
     CareEventType.Measurement -> event.measurementType?.displayLabel() ?: event.type.displayLabel()
-    CareEventType.Activity -> if (event.activityType == dk.babyapp.data.tracking.ActivityType.Medicine) event.medicationName.ifBlank { "Medicin" } else event.activityType?.displayLabel() ?: event.type.displayLabel()
+    CareEventType.Activity -> if (event.activityType == dk.babyapp.data.tracking.ActivityType.Medicine) event.medicationName.ifBlank { "Medicin" } else event.activityType?.displayLabel() ?: "Aktivitet"
     CareEventType.HealthVisit -> event.healthTitle.ifBlank { event.type.displayLabel() }
     CareEventType.Vaccination -> event.vaccineName.ifBlank { event.type.displayLabel() }
     else -> event.type.displayLabel()
@@ -123,11 +123,11 @@ internal fun CareEventEntity.details() = when (type) {
     CareEventType.HeadSide -> listOf(headSide.displayLabel(), notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.SolidFood -> listOf(foodName, foodTexture, foodAmount, foodReaction, notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Breastfeeding -> listOf("${formatDuration(elapsedSeconds())} · V ${formatDuration(leftSeconds)} · H ${formatDuration(rightSeconds)}", breastfeedingIssue?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.Bottle -> listOf("${amountConsumedMl ?: 0} af ${amountOfferedMl ?: amountConsumedMl ?: 0} ml · ${bottleContent.displayLabel()}", bottleMixRatio.takeIf { it.isNotBlank() && bottleContent == dk.babyapp.data.tracking.BottleContent.Mixed }?.let { "Modermælk : erstatning $it" }.orEmpty(), notes).filter(String::isNotBlank).joinToString(" · ")
+    CareEventType.Bottle -> listOf((if (amountConsumedMl == null && amountOfferedMl == null) "Mængde ikke angivet" else "${amountConsumedMl ?: 0} af ${amountOfferedMl ?: amountConsumedMl ?: 0} ml") + " · ${bottleContent?.displayLabel() ?: "indhold ikke angivet"}", bottleMixRatio.takeIf { it.isNotBlank() && bottleContent == dk.babyapp.data.tracking.BottleContent.Mixed }?.let { "Modermælk : erstatning $it" }.orEmpty(), notes).filter(String::isNotBlank).joinToString(" · ")
     CareEventType.Pumping -> listOf(elapsedSeconds().takeIf { it > 0 }?.let { formatDuration(it) }, pumpedAmountMl?.let { "$it ml" }, pumpingMethod, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Diaper -> listOf(diaperColor?.displayLabel(), diaperConsistency?.displayLabel(), observation, notes).filter { !it.isNullOrBlank() }.joinToString(" · ").ifBlank { "Registreret" }
     CareEventType.Sleep -> listOf(formatDuration(elapsedSeconds()), sleepLocation, settlingMethod, awakenings?.let { "$it opvågninger" }, sleepQuality?.displayLabel(), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
-    CareEventType.Measurement -> listOf(measurementValue?.let { "$it $measurementUnit" }, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
+    CareEventType.Measurement -> listOf(measurementValue?.let { formatMeasurement(it, measurementUnit) }, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Activity -> if (activityType == dk.babyapp.data.tracking.ActivityType.Medicine) listOf(medicationName, medicationDose, notes).filter { it.isNotBlank() }.joinToString(" · ") else listOf(activityDurationSeconds?.let(::formatDuration), notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.HealthVisit -> listOf(healthStatus?.displayLabel(), providerDisplayName, healthReason, healthObservations, healthAdvice, healthQuestions, followUp, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
     CareEventType.Vaccination -> listOf(healthStatus?.displayLabel(), providerDisplayName, vaccineDose, vaccineBatchNumber, injectionSite, reactionNotes, notes).filter { !it.isNullOrBlank() }.joinToString(" · ")
@@ -138,10 +138,10 @@ internal fun CareEventEntity.summary() = when (type) {
     CareEventType.SolidFood -> foodAmount.ifBlank { foodTexture.ifBlank { "Måltid" } }
     CareEventType.Pumping -> pumpedAmountMl?.let { "$it ml pumpet" } ?: "Mængde ikke angivet"
     CareEventType.Breastfeeding, CareEventType.Sleep -> formatDuration(elapsedSeconds())
-    CareEventType.Bottle -> amountConsumedMl?.let { "$it ml" } ?: bottleContent.displayLabel()
-    CareEventType.Diaper -> diaperType.displayLabel()
-    CareEventType.Measurement -> measurementValue?.let { "$it $measurementUnit" } ?: "Måling"
-    CareEventType.Activity -> if (activityType == dk.babyapp.data.tracking.ActivityType.Medicine) medicationDose.ifBlank { "Medicin" } else activityDurationSeconds?.let(::formatDuration) ?: "Aktivitet"
+    CareEventType.Bottle -> amountConsumedMl?.let { "$it ml" } ?: bottleContent?.displayLabel() ?: "Mængde ikke angivet"
+    CareEventType.Diaper -> diaperType?.displayLabel() ?: "Type ikke angivet"
+    CareEventType.Measurement -> measurementValue?.let { formatMeasurement(it, measurementUnit) } ?: "Måling"
+    CareEventType.Activity -> if (activityType == dk.babyapp.data.tracking.ActivityType.Medicine) medicationDose.ifBlank { "Medicin" } else activityDurationSeconds?.let(::formatDuration) ?: "Type ikke angivet"
     CareEventType.HealthVisit -> providerDisplayName.ifBlank { "Besøg" }
     CareEventType.Vaccination -> vaccineDose.ifBlank { "Vaccine" }
 }
@@ -179,3 +179,7 @@ internal fun compactInterval(start: Long, end: Long?, now: Long = System.current
     val startText = if (date(start) == date(anchor)) time(start) else "${date(start).format(java.time.format.DateTimeFormatter.ofPattern("d/M"))} ${time(start)}"
     return "$startText–$endText · ${String.format(java.util.Locale.forLanguageTag("da"), "%.1f", minutes)} min"
 }
+
+/** A measurement the Danish way: decimal comma and no ".0", so 5200.0 g reads 5200 g and 5.2 kg reads 5,2 kg. */
+internal fun formatMeasurement(value: Double, unit: String): String =
+    "${java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString().replace('.', ',')} $unit".trim()

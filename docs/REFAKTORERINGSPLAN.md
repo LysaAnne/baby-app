@@ -2,13 +2,13 @@
 
 Planen for at gøre appen flottere, enklere og hurtigere, uden at den mister noget, den kan i dag. Opdateres, når en fase eller et punkt er færdigt.
 
-Sidst opdateret: 20. oktober 2026
+Sidst opdateret: 21. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, Fase 3 og WHO-vækstkurverne er færdige. Fase 4 punkt 1, 3, 5, 6 og 7 er bygget. Fase 4 er afsluttet: punkt 10 er bygget, og punkt 2, 4, 8 og 9 er fravalgt. Barnets bog er gentænket med færre, kortere spørgsmål.
+Alle faser er færdige. Næste skridt er at bruge den nye version på telefonen i hverdagen (tag en backup først) og samle det, der driller. Åbne, valgfrie punkter står under **Åbne punkter** nederst.
 
-Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
+Punkt 1.5 og 1.6 er bevidst udskudt: de kan ikke ses i appen og giver først mening, hvis appen skal på flere sprog eller udvides meget.
 
 Før du installerer en ny version på telefonen: tag en krypteret backup (Indstillinger → Eksport og backup), og gem filen uden for telefonen.
 
@@ -17,10 +17,10 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 | Fase | Indhold | Status |
 |---|---|---|
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
-| 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
+| 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 udskudt |
 | 2 | Designsystem | ✅ Færdig |
-| 3 | Skærmene redesignes én ad gangen | 🔄 I gang · 3.1–3.4 færdige |
-| 4 | Nye funktioner | Venter |
+| 3 | Skærmene redesignes én ad gangen | ✅ Færdig, plus WHO-vækstkurver og nyt tanddesign |
+| 4 | Nye funktioner | ✅ Færdig · 1, 3, 5, 6, 7 og 10 bygget; 2, 4, 8 og 9 fravalgt |
 
 ## Regler, der gælder for alle faser
 
@@ -48,10 +48,10 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 | 1.2 | Hent kun det, hver skærm bruger. I dag gik fra ~900 ms til ~20 ms med 3 års data. | ✅ | `b67e66b` |
 | 1.3 | Medicinkort og tænder flyttet fra indstillingerne ind i databasen | ✅ | `9b7ddaa` |
 | 1.4 | Faste ID'er i stedet for danske tekster som gemte nøgler (hurtigfiltre, kategorirækkefølge) | ✅ | `6a742da` |
-| 1.5 | Domænemodel oven på den brede registreringstabel | Laves i fase 3 | – |
-| 1.6 | Tekster til ressourcefiler; udviklerværktøjer kun i debug-versionen | Laves i fase 3 | – |
+| 1.5 | Domænemodel oven på den brede registreringstabel | Udskudt | – |
+| 1.6 | Tekster til ressourcefiler (udviklerværktøjer er kun i debug-versionen, lavet i 3.5) | Udskudt | – |
 
-**Hvorfor 1.5 og 1.6 venter:** De rører de samme filer som redesignet. Hvis de laves nu, skal skærmene og deres tests omskrives to gange.
+**Hvorfor 1.5 og 1.6 er udskudt:** De ændrer intet, man kan se, og giver mest mening, hvis appen skal på flere sprog eller udvides meget.
 
 ---
 
@@ -161,7 +161,16 @@ Prioriteret forslag. Rækkefølgen aftales, før hver funktion påbegyndes.
 
 ## Kendte forhold, der bevidst ikke er ændret
 
-- **Fire særheder i visningen:** "Ble – Ble" for en ble uden type, titlen "Diverse" for en gammel aktivitet uden type, "0 af 0 ml" for en flaske uden mængde, og "5200.0 g". De er låst af en test og rettes kun bevidst, fx i fase 3.
+- **Fire særheder i visningen er rettet** (21. oktober 2026): en ble uden type hedder "Ble" med "Type ikke angivet", en gammel aktivitet uden type hedder "Aktivitet", en flaske uden mængde viser "Mængde ikke angivet", og mål vises med komma og uden ".0" (fx 5200 g og 5,2 kg). Testen, der låser visningen, er opdateret tilsvarende.
 - **Barnets bog:** Svar er gemt under spørgsmålets tekst. Editoren viser også svar, hvis spørgsmål har skiftet navn, så de ikke kan forsvinde.
 - **Registreringernes indhold:** Fx pumpemetoden "Manuel pumpe" er data og vises, som det blev gemt.
 - **Nedgradering:** Efter en opdatering kan en ældre app-version ikke installeres ovenpå, fordi Android ikke tillader det. Gendan i stedet fra backup.
+
+## Åbne punkter
+
+Valgfrie og ikke planlagt. Tages op, hvis behovet opstår.
+
+- **Vækstkurver:** dansk reference for hovedomkreds (i dag WHO), korrigeret alder for børn født før uge 37, og registrering af om længde er målt liggende eller stående. Se GROWTH-REFERENCE-PLAN.md.
+- **Spørgsmål til besøg fra Journal:** spørgsmålene kan i dag kun tages med, når et sundhedsbesøg registreres fra I dag.
+- **Billeder i fuld størrelse på Android 9 og ældre:** originalerne gemmes i Billeder-mappen fra Android 10.
+- **1.5 og 1.6:** se fase 1.

@@ -1042,7 +1042,7 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                     DashboardMetric.Weight, DashboardMetric.Height, DashboardMetric.HeadCircumference, DashboardMetric.Temperature -> {
                         val type = metric.measurementType()
                         val latest = todayEvents.filter { it.type == CareEventType.Measurement && it.measurementType == type }.maxByOrNull { it.startedAt }
-                        OverviewItem(metric.displayLabel(), latest?.measurementValue?.let { "$it ${latest.measurementUnit}" } ?: "-", latest)
+                        OverviewItem(metric.displayLabel(), latest?.measurementValue?.let { formatMeasurement(it, latest.measurementUnit) } ?: "-", latest)
                     }
                 }
             }

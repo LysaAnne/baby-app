@@ -34,6 +34,6 @@ class DaySummaryTest {
     @Test fun measurementsKeepUnitsSeparateUnderOneParent() {
         val weight = CareEventEntity(childId = "child", type = CareEventType.Measurement, startedAt = 0, measurementType = MeasurementType.Weight, measurementValue = 5.0, measurementUnit = "kg")
         val height = weight.copy(measurementType = MeasurementType.Height, measurementValue = 60.0, measurementUnit = "cm")
-        assertEquals(listOf(SummaryRow("Mål", 2, "–"), SummaryRow("Vægt", 1, "5.0 kg", true), SummaryRow("Højde/længde", 1, "60.0 cm", true)), daySummaryRows(listOf(weight, height)))
+        assertEquals(listOf(SummaryRow("Mål", 2, "–"), SummaryRow("Vægt", 1, "5 kg", true), SummaryRow("Højde/længde", 1, "60 cm", true)), daySummaryRows(listOf(weight, height)))
     }
 }

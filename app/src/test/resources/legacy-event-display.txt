@@ -12,8 +12,8 @@ summary: 90 ml
 details: 90 af 120 ml · Modermælk + erstatning · Modermælk : erstatning 1:1 · Bøvs
 ## bottle without amounts
 title: Flaske
-summary: Ikke angivet
-details: 0 af 0 ml · Ikke angivet
+summary: Mængde ikke angivet
+details: Mængde ikke angivet · indhold ikke angivet
 ## pumping with old timer
 title: Pumpning
 summary: 80 ml pumpet
@@ -27,8 +27,8 @@ title: Ble – Begge
 summary: Begge
 details: Gul · Blød · Udslæt · Creme
 ## diaper without type
-title: Ble – Ble
-summary: Ble
+title: Ble
+summary: Type ikke angivet
 details: Registreret
 ## night sleep full
 title: Nattesøvn
@@ -40,23 +40,23 @@ summary: 00:30:00
 details: 00:30:00
 ## weight in kg
 title: Vægt
-summary: 5.2 kg
-details: 5.2 kg
+summary: 5,2 kg
+details: 5,2 kg
 ## weight in gram
 title: Vægt
-summary: 5200.0 g
-details: 5200.0 g
+summary: 5200 g
+details: 5200 g
 ## temperature without time
 title: Temperatur
-summary: 37.4 °C
-details: 37.4 °C
+summary: 37,4 °C
+details: 37,4 °C
 ## tummy time
 title: Mavetid
 summary: 00:05:00
 details: 00:05:00
 ## activity before activity types
-title: Diverse
-summary: Aktivitet
+title: Aktivitet
+summary: Type ikke angivet
 details: 
 ## medicine without card
 title: Panodil
@@ -103,8 +103,8 @@ Søvn | 2 | 90 min
   Nattesøvn | 1 | 60 min
   Ikke angivet | 1 | 30 min
 Mål | 3 | –
-  Vægt | 2 | 5.2 kg · 5200.0 g
-  Temperatur | 1 | 37.4 °C
+  Vægt | 2 | 5,2 kg · 5200 g
+  Temperatur | 1 | 37,4 °C
 Diverse | 4 | –
   Mavetid | 1 | 5 min
   Ikke angivet | 1 | 0 min
