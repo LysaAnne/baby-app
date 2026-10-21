@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 2 – Designsystem**, punkt 2.4: fælles komponenter.
+**Fase 3 – Skærmene redesignes**, punkt 3.1: I dag.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -18,8 +18,8 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 |---|---|---|
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
-| 2 | Designsystem | 🔄 I gang · 2.1–2.3 færdige |
-| 3 | Skærmene redesignes én ad gangen | Venter |
+| 2 | Designsystem | ✅ Færdig |
+| 3 | Skærmene redesignes én ad gangen | ⏭️ Næste |
 | 4 | Nye funktioner | Venter |
 
 ## Regler, der gælder for alle faser
@@ -55,7 +55,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 
 ---
 
-## Fase 2 – Designsystem 🔄
+## Fase 2 – Designsystem ✅
 
 Målet er et fælles, roligt udtryk, som alle skærme bygges af i fase 3. Det, der ses på skærmen, ændres kun lidt i denne fase. Det er især farver, skrift og mørk tilstand.
 
@@ -83,7 +83,10 @@ Færdig: Nunito i hele appen (lagt ind, virker offline), afstande (`BabySpacing`
 - Faste afstande og hjørner, så kort, knapper og dialoger står ens.
 - Store trykflader: mindst 48 dp, og de vigtigste knapper 56 dp.
 
-### 2.4 Fælles komponenter
+### 2.4 Fælles komponenter ✅
+
+Færdig: `ActionTile`, `EventRow`, `TimerBar`, `EntrySheet`, `ChipSelector`, `AmountStepper` og `BabyEmptyState` med handling i `ui/components`, med previews i lys, mørk og nat (`ComponentPreviews.kt`) og tests (`ComponentsTest`, `TouchTargetTest`). De tages i brug i fase 3.
+
 Byggeklodser, som fase 3 bruger:
 - `ActionTile` – stor knap til hurtig registrering
 - `EventRow` – én registrering i en liste

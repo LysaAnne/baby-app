@@ -17,7 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.Button
 import dk.babyapp.ui.theme.BabySpacing
+import dk.babyapp.ui.theme.BabyTouch
 
 @Composable
 fun BabySectionHeader(
@@ -43,8 +46,9 @@ fun BabySectionHeader(
     }
 }
 
+/** An empty screen or section: what is missing and, optionally, the one action that fixes it. */
 @Composable
-fun BabyEmptyState(icon: ImageVector, title: String, description: String) {
+fun BabyEmptyState(icon: ImageVector, title: String, description: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -57,6 +61,9 @@ fun BabyEmptyState(icon: ImageVector, title: String, description: String) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (actionLabel != null && onAction != null) {
+                Button(onClick = onAction, modifier = Modifier.padding(top = BabySpacing.s).heightIn(min = BabyTouch.minimum)) { Text(actionLabel) }
+            }
         }
     }
 }

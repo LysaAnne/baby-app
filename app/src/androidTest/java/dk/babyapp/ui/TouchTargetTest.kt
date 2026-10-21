@@ -57,4 +57,9 @@ class TouchTargetTest {
         compose.waitForIdle()
         assertTapTargetsAreLargeEnough("Journal")
     }
+
+    @Test fun sharedComponentsHaveLargeEnoughTapTargets() {
+        compose.setContent { dk.babyapp.ui.theme.BabyAppTheme { androidx.compose.material3.Surface { dk.babyapp.ui.components.ComponentGallery() } } }
+        assertTapTargetsAreLargeEnough("Komponenter")
+    }
 }
