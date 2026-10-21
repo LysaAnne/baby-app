@@ -50,6 +50,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize) ?: AppPreferences().journalQuickFilters,
             insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } } ?: InsightCard.entries,
             insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it == 7 || it == 30 } ?: 7,
+            lastBackupAt = values[LAST_BACKUP_AT],
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
         )
     }
@@ -162,6 +163,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[INSIGHT_CARDS] = cards.joinToString(",") { card -> card.name } }
     }
 
+    override suspend fun markBackupSaved(at: Long) {
+        context.appPreferencesDataStore.edit { it[LAST_BACKUP_AT] = at }
+    }
+
     override suspend fun updateInsightPeriod(days: Int) {
         context.appPreferencesDataStore.edit { it[INSIGHT_PERIOD] = days }
     }
@@ -199,6 +204,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val HIDDEN_QUICK_ACTIONS = stringPreferencesKey("hidden_quick_actions")
         val INSIGHT_CARDS = stringPreferencesKey("insight_cards")
         val INSIGHT_PERIOD = intPreferencesKey("insight_period")
+        val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
     }
 }
 

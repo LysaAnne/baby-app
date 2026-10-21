@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, punkt 3.5: Familie og Indstillinger (aftales først med en skitse).
+**Fase 3 – Skærmene redesignes**, punkt 3.6: Barnets bog (aftales først med en skitse).
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -130,16 +130,15 @@ Færdig: ikoner i overskriften, filterchips på én linje, dagsoverskrift med da
 
 Færdig: fanen hedder Indsigt. Periode 7 eller 30 dage (huskes). Kort for søvn, madning, bleer, døgnrytme, vækst og favoritside, som kan sorteres og slås fra. Snit over hele dage siden første registrering; søvn deles ved midnat. Detaljesider for søvn, madning, bleer og døgnrytme; vækst og favoritside åbner de eksisterende grafer. WHO-vækstkurver kommer som eget punkt (se GROWTH-REFERENCE-PLAN.md).
 
-### 3.5 Familie og Indstillinger
-- Enklere profilvisning.
-- Indstillinger får deres egen skærm.
-- Udviklerværktøjer findes kun i debug-versionen.
+### 3.5 Familie og Indstillinger ✅
+
+Færdig: Familie viser børn som kort (alder, aktivt barn, antal forældre og sundhedspersoner) og forældre/familie i én liste. Profilen åbner som fuld skærm med sammenfoldelige sektioner og knapper til at ringe eller skrive til behandlere. + åbner et valg mellem barn, forælder og andet familiemedlem. Indstillinger er en fuld skærm i grupper (Generelt, Påmindelser, Data, Om appen) med dato for seneste backup. Udviklerværktøjer findes kun i debug-versionen.
 
 ### 3.6 Barnets bog
 - Mere visuelt kapiteloverblik med fremdrift og billeder.
 - Svar, der er gemt under gamle spørgsmålstekster, vises fortsat.
 
-**For hver skærm:** Funktionslisten holder. Gamle registreringer vises korrekt. UI-tests er opdateret. Skærmen er afprøvet i lys, mørk og nat.
+**For hver skærm:** Funktionslisten holder. Gamle registreringer vises korrekt. UI-tests er opdateret. Skærmen er afprøvet med flere farveprofiler.
 
 ---
 

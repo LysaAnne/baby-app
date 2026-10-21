@@ -29,6 +29,8 @@ data class AppPreferences(
     /** Cards shown on Indsigt, in order; cards left out are hidden. */
     val insightCards: List<InsightCard> = InsightCard.entries,
     val insightPeriodDays: Int = 7,
+    /** When an encrypted backup was last saved to a file, or null if never. */
+    val lastBackupAt: Long? = null,
 )
 
 /** The cards on Indsigt. Stored by name, so names must not change. */

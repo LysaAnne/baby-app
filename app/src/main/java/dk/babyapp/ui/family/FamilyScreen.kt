@@ -1,5 +1,35 @@
 package dk.babyapp.ui.family
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.MedicalServices
+import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.ChildFriendly
+import androidx.compose.material.icons.outlined.Person
+import dk.babyapp.domain.ageLabel
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.FamilyRestroom
+import androidx.compose.material.icons.outlined.ChildCare
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Straighten
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +46,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.DragHandle
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -150,62 +179,76 @@ fun FamilyScreen(
     Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.child_profiles), style = MaterialTheme.typography.headlineSmall)
-                    IconButton(onClick = { reorderingChildren = true }, enabled = profiles.size > 1) {
-                        Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_children))
-                    }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Familie", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                }
+            }
+            item {
+                FamilySectionHeader(stringResource(R.string.child_profiles)) {
+                    IconButton(onClick = { reorderingChildren = true }, enabled = profiles.size > 1) { Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_children)) }
                 }
             }
             items(profiles, key = { it.id }) { profile ->
-                ProfileCard(
+                ChildCard(
                     profile = profile,
                     selected = profile.id == activeChildId,
-                    onView = { viewing = profile },
-                    onEdit = { editing = profile },
+                    color = colorProfiles.firstOrNull { it.id == profile.colorTheme }?.primaryContainer,
+                    parentCount = parentLinks.count { link -> link.childId == profile.id && parents.firstOrNull { it.id == link.parentId }?.role?.isParent == true },
+                    providerCount = careProviders.count { it.childId == profile.id },
                     photoFile = photoFile(profile.photoFileName),
+                    onOpen = { viewing = profile },
                 )
             }
             if (profiles.isEmpty()) item { Text(stringResource(R.string.no_profiles)) }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.family_members), style = MaterialTheme.typography.titleLarge)
-                        IconButton(onClick = { reorderingFamily = true }, enabled = parents.size > 1) {
-                            Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_family))
+                FamilySectionHeader("Forældre og familie") {
+                    IconButton(onClick = { reorderingFamily = true }, enabled = parents.size > 1) { Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_family)) }
+                }
+            }
+            if (parents.isNotEmpty()) item {
+                Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+                    Column {
+                        parents.forEachIndexed { index, member ->
+                            val children = parentLinks.filter { it.parentId == member.id }.mapNotNull { link -> profiles.firstOrNull { it.id == link.childId }?.name }
+                            Row(
+                                Modifier.fillMaxWidth().clickable(onClickLabel = "Se ${member.name}") { viewingMember = member }.heightIn(min = 56.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                val memberBitmap = photoFile(member.photoFileName)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
+                                Box(Modifier.size(38.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                                    if (memberBitmap != null) Image(memberBitmap, null, Modifier.size(38.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                                    else Text(member.avatar.symbol, style = MaterialTheme.typography.titleMedium)
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(member.name, style = MaterialTheme.typography.titleSmall)
+                                    Text(listOf(roleLabel(member.role), children.joinToString(", ")).filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (index < parents.lastIndex) androidx.compose.material3.HorizontalDivider(Modifier.padding(start = 62.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         }
                     }
-                    OutlinedButton(
-                        onClick = { reviewingRelations = true },
-                        enabled = profiles.isNotEmpty() && parents.isNotEmpty(),
-                    ) { Text(stringResource(R.string.review_relations)) }
                 }
             }
-            items(parents, key = { it.id }) { member ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val memberBitmap = photoFile(member.photoFileName)?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
-                        if (memberBitmap != null) ExpandableFamilyPhoto(memberBitmap, member.name, Modifier.size(44.dp)) else Text(member.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
-                        Column(Modifier.weight(1f)) { Text(member.name); Text(roleLabel(member.role), style = MaterialTheme.typography.bodySmall) }
-                        IconButton(onClick = { viewingMember = member }) { Icon(Icons.Outlined.Visibility, "Se ${member.name}") }
-                        IconButton(onClick = { editingMember = member }) { Icon(Icons.Outlined.Edit, "Rediger ${member.name}") }
-                    }
+            if (profiles.isNotEmpty() && parents.isNotEmpty()) item {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                    TextButton(onClick = { reviewingRelations = true }) { Text(stringResource(R.string.review_relations)); Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp)) }
                 }
             }
         }
-        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
-            FloatingActionButton(onClick = { addMenuOpen = true }) { Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add_profile)) }
-            DropdownMenu(expanded = addMenuOpen, onDismissRequest = { addMenuOpen = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.add_child)) }, onClick = { addMenuOpen = false; adding = true })
-                DropdownMenuItem(text = { Text(stringResource(R.string.add_parent)) }, onClick = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.ParentNotSpecified })
-                DropdownMenuItem(text = { Text(stringResource(R.string.add_family_member)) }, onClick = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.OtherNotSpecified })
-            }
-        }
+        FloatingActionButton(onClick = { addMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add_profile)) }
     }
+    if (addMenuOpen) AddFamilyProfileSheet(
+        onDismiss = { addMenuOpen = false },
+        onAddChild = { addMenuOpen = false; adding = true },
+        onAddParent = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.ParentNotSpecified },
+        onAddOther = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.OtherNotSpecified },
+    )
 
     viewing?.let { profile ->
         ProfileViewDialog(
@@ -321,7 +364,9 @@ fun SettingsDialog(
     exportColorProfiles: () -> String,
     importColorProfiles: (String, (Boolean) -> Unit) -> Unit,
     onDismiss: () -> Unit,
+    onBackupSaved: () -> Unit = {},
 ) {
+    var aboutOpen by remember { mutableStateOf(false) }
     var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
     var confirmClearData by remember { mutableStateOf(false) }
     var testFamilyCreated by remember { mutableStateOf(false) }
@@ -334,25 +379,56 @@ fun SettingsDialog(
     var dataManagementOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     fun update(value: OnboardingSettings) { settings = value; onUpdate(value) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.units))
-                MeasurementUnits.entries.forEach { units ->
-                    FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
+    // A screen of its own, grouped like the phone's settings; each row opens the existing editor.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().systemBarsPadding()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.close)) }
+                    Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleLarge)
                 }
-                OutlinedButton(onClick = { reminderSettingsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Notifikationer") }
-                OutlinedButton(onClick = { dataManagementOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Eksport og backup") }
-                if (BuildConfig.DEBUG) {
-                    OutlinedButton(onClick = { developerToolsOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.developer_tools))
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SettingsGroup("Generelt") {
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Icon(Icons.Outlined.Straighten, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.units), style = MaterialTheme.typography.bodyLarge)
+                            }
+                            Row(Modifier.padding(start = 38.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                MeasurementUnits.entries.forEach { units ->
+                                    FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
+                                }
+                            }
+                        }
+                    }
+                    SettingsGroup("Påmindelser") {
+                        SettingsRow(Icons.Outlined.NotificationsActive, "Daglig påmindelse", value = if (preferences.dailyReminderEnabled) "Kl. %02d.%02d".format(preferences.dailyReminderHour, preferences.dailyReminderMinute) else "Fra") { reminderSettingsOpen = true }
+                        SettingsRow(Icons.AutoMirrored.Outlined.MenuBook, "Barnets bog", value = if (preferences.bookRemindersEnabled) preferences.bookReminderFrequency.label else "Fra") { reminderSettingsOpen = true }
+                        SettingsRow(Icons.Outlined.PhoneAndroid, "Notifikationer i Android", divider = false) {
+                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        }
+                    }
+                    SettingsGroup("Data") {
+                        SettingsRow(Icons.Outlined.Lock, "Krypteret backup", subtitle = preferences.lastBackupAt?.let {
+                            "Senest: " + java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy 'kl.' HH.mm", java.util.Locale.forLanguageTag("da")))
+                        } ?: "Ingen backup endnu") { dataManagementOpen = true }
+                        SettingsRow(Icons.Outlined.Restore, "Gendan backup") { dataManagementOpen = true }
+                        SettingsRow(Icons.Outlined.FileDownload, "Eksport (CSV / PDF)", divider = false) { dataManagementOpen = true }
+                    }
+                    SettingsGroup("Om appen") {
+                        SettingsRow(Icons.Outlined.Palette, "Farveprofiler") { palettePreviewOpen = true }
+                        SettingsRow(Icons.Outlined.Info, "Version og licenser", value = BuildConfig.VERSION_NAME, divider = BuildConfig.DEBUG) { aboutOpen = true }
+                        if (BuildConfig.DEBUG) SettingsRow(Icons.Outlined.Build, stringResource(R.string.developer_tools), subtitle = "Kun i testversionen", divider = false) { developerToolsOpen = true }
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
+        }
+    }
+    if (aboutOpen) AlertDialog(
+        onDismissRequest = { aboutOpen = false },
+        title = { Text("Version og licenser") },
+        text = { Text("Version ${BuildConfig.VERSION_NAME}\n\nSkrifttypen Nunito er © The Nunito Project Authors og bruges under SIL Open Font License 1.1.") },
+        confirmButton = { TextButton(onClick = { aboutOpen = false }) { Text(stringResource(R.string.close)) } },
     )
     if (developerToolsOpen) Dialog(onDismissRequest = { developerToolsOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
@@ -411,7 +487,7 @@ fun SettingsDialog(
         onDismiss = { palettePreviewOpen = false },
     )
     if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency) { reminderSettingsOpen = false }
-    if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup) { dataManagementOpen = false }
+    if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup, onDismiss = { dataManagementOpen = false }, onBackupSaved = onBackupSaved)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -440,38 +516,69 @@ private fun SettingsRegionDropdown(value: DanishRegion, onChange: (DanishRegion)
 }
 
 @Composable
-private fun ProfileCard(
-    profile: ChildProfile,
-    selected: Boolean,
-    onView: () -> Unit,
-    onEdit: () -> Unit,
-    photoFile: File?,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            val bitmap = remember(photoFile?.path, photoFile?.lastModified()) {
-                photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() }
+private fun FamilySectionHeader(title: String, action: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f).padding(start = 4.dp))
+        action()
+    }
+}
+
+@Composable
+private fun ChildCard(profile: ChildProfile, selected: Boolean, color: String?, parentCount: Int, providerCount: Int, photoFile: File?, onOpen: () -> Unit) {
+    val circle = color?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() } ?: MaterialTheme.colorScheme.primaryContainer
+    Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+        Column(Modifier.clickable(onClickLabel = stringResource(R.string.view_child), onClick = onOpen).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val bitmap = remember(photoFile?.path, photoFile?.lastModified()) { photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+                Box(Modifier.size(48.dp).background(circle, CircleShape), contentAlignment = Alignment.Center) {
+                    if (bitmap != null) Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                    else Text(profile.avatar.symbol, style = MaterialTheme.typography.headlineSmall)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(profile.name, style = MaterialTheme.typography.titleMedium)
+                    Text(childDateLine(profile), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = stringResource(R.string.profile_photo_description),
-                    modifier = Modifier.size(52.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Text(profile.avatar.symbol, style = MaterialTheme.typography.headlineMedium)
+            val tags = listOfNotNull(
+                stringResource(R.string.active_child).takeIf { selected },
+                parentCount.takeIf { it > 0 }?.let { if (it == 1) "1 forælder" else "$it forældre" },
+                providerCount.takeIf { it > 0 }?.let { if (it == 1) "1 sundhedsperson" else "$it sundhedspersoner" },
+            )
+            if (tags.isNotEmpty()) androidx.compose.foundation.layout.FlowRow(Modifier.padding(start = 60.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                tags.forEach { tag ->
+                    Text(tag, maxLines = 1, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp))
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(profile.name, style = MaterialTheme.typography.titleMedium)
-                if (selected) Text(stringResource(R.string.active_child), color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+private fun childDateLine(profile: ChildProfile): String {
+    val format = java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy", java.util.Locale.forLanguageTag("da"))
+    return when {
+        profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Expected -> profile.dueDate?.let { "Termin ${it.format(format)}" } ?: "Venter"
+        else -> listOfNotNull(profile.ageLabel().takeIf { it.isNotBlank() }, profile.birthDate?.let { "født ${it.format(format)}" }).joinToString(" · ")
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddFamilyProfileSheet(onDismiss: () -> Unit, onAddChild: () -> Unit, onAddParent: () -> Unit, onAddOther: () -> Unit) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.add_profile), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 4.dp))
+            listOf(
+                Triple(Icons.Outlined.ChildCare, stringResource(R.string.add_child), onAddChild),
+                Triple(Icons.Outlined.FamilyRestroom, stringResource(R.string.add_parent), onAddParent),
+                Triple(Icons.Outlined.Groups, stringResource(R.string.add_family_member), onAddOther),
+            ).forEach { (icon, label, action) ->
+                androidx.compose.material3.FilledTonalButton(onClick = action, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+                    Icon(icon, null, Modifier.size(20.dp)); Text("  $label", modifier = Modifier.weight(1f))
+                }
             }
-            IconButton(onClick = onView) { Icon(Icons.Outlined.Visibility, stringResource(R.string.view_child)) }
-            IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit_child)) }
         }
     }
 }
@@ -591,78 +698,135 @@ private fun ProfileViewDialog(
     providers: List<CareProvider>,
 ) {
     val draft = profile.toDraft(units)
+    val context = LocalContext.current
+    val format = java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy", java.util.Locale.forLanguageTag("da"))
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val accent = MaterialTheme.colorScheme.primaryContainer
-        Surface(modifier = Modifier.fillMaxSize(), contentColor = MaterialTheme.colorScheme.onSurface, color = MaterialTheme.colorScheme.surface) {
-          CompositionLocalProvider(LocalChildAccent provides accent) {
-            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(profile.name, style = MaterialTheme.typography.headlineSmall)
-                    IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit_child)) }
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().systemBarsPadding()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.close)) }
+                    Box(Modifier.weight(1f))
+                    androidx.compose.material3.FilledTonalButton(onClick = onEdit, modifier = Modifier.padding(end = 8.dp)) {
+                        Icon(Icons.Outlined.Edit, stringResource(R.string.edit_child), Modifier.size(18.dp)); Text("  Rediger")
+                    }
                 }
-                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
-                        val bitmap = remember(photoFile?.path, photoFile?.lastModified()) { photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
-                        if (bitmap != null) Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(96.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-                        else Text(profile.avatar.symbol, style = MaterialTheme.typography.displayLarge)
+                        Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val bitmap = remember(photoFile?.path, photoFile?.lastModified()) { photoFile?.let { BitmapFactory.decodeFile(it.path)?.asImageBitmap() } }
+                            Box(Modifier.size(88.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                                if (bitmap != null) Image(bitmap, stringResource(R.string.profile_photo_description), Modifier.size(88.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                                else Text(profile.avatar.symbol, style = MaterialTheme.typography.displaySmall)
+                            }
+                            Text(profile.name, style = MaterialTheme.typography.headlineSmall)
+                            Text(listOfNotNull(childDateLine(profile), profile.birthTime?.let { "kl. ${it.format(java.time.format.DateTimeFormatter.ofPattern("HH.mm"))}" }).joinToString(" "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
-                    item { ViewSection(R.string.basic_information) }
-                    if (profile.nickname.isNotBlank()) item { ViewValue(R.string.nickname, profile.nickname) }
-                    item { ViewValue(R.string.birth_status, stringResource(if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) R.string.already_born else R.string.not_born_yet)) }
-                    profile.birthDate?.let { item { ViewValue(R.string.birth_date, it.toString()) } }
-                    profile.birthTime?.let { item { ViewValue(R.string.birth_time, it.toString()) } }
-                    if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Expected) profile.dueDate?.let { item { ViewValue(R.string.due_date, it.toString()) } }
-                    item { ViewValue(R.string.biological_sex, stringResource(when (profile.sex) {
-                        dk.babyapp.data.profile.BiologicalSex.Unselected -> R.string.select_sex
-                        dk.babyapp.data.profile.BiologicalSex.PreferNotToSay -> R.string.sex_not_specified
-                        dk.babyapp.data.profile.BiologicalSex.Female -> R.string.sex_female
-                        dk.babyapp.data.profile.BiologicalSex.Male -> R.string.sex_male
-                        dk.babyapp.data.profile.BiologicalSex.Other -> R.string.sex_other
-                    })) }
-                    item { ViewSection(R.string.birth_details) }
-                    if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) profile.dueDate?.let { item { ViewValue(R.string.due_date, it.toString()) } }
-                    if (profile.hospital.isNotBlank()) item { ViewValue(R.string.birth_place, profile.hospital) }
-                    if (draft.birthWeightGrams.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_weight else R.string.birth_weight_imperial, draft.birthWeightGrams) }
-                    if (draft.birthLengthCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_length else R.string.birth_length_imperial, draft.birthLengthCm) }
-                    if (draft.birthHeadCircumferenceCm.isNotBlank()) item { ViewValue(if (units == MeasurementUnits.Metric) R.string.head_circumference else R.string.head_circumference_imperial, draft.birthHeadCircumferenceCm) }
-                    item { ViewSection(R.string.care_details) }
-                    items(providers, key = { it.id }) { provider ->
-                        ViewValue(provider.type.labelRes(), listOf(provider.customTitle, provider.name, provider.phone, provider.email, provider.address, provider.notes).filter(String::isNotBlank).joinToString("\n"))
+                    item {
+                        ProfileSection(Icons.Outlined.Person, stringResource(R.string.basic_information), listOfNotNull(profile.nickname.takeIf { it.isNotBlank() }?.let { "Kaldes $it" }).joinToString(), initiallyExpanded = false) {
+                            if (profile.nickname.isNotBlank()) ViewValue(R.string.nickname, profile.nickname)
+                            ViewValue(R.string.birth_status, stringResource(if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) R.string.already_born else R.string.not_born_yet))
+                            profile.birthDate?.let { ViewValue(R.string.birth_date, it.format(format)) }
+                            profile.birthTime?.let { ViewValue(R.string.birth_time, it.toString()) }
+                            if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Expected) profile.dueDate?.let { ViewValue(R.string.due_date, it.format(format)) }
+                            ViewValue(R.string.biological_sex, stringResource(when (profile.sex) {
+                                dk.babyapp.data.profile.BiologicalSex.Unselected -> R.string.select_sex
+                                dk.babyapp.data.profile.BiologicalSex.PreferNotToSay -> R.string.sex_not_specified
+                                dk.babyapp.data.profile.BiologicalSex.Female -> R.string.sex_female
+                                dk.babyapp.data.profile.BiologicalSex.Male -> R.string.sex_male
+                                dk.babyapp.data.profile.BiologicalSex.Other -> R.string.sex_other
+                            }))
+                        }
                     }
-                    item { ViewSection(R.string.health_information) }
-                    if (profile.allergies.isNotBlank()) item { ViewValue(R.string.allergies, profile.allergies) }
-                    if (profile.medicalNotes.isNotBlank()) item { ViewValue(R.string.medical_notes, profile.medicalNotes) }
-                    item { ViewSection(R.string.registry_information) }
-                    if (profile.fullName.isNotBlank()) item { ViewValue(R.string.full_name, profile.fullName) }
-                    if (profile.cprNumber.isNotBlank()) item { ViewValue(R.string.cpr_number, profile.cprNumber) }
-                    if (profile.registeredAddress.isNotBlank()) item { ViewValue(R.string.registered_address, profile.registeredAddress) }
-                    if (profile.nationality.isNotBlank()) item { ViewValue(R.string.nationality, profile.nationality) }
-                    val linkedParents = parents.filter { it.role.isParent }
-                    val otherMembers = parents.filterNot { it.role.isParent }
-                    item { ViewSection(R.string.parents) }
-                    if (linkedParents.isEmpty()) item { Text(stringResource(R.string.no_parents_linked)) }
-                    items(linkedParents, key = { it.id }) { member -> FamilyMemberView(member, familyPhotoFile(member.photoFileName)) }
-                    if (siblings.isNotEmpty()) {
-                        item { ViewSection(R.string.siblings) }
-                        items(siblings, key = { it.id }) { sibling -> Text("${sibling.avatar.symbol} ${sibling.name}") }
+                    item {
+                        val birthSummary = listOfNotNull(draft.birthWeightGrams.takeIf { it.isNotBlank() }?.let { if (units == MeasurementUnits.Metric) "$it g" else it }, draft.birthLengthCm.takeIf { it.isNotBlank() }?.let { if (units == MeasurementUnits.Metric) "$it cm" else it }, profile.hospital.takeIf { it.isNotBlank() }).joinToString(" · ")
+                        ProfileSection(Icons.Outlined.ChildFriendly, stringResource(R.string.birth_details), birthSummary) {
+                            if (profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Born) profile.dueDate?.let { ViewValue(R.string.due_date, it.format(format)) }
+                            if (profile.hospital.isNotBlank()) ViewValue(R.string.birth_place, profile.hospital)
+                            if (draft.birthWeightGrams.isNotBlank()) ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_weight else R.string.birth_weight_imperial, draft.birthWeightGrams)
+                            if (draft.birthLengthCm.isNotBlank()) ViewValue(if (units == MeasurementUnits.Metric) R.string.birth_length else R.string.birth_length_imperial, draft.birthLengthCm)
+                            if (draft.birthHeadCircumferenceCm.isNotBlank()) ViewValue(if (units == MeasurementUnits.Metric) R.string.head_circumference else R.string.head_circumference_imperial, draft.birthHeadCircumferenceCm)
+                        }
                     }
-                    item { ViewSection(R.string.other_family_members) }
-                    if (otherMembers.isEmpty()) item { Text(stringResource(R.string.no_other_family_linked)) }
-                    items(otherMembers, key = { it.id }) { member -> FamilyMemberView(member, familyPhotoFile(member.photoFileName)) }
+                    item {
+                        ProfileSection(Icons.Outlined.HealthAndSafety, stringResource(R.string.health_information), profile.allergies.ifBlank { profile.medicalNotes }.lines().firstOrNull().orEmpty()) {
+                            if (profile.allergies.isNotBlank()) ViewValue(R.string.allergies, profile.allergies)
+                            if (profile.medicalNotes.isNotBlank()) ViewValue(R.string.medical_notes, profile.medicalNotes)
+                            if (profile.allergies.isBlank() && profile.medicalNotes.isBlank()) Text("Ikke udfyldt", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    item {
+                        // Phone and email open the phone's own app, so the health visitor or GP is one tap away.
+                        ProfileSection(Icons.Outlined.MedicalServices, stringResource(R.string.care_details), if (providers.isEmpty()) "Ingen tilføjet" else "${providers.size}", initiallyExpanded = providers.isNotEmpty()) {
+                            if (providers.isEmpty()) Text("Ingen sundhedspersoner tilføjet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            providers.forEach { provider ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(provider.name.ifBlank { provider.customTitle.ifBlank { stringResource(provider.type.labelRes()) } }, style = MaterialTheme.typography.titleSmall)
+                                        Text(listOf(provider.customTitle.ifBlank { stringResource(provider.type.labelRes()) }, provider.phone, provider.address).filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        if (provider.notes.isNotBlank()) Text(provider.notes, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    if (provider.phone.isNotBlank()) androidx.compose.material3.FilledTonalIconButton(onClick = {
+                                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + provider.phone.filter { it.isDigit() || it == '+' }))) }
+                                    }) { Icon(Icons.Outlined.Call, "Ring til ${provider.name.ifBlank { stringResource(provider.type.labelRes()) }}") }
+                                    if (provider.email.isNotBlank()) androidx.compose.material3.FilledTonalIconButton(onClick = {
+                                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:" + provider.email.trim()))) }
+                                    }) { Icon(Icons.Outlined.Email, "Skriv til ${provider.name.ifBlank { stringResource(provider.type.labelRes()) }}") }
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        val linkedParents = parents.filter { it.role.isParent }
+                        val otherMembers = parents.filterNot { it.role.isParent }
+                        ProfileSection(Icons.Outlined.FamilyRestroom, "Familie", (linkedParents.map { it.name } + siblings.map { it.name }).joinToString(", ")) {
+                            Text(stringResource(R.string.parents), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (linkedParents.isEmpty()) Text(stringResource(R.string.no_parents_linked))
+                            linkedParents.forEach { member -> FamilyMemberView(member, familyPhotoFile(member.photoFileName)) }
+                            if (siblings.isNotEmpty()) {
+                                Text(stringResource(R.string.siblings), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                siblings.forEach { sibling -> Text("${sibling.avatar.symbol} ${sibling.name}") }
+                            }
+                            Text(stringResource(R.string.other_family_members), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (otherMembers.isEmpty()) Text(stringResource(R.string.no_other_family_linked))
+                            otherMembers.forEach { member -> FamilyMemberView(member, familyPhotoFile(member.photoFileName)) }
+                        }
+                    }
+                    item {
+                        ProfileSection(Icons.Outlined.Badge, stringResource(R.string.registry_information), "") {
+                            if (profile.fullName.isNotBlank()) ViewValue(R.string.full_name, profile.fullName)
+                            if (profile.cprNumber.isNotBlank()) ViewValue(R.string.cpr_number, profile.cprNumber)
+                            if (profile.registeredAddress.isNotBlank()) ViewValue(R.string.registered_address, profile.registeredAddress)
+                            if (profile.nationality.isNotBlank()) ViewValue(R.string.nationality, profile.nationality)
+                            if (listOf(profile.fullName, profile.cprNumber, profile.registeredAddress, profile.nationality).all(String::isBlank)) Text("Ikke udfyldt", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text(stringResource(R.string.close)) }
             }
-          }
         }
     }
 }
 
-private val LocalChildAccent = staticCompositionLocalOf { Color(0xFFF5CAD2) }
-@Composable private fun ViewSection(label: Int) {
-    Surface(color = LocalChildAccent.current, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(12.dp))
+/** A profile section that folds open; when closed it shows a one-line summary. */
+@Composable
+private fun ProfileSection(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, summary: String, initiallyExpanded: Boolean = false, content: @Composable () -> Unit) {
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
+    Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+        Column(Modifier.clickable(onClickLabel = if (expanded) "Fold sammen" else "Fold ud") { expanded = !expanded }.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleSmall)
+                    if (!expanded && summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (expanded) Column(Modifier.padding(start = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+        }
     }
 }
+
 @Composable private fun ViewValue(label: Int, value: String) { Column { Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value) } }
 
 @Composable
@@ -881,4 +1045,28 @@ private fun FamilyRoleDropdown(value: FamilyMemberRole, parentProfile: Boolean, 
         val options = FamilyMemberRole.entries.filter { it.isParent == parentProfile }
         ExposedDropdownMenu(expanded, { expanded = false }) { options.forEach { role -> DropdownMenuItem(text = { Text(roleLabel(role)) }, onClick = { onChange(role); expanded = false }) } }
     }
+}
+
+@Composable
+private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
+    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp, top = 10.dp, bottom = 2.dp))
+    Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) { Column { content() } }
+}
+
+@Composable
+private fun SettingsRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String? = null, value: String? = null, divider: Boolean = true, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (value != null) Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (divider) androidx.compose.material3.HorizontalDivider(Modifier.padding(start = 52.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }

@@ -86,6 +86,7 @@ fun BabyApp(
                     onRestoreCareEvent = tracking::restoreCareEvent,
                     onUpdateInsightCards = settings::updateInsightCards,
                     onUpdateInsightPeriod = settings::updateInsightPeriod,
+                    onBackupSaved = settings::markBackupSaved,
                     bookPages = state.bookPages,
                     onSaveBookPage = book::saveBookPage,
                     colorProfiles = state.colorProfiles,

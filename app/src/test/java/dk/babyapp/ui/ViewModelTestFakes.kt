@@ -104,6 +104,7 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }
     override suspend fun updateInsightCards(cards: List<dk.babyapp.data.preferences.InsightCard>) { items.value = items.value.copy(insightCards = cards) }
     override suspend fun updateInsightPeriod(days: Int) { items.value = items.value.copy(insightPeriodDays = days) }
+    override suspend fun markBackupSaved(at: Long) { items.value = items.value.copy(lastBackupAt = at) }
     override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }
 }
 
