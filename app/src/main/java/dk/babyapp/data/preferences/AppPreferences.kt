@@ -7,7 +7,6 @@ data class AppPreferences(
     val region: DanishRegion = DanishRegion.Hovedstaden,
     val units: MeasurementUnits = MeasurementUnits.Metric,
     val theme: ThemePreference = ThemePreference.System,
-    val nightMode: NightModePreference = NightModePreference.Off,
     val showBreastfeedingQuickAction: Boolean = true,
     val showBottleQuickAction: Boolean = true,
     val showPumpingQuickAction: Boolean = true,
@@ -78,9 +77,6 @@ enum class DanishRegion {
 enum class MeasurementUnits { Metric, Imperial }
 
 enum class ThemePreference { System, Light, Dark }
-
-/** Warm, dim colours for the night: off, always on, or automatically in the evening and night. */
-enum class NightModePreference { Off, On, Automatic }
 
 enum class BookReminderFrequency(val label: String) { Daily("Dagligt"), ThreeWeekly("Tre gange om ugen"), Weekly("Ugentligt"), Monthly("Månedligt") }
 

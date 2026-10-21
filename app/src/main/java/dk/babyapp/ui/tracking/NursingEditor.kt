@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,15 +18,17 @@ import dk.babyapp.domain.*
 @Composable
 internal fun NursingIntervalOverview(event: CareEventEntity, now: Long) {
     val intervals = event.nursingIntervals()
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM HH:mm")
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     fun time(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).format(formatter)
-    Column(Modifier.fillMaxWidth().heightIn(max = 180.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // One line per interval: number and side, the clock times, and its length.
+    Column(Modifier.fillMaxWidth().heightIn(max = 160.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (intervals.isEmpty()) Text("Ingen intervaller endnu", style = MaterialTheme.typography.bodySmall)
         intervals.forEachIndexed { index, interval ->
             val side = when (interval.side) { BreastSide.Left -> "Venstre"; BreastSide.Right -> "Højre"; null -> "Side ikke registreret" }
-            Column {
-                Text("Interval ${index + 1} · $side · ${formatDuration(((interval.end ?: now) - interval.start).coerceAtLeast(0) / 1000)}", style = MaterialTheme.typography.bodyMedium)
-                Text("${time(interval.start)} – ${interval.end?.let { time(it) } ?: "kører"}", style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Interval ${index + 1} · $side", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text("${time(interval.start)} – ${interval.end?.let { time(it) } ?: "kører"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("  " + formatDuration(((interval.end ?: now) - interval.start).coerceAtLeast(0) / 1000), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -42,11 +45,11 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Rediger amning", style = MaterialTheme.typography.headlineSmall)
+                FormHeader("Rediger amning", dk.babyapp.ui.theme.CareCategory.Feeding)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Ret tid og brystside for hvert interval. Pauser tæller ikke med. Et igangværende interval fortsætter, mens du redigerer.")
                     intervals.forEachIndexed { index, interval ->
-                        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        androidx.compose.material3.OutlinedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Interval ${index + 1} · ${((interval.end ?: now) - interval.start).coerceAtLeast(0) / 60000} min${if (interval.end == null) " · kører" else ""}", style = MaterialTheme.typography.titleMedium)
                             Text("Start")
                             DateTimeFields(interval.start) { time -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(start = time) }; error = null }
@@ -60,8 +63,8 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                     RegistrationTextField(notes, { notes = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Noter") })
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = onDismiss) { Text("Annuller") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.End)) {
+                    androidx.compose.material3.OutlinedButton(onClick = onDismiss) { Text("Annuller") }
                     Button(onClick = {
                         runCatching { event.editNursingIntervals(intervals, System.currentTimeMillis()).copy(notes = notes, breastfeedingIssue = issue) }
                             .onSuccess(onSave).onFailure { error = it.message ?: "Kontrollér intervallerne." }

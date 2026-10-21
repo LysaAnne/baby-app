@@ -42,11 +42,3 @@ fun ComponentGallery() {
 @Preview(name = "Lys", showBackground = true, widthDp = 380)
 @Composable
 private fun ComponentGalleryLight() = BabyAppTheme(defaultColorProfiles.first()) { Surface { ComponentGallery() } }
-
-@Preview(name = "Mørk", showBackground = true, widthDp = 380)
-@Composable
-private fun ComponentGalleryDark() = BabyAppTheme(defaultColorProfiles.first(), darkTheme = true) { Surface { ComponentGallery() } }
-
-@Preview(name = "Nat", showBackground = true, widthDp = 380)
-@Composable
-private fun ComponentGalleryNight() = BabyAppTheme(defaultColorProfiles.first(), night = true) { Surface { ComponentGallery() } }

@@ -59,8 +59,8 @@ internal fun ActiveTimers(
         if (editing == null) editing = recentEvents.firstOrNull { it.childId == activeChildId && it.isDraft && it.deletedAt == null }
     }
     if (timers.isNotEmpty()) {
-        // At most about a third of the screen, so content above stays reachable even with two expanded timers.
-        val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.4f).dp
+        // At most about 60 % of the screen, so content above stays reachable even with an expanded timer.
+        val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.62f).dp
         Column(
             // An opaque strip, so the screen above never shows through between the timers.
             Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).heightIn(max = maxHeight).verticalScroll(rememberScrollState())

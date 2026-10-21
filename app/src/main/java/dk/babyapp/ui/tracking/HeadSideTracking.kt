@@ -41,15 +41,15 @@ internal fun HeadSideEditor(event: CareEventEntity, onDismiss: () -> Unit, onSav
     var side by remember(event.id) { mutableStateOf(event.headSide) }
     var notes by remember(event.id) { mutableStateOf(event.notes) }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Rediger favoritside") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Sleep, onDismissRequest = onDismiss, title = { Text("Rediger favoritside") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateTimeFields(time) { time = it; error = null }
             SelectionDropdown("Hovedside", side.displayLabel(), HeadSide.entries.map { it to it.displayLabel() }) { side = it }
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
-    }, confirmButton = { TextButton(enabled = side != null, onClick = {
+    }, confirmButton = { Button(enabled = side != null, onClick = {
         if (time > System.currentTimeMillis()) error = "Tidspunktet kan ikke ligge i fremtiden."
         else onSave(event.copy(startedAt = time, endedAt = time, headSide = side, notes = notes, runningSince = null))
-    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }

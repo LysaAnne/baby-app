@@ -80,7 +80,6 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
     }
     override suspend fun setActiveChild(id: String?) { items.value = items.value.copy(activeChildId = id) }
     override suspend fun setTheme(theme: ThemePreference) { items.value = items.value.copy(theme = theme) }
-    override suspend fun setNightMode(mode: dk.babyapp.data.preferences.NightModePreference) { items.value = items.value.copy(nightMode = mode) }
     override suspend fun updateSettings(
         languageTag: String,
         region: DanishRegion,

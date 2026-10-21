@@ -52,7 +52,7 @@ private fun MedicinePlanEditor(initial: MedicinePlan, onDismiss: () -> Unit, onS
         exactAllowed = Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
         notificationsAllowed = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Medicin og påmindelser") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Health, onDismissRequest = onDismiss, title = { Text("Medicin og påmindelser") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectionDropdown("Vælg type eller skriv eget navn", draft.name.ifBlank { "Vælg" }, listOf("D-vitamin", "Smertestillende/febernedsættende", "Antibiotika", "Allergimedicin", "Inhalationsmedicin").map { it to it }) { draft = draft.copy(name = it) }
             RegistrationTextField(draft.name, { draft = draft.copy(name = it) }, label = { Text("Medicinens navn *") })
@@ -76,5 +76,5 @@ private fun MedicinePlanEditor(initial: MedicinePlan, onDismiss: () -> Unit, onS
                 }
             }
         }
-    }, confirmButton = { Button(enabled = draft.name.isNotBlank() && (!draft.reminders || draft.asNeeded || draft.times.isNotEmpty()), onClick = { onSave(draft.copy(name = draft.name.trim(), reminders = draft.reminders && !draft.asNeeded)) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }, confirmButton = { Button(enabled = draft.name.isNotBlank() && (!draft.reminders || draft.asNeeded || draft.times.isNotEmpty()), onClick = { onSave(draft.copy(name = draft.name.trim(), reminders = draft.reminders && !draft.asNeeded)) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }

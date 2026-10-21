@@ -68,12 +68,9 @@ Færdig: farvetokens (`BabyColors`), røde fejl og slet-knapper, fast farve og i
 - Barnets farvetema bevares og bruges som accent.
 - Fast farve og ikon pr. registreringstype (madning, søvn, ble, sundhed, mål, diverse), som går igen overalt.
 
-### 2.2 Mørk tilstand og nattilstand ✅
+### 2.2 Mørk tilstand og nattilstand — fjernet
 
-Færdig: Indstillinger → Udseende (System/Lys/Mørk) og Nattilstand (Fra/Til/Automatisk kl. 21–06). Lyse farveprofiler får en mørk udgave; mørke containerfarver er rettet; statusbjælken følger appens tema. Systemets dato- og tidsvælgere følger stadig telefonens tema.
-
-- **Mørk tilstand virker ikke i dag.** Valget i Indstillinger gemmes, men bruges aldrig. Det rettes, så System, Lys og Mørk virker.
-- **Ny nattilstand:** dæmpede, varme farver og lav lysstyrke til natlig brug. Den kan slås til manuelt eller automatisk om aftenen.
+Blev bygget, men er fjernet igen efter ønske: appen er altid lys og farvet efter barnets valgte farveprofil. Rettelsen af mørke containerfarver er bevaret for egne mørke farveprofiler.
 
 ### 2.3 Typografi og afstande ✅
 
@@ -107,9 +104,11 @@ Byggeklodser, som fase 3 bruger:
 
 Aftalt ud fra skitse 2 (samme struktur, mere kompakt). Færdig:
 - Dagens overblik: dagbladring i overskriften, ikoner i hvert felt, lavere felter. Felterne vælges og sorteres stadig selv.
-- Kategorikort: ét kort pr. kategori som før (kan sorteres og skjules), mindre luft, fire knapper pr. række når teksterne er korte, Favoritside og Søvn side om side. Knapperne har den tidligere højde.
+- Kategorikort: ét kort pr. kategori som før (kan sorteres og skjules), mindre luft, to knapper pr. række under hinanden som før. Knapperne har den tidligere højde.
 - Tællere: kompakte bjælker over menulinjen på alle faner, kun når en tæller er i gang, op til to; kan udvides til den fulde visning. Stop gemmes fra den fane, man står på. Tælleren i topbjælken er fjernet.
 - +-knappen er bevaret og ligger altid over tællerne.
+- Udfoldet tæller: nyt design med stor tid, felter for venstre/højre side, intervalliste, kontakt til "Hold skærmen tændt" og ensartede knapper.
+- Registreringsvinduer: fælles design (`FormDialog`/`FormHeader`) med kategoriikon, afrundede felter i fuld bredde, dato/tid med ikoner og Annuller/Gem nederst.
 
 Backup af udseendet før 3.1: git-mærket `for-redesign-i-dag` og `backups/babyapp-for-redesign-i-dag-d585cba.apk`.
 

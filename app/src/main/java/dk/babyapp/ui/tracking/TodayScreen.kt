@@ -1,5 +1,8 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.CalendarToday
+import dk.babyapp.domain.accrueUntil
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
@@ -256,20 +259,9 @@ fun TodayScreen(
                             }
                         }
                     }
-                    if (category == QuickActionCategory.Sleep && QuickAction.HeadSide in actions) {
-                        // Favourite side and sleep side by side, each with its small heading.
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(Modifier.weight(1f)) { HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord) }
-                            if (buttons.isNotEmpty()) Column(Modifier.weight(1f)) {
-                                Text("Søvn", style = MaterialTheme.typography.labelMedium)
-                                QuickButtonRows(buttons, columns = 2)
-                            }
-                        }
-                    } else {
-                        if (category == QuickActionCategory.Sleep) Text("Søvn", style = MaterialTheme.typography.labelMedium)
-                        // Four to a row when the labels are short, otherwise two, so long words are never cut.
-                        QuickButtonRows(buttons, columns = if (buttons.all { it.label.length <= 10 }) 4 else 2)
-                    }
+                    if (QuickAction.HeadSide in actions) HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord)
+                    if (category == QuickActionCategory.Sleep && buttons.isNotEmpty()) Text("Søvn", style = MaterialTheme.typography.labelMedium)
+                    QuickButtonRows(buttons, columns = 2)
                     if (category == QuickActionCategory.Health) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
                         TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
@@ -291,7 +283,7 @@ fun TodayScreen(
             "Helbredsnotat" to EditorKind.HealthNote, "Mavetid" to EditorKind.Activity, "Bad" to EditorKind.Activity, "Leg" to EditorKind.Activity, "Udetid" to EditorKind.Activity, "Andet" to EditorKind.Activity).map { (label, kind) -> label to { manualActivityType = manualActivityTypeFor(label); manualMenuOpen = false; dialog = kind } },
         { manualMenuOpen = false })
     when (dialog) {
-        EditorKind.StartBreast -> AlertDialog(onDismissRequest = { dialog = null }, title = { Text("Start amning") },
+        EditorKind.StartBreast -> FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = { dialog = null }, title = { Text("Start amning") },
             text = { Row { BreastSide.entries.forEach { side -> TextButton(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }) { Text(sideLabel(side).replaceFirstChar { it.uppercase() }) } } } },
             confirmButton = {}, dismissButton = { TextButton(onClick = { dialog = null }) { Text("Annuller") } })
         EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes, ratio -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes, ratio) }; dialog = null }
@@ -524,26 +516,54 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                 androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, "Stop") }
                 expandButton()
             }
-        } else Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        } else Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Expanded: the same heading as the compact bar, then time, sides, settings and actions.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(32.dp).background(category.container, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(event.careCategory.icon, contentDescription = null, tint = category.accent, modifier = Modifier.size(18.dp))
+                }
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 expandButton()
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(formatDuration(elapsed), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-                Checkbox(keepAwake, onKeepAwake, modifier = Modifier.semantics { contentDescription = "Hold skærmen tændt" })
-                Text("Hold skærmen\ntændt", style = MaterialTheme.typography.bodySmall)
-            }
-            if (event.type != CareEventType.Breastfeeding) TextButton(onClick = { onCancel(event) }) { Text("Annuller") }
-            if (event.type == CareEventType.Breastfeeding) {
-                NursingIntervalOverview(event, now)
-                OutlinedButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
-                Text("Venstre ${formatDuration(event.leftSeconds)}  •  Højre ${formatDuration(event.rightSeconds)}")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                toggle()
-                if (event.type == CareEventType.Breastfeeding) OutlinedButton(onClick = { onSwitch(event) }) { Text("Skift side") }
-                Button(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, null); Text("Stop") }
+            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(formatDuration(elapsed), style = MaterialTheme.typography.displaySmall)
+                    Text(if (running) "kører" else "pause", style = MaterialTheme.typography.labelLarge, color = if (running) category.accent else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
+                }
+                if (event.type == CareEventType.Breastfeeding) {
+                    val sides = event.accrueUntil(now)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        BreastSide.entries.forEach { side ->
+                            val active = side == (event.activeSide ?: BreastSide.Left)
+                            Column(
+                                Modifier.weight(1f).background(if (active) category.container else MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium).padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) {
+                                Text(sideLabel(side).replaceFirstChar { it.uppercase() } + if (active) " · nu" else "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatDuration(if (side == BreastSide.Left) sides.leftSeconds else sides.rightSeconds), style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+                    }
+                    NursingIntervalOverview(event, now)
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Hold skærmen tændt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.Switch(keepAwake, onKeepAwake, modifier = Modifier.semantics { contentDescription = "Hold skærmen tændt" })
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.FilledTonalButton(onClick = { onToggle(event) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Icon(if (running) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, null, Modifier.size(18.dp)); Text(if (running) " Pause" else " Fortsæt")
+                    }
+                    if (event.type == CareEventType.Breastfeeding) androidx.compose.material3.FilledTonalButton(onClick = { onSwitch(event) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Icon(Icons.Outlined.SwapHoriz, null, Modifier.size(18.dp)); Text(" Skift side")
+                    }
+                    Button(onClick = { onStop(event) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Icon(Icons.Outlined.Stop, null, Modifier.size(18.dp)); Text(" Stop")
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (event.type == CareEventType.Breastfeeding) TextButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
+                    else TextButton(onClick = { onCancel(event) }) { Text("Annuller tæller", color = MaterialTheme.colorScheme.error) }
+                }
             }
         }
     }
@@ -563,15 +583,15 @@ internal fun DateTimeFields(value: Long, onChange: (Long) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             Text("Dato *", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldText), shape = MaterialTheme.shapes.small, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline), contentPadding = PaddingValues(horizontal = 14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
                 DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
-            }) { Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value))) }
+            }) { Icon(Icons.Outlined.CalendarToday, null, Modifier.size(18.dp)); Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value)), Modifier.weight(1f).padding(start = 10.dp)) }
         }
         Column(Modifier.weight(1f)) {
             Text("Tid *", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldText), shape = MaterialTheme.shapes.small, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline), contentPadding = PaddingValues(horizontal = 14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
-            }) { Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))) }
+            }) { Icon(Icons.Outlined.Schedule, null, Modifier.size(18.dp)); Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value)), Modifier.weight(1f).padding(start = 10.dp)) }
         }
     }
 }
@@ -582,18 +602,18 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
     val calendar = java.util.Calendar.getInstance().apply { timeInMillis = value }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Dato *", style = MaterialTheme.typography.labelMedium)
-        OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
+        OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldText), shape = MaterialTheme.shapes.small, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline), contentPadding = PaddingValues(horizontal = 14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
             DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
-        }) { Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value))) }
+        }) { Icon(Icons.Outlined.CalendarToday, null, Modifier.size(18.dp)); Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value)), Modifier.weight(1f).padding(start = 10.dp)) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(timeSpecified, onCheckedChange = onTimeSpecifiedChange)
             Text("Tilføj tidspunkt")
         }
         if (timeSpecified) {
             Text("Tid", style = MaterialTheme.typography.labelMedium)
-            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldIcon), modifier = Modifier.fillMaxWidth(), onClick = {
+            OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldText), shape = MaterialTheme.shapes.small, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline), contentPadding = PaddingValues(horizontal = 14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
-            }) { Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))) }
+            }) { Icon(Icons.Outlined.Schedule, null, Modifier.size(18.dp)); Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value)), Modifier.weight(1f).padding(start = 10.dp)) }
         }
     }
 }
@@ -602,34 +622,34 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
 @Composable internal fun BottleDialog(onDismiss: () -> Unit, onSave: (Long, BottleContent, Int?, Int?, String, String) -> Unit) {
     var ratio by remember { mutableStateOf("") }
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var offered by remember { mutableStateOf("") }; var consumed by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }; var content by remember { mutableStateOf(BottleContent.BreastMilk) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilføj flaske") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Tilføj flaske") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeFields(time) { time = it }
         SelectionDropdown("Indhold *", content.displayLabel(), BottleContent.entries.map { it to it.displayLabel() }) { content = it }
         if (content == BottleContent.Mixed) BottleRatioField(ratio) { ratio = it }
         RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
         RegistrationTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
         RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(onClick = { onSave(time, content, listOfNotNull(offered.toIntOrNull(), consumed.toIntOrNull()).maxOrNull(), consumed.toIntOrNull(), notes, if (content == BottleContent.Mixed) ratio else "") }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    } }, confirmButton = { Button(onClick = { onSave(time, content, listOfNotNull(offered.toIntOrNull(), consumed.toIntOrNull()).maxOrNull(), consumed.toIntOrNull(), notes, if (content == BottleContent.Mixed) ratio else "") }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable internal fun DiaperDialog(onDismiss: () -> Unit, initialType: DiaperType = DiaperType.Wet, onSave: (Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String) -> Unit) {
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var type by remember { mutableStateOf(initialType) }; var color by remember { mutableStateOf<DiaperColor?>(null) }; var consistency by remember { mutableStateOf<DiaperConsistency?>(null) }; var observation by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Tilføj ble") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Diaper, onDismissRequest = onDismiss, title = { Text("Tilføj ble") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeFields(time) { time = it }; SelectionDropdown("Type *", type.displayLabel(), DiaperType.entries.map { it to it.displayLabel() }) { type = it }
         SelectionDropdown("Farve", color?.displayLabel() ?: "Ikke angivet", listOf<DiaperColor?>(null).map { it to "Ikke angivet" } + DiaperColor.entries.map { it as DiaperColor? to it.displayLabel() }) { color = it }
         SelectionDropdown("Konsistens", consistency?.displayLabel() ?: "Ikke angivet", listOf<DiaperConsistency?>(null).map { it to "Ikke angivet" } + DiaperConsistency.entries.map { it as DiaperConsistency? to it.displayLabel() }) { consistency = it }
         DiaperObservationField(observation) { observation = it }; RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(onClick = { onSave(time, type, color, consistency, observation, notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    } }, confirmButton = { Button(onClick = { onSave(time, type, color, consistency, observation, notes) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable internal fun ManualTimerDialog(type: CareEventType, onDismiss: () -> Unit, onSave: (CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit) {
     var start by remember { mutableLongStateOf(System.currentTimeMillis() - 600_000) }; var end by remember { mutableLongStateOf(System.currentTimeMillis()) }; var side by remember { mutableStateOf(BreastSide.Left) }; var amount by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (type == CareEventType.Breastfeeding) "Manuel amning" else "Manuel pumpning") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text(if (type == CareEventType.Breastfeeding) "Manuel amning" else "Manuel pumpning") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Start *"); DateTimeFields(start) { start = it }; Text("Slut *"); DateTimeFields(end) { end = it }
         if (type == CareEventType.Breastfeeding) Row { BreastSide.entries.forEach { TextButton(onClick = { side = it }) { Text(if (side == it) "✓ ${sideLabel(it)}" else sideLabel(it)) } } }
         if (type == CareEventType.Pumping) RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Mængde (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
         RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(enabled = end >= start, onClick = { onSave(type, start, end, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    } }, confirmButton = { Button(enabled = end >= start, onClick = { onSave(type, start, end, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
@@ -646,7 +666,7 @@ internal fun SleepDialog(
     var awakenings by remember { mutableStateOf(existing?.awakenings?.toString().orEmpty()) }
     var quality by remember { mutableStateOf(existing?.sleepQuality) }
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
-    AlertDialog(
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Sleep,
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Tilføj søvn" else "Rediger søvn") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -660,7 +680,7 @@ internal fun SleepDialog(
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, location, settling, awakenings.toIntOrNull(), quality, notes) }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -676,7 +696,7 @@ internal fun MeasurementDialog(
     var unit by remember { mutableStateOf(if (initialType == MeasurementType.Weight) "g" else initialType.defaultUnit()) }
     var value by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    AlertDialog(
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Measurement,
         onDismissRequest = onDismiss,
         title = { Text("Registrér mål") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -687,7 +707,7 @@ internal fun MeasurementDialog(
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = value.toDoubleOrNull() != null, onClick = { onSave(time, timeSpecified, type, value.toDouble(), unit, notes) }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -702,7 +722,7 @@ internal fun ActivityDialog(
     var type by remember { mutableStateOf(initialType ?: ActivityType.TummyTime) }
     var notes by remember { mutableStateOf("") }
     val availableTypes = if (initialType == ActivityType.Medicine) listOf(ActivityType.Medicine) else ActivityType.entries.filter { it != ActivityType.Medicine }
-    AlertDialog(
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Misc,
         onDismissRequest = onDismiss,
         title = { Text("Registrér diverse") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -713,7 +733,7 @@ internal fun ActivityDialog(
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, notes) }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -721,7 +741,7 @@ internal fun ActivityDialog(
 private fun StartActivityDialog(onDismiss: () -> Unit, onStart: (ActivityType) -> Unit) {
     var type by remember { mutableStateOf(ActivityType.Play) }
     val choices = listOf(ActivityType.Bath, ActivityType.OutdoorTime, ActivityType.Play, ActivityType.Other)
-    AlertDialog(
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Misc,
         onDismissRequest = onDismiss,
         title = { Text("Start aktivitet") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -729,7 +749,7 @@ private fun StartActivityDialog(onDismiss: () -> Unit, onStart: (ActivityType) -
             SelectionDropdown("Aktivitet *", type.displayLabel(), choices.map { it to it.displayLabel() }) { type = it }
         } },
         confirmButton = { Button(onClick = { onStart(type) }) { Text("Start") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -742,7 +762,7 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
     var time by remember { mutableLongStateOf(existing?.startedAt ?: System.currentTimeMillis()) }
     var timeSpecified by remember { mutableStateOf(existing?.timeSpecified ?: false) }
     val name = selectedPlan?.name ?: existing?.medicationName.orEmpty()
-    AlertDialog(
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Health,
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Registrér medicin" else "Rediger medicin") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -760,7 +780,7 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
                 activityDurationSeconds = null, medicineId = selectedPlan?.id ?: existing?.medicineId.orEmpty(), timeSpecified = timeSpecified, medicationName = name, medicationDose = dose, notes = notes,
             ))
         }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -770,7 +790,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
     var notes by remember { mutableStateOf("") }
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var timeSpecified by remember { mutableStateOf(false) }
-    AlertDialog(
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Health,
         onDismissRequest = onDismiss,
         title = { Text("Nyt helbredsnotat") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -781,7 +801,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
         confirmButton = { Button(enabled = title.isNotBlank(), onClick = {
             onSave(CareEventEntity(childId = childId, type = CareEventType.HealthVisit, startedAt = time, endedAt = time, timeSpecified = timeSpecified, healthVisitType = dk.babyapp.data.tracking.HealthVisitType.Other, healthStatus = dk.babyapp.data.tracking.HealthRecordStatus.Completed, healthTitle = title.trim(), healthObservations = notes))
         }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -816,7 +836,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
         (event.type == CareEventType.Pumping && (event.endedAt ?: event.startedAt) > event.startedAt)
     val valid = (!timed || end >= start) && (event.type != CareEventType.Measurement || (value.toDoubleOrNull()?.let { it.isFinite() && it > 0 } == true)) &&
         (offered.isBlank() || offered.toIntOrNull() != null) && (consumed.isBlank() || consumed.toIntOrNull() != null) && (pumped.isBlank() || pumped.toIntOrNull() != null)
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Rediger registrering") }, text = {
+    FormDialog(category = event.careCategory, onDismissRequest = onDismiss, title = { Text("Rediger registrering") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (event.type == CareEventType.Measurement) DateAndOptionalTimeFields(start, draft.timeSpecified, { start = it }, { draft = draft.copy(timeSpecified = it) })
             else if (nursingHistory) {
@@ -873,7 +893,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
             bottleMixRatio = if (draft.bottleContent == BottleContent.Mixed) draft.bottleMixRatio.trim() else "",
             amountOfferedMl = listOfNotNull(offered.toIntOrNull(), consumed.toIntOrNull()).maxOrNull(), amountConsumedMl = consumed.toIntOrNull(), pumpedAmountMl = pumped.toIntOrNull(),
             measurementValue = value.toDoubleOrNull(), measurementUnit = if (event.type == CareEventType.Measurement) unit else event.measurementUnit, activityDurationSeconds = if (event.type == CareEventType.Activity) duration else event.activityDurationSeconds))
-    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

@@ -1,5 +1,7 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Button
 import dk.babyapp.ui.theme.babyColors
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,7 +37,7 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Registrer pumpning") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Registrer pumpning") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateTimeFields(time) { time = it }
             SelectionDropdown("Pumpetype", method.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { method = it }
@@ -44,7 +46,7 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
         }
     }, confirmButton = { Button(enabled = amount.isBlank() || amount.toIntOrNull() != null, onClick = {
         onSave(CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = time, endedAt = time, pumpedAmountMl = amount.toIntOrNull(), pumpingMethod = method, notes = notes))
-    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
@@ -86,7 +88,7 @@ internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.d
 internal fun SolidFoodDialog(childId: String, existing: CareEventEntity?, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
     val now = remember { System.currentTimeMillis() }
     var draft by remember { mutableStateOf(existing ?: CareEventEntity(childId = childId, type = CareEventType.SolidFood, startedAt = now, endedAt = now)) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Registrér fast føde" else "Rediger fast føde") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.SolidFood, onDismissRequest = onDismiss, title = { Text(if (existing == null) "Registrér fast føde" else "Rediger fast føde") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateAndOptionalTimeFields(draft.startedAt, draft.timeSpecified, { draft = draft.copy(startedAt = it, endedAt = it) }, { draft = draft.copy(timeSpecified = it) })
             RegistrationTextField(draft.foodName, { draft = draft.copy(foodName = it) }, label = { Text("Mad / ingredienser *") })
@@ -95,7 +97,7 @@ internal fun SolidFoodDialog(childId: String, existing: CareEventEntity?, onDism
             SelectionDropdown("Oplevelse / reaktion", draft.foodReaction.ifBlank { "Ikke angivet" }, listOf("Ikke angivet", "Spiste med appetit", "Smagte lidt", "Afviste maden", "Gylp / opkast", "Hudreaktion", "Andet").map { it to it }) { draft = draft.copy(foodReaction = it) }
             RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter, fx nye ingredienser") })
         }
-    }, confirmButton = { Button(enabled = draft.foodName.isNotBlank(), onClick = { onSave(draft.copy(foodName = draft.foodName.trim())) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }, confirmButton = { Button(enabled = draft.foodName.isNotBlank(), onClick = { onSave(draft.copy(foodName = draft.foodName.trim())) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

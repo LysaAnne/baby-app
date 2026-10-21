@@ -1,5 +1,7 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,9 +71,9 @@ fun HealthRecordDialog(
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     var officialKey by remember { mutableStateOf(existing?.officialScheduleKey) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(if (vaccination) "Registrér vaccination" else "Registrér sundhedsbesøg", style = MaterialTheme.typography.headlineSmall)
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                FormHeader(if (vaccination) "Registrér vaccination" else "Registrér sundhedsbesøg", dk.babyapp.ui.theme.CareCategory.Health)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Dette er dine egne noter og ikke en officiel sundhedsjournal.")
             DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
@@ -119,8 +121,8 @@ fun HealthRecordDialog(
             }
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onDismiss) { Text("Annuller") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.OutlinedButton(onClick = onDismiss) { Text("Annuller") }
                     Button(enabled = !vaccination || vaccine.isNotBlank(), onClick = {
                         onSave((existing ?: CareEventEntity(childId = childId, type = if (vaccination) CareEventType.Vaccination else CareEventType.HealthVisit, startedAt = time, endedAt = time)).copy(
                             startedAt = time, endedAt = time, healthStatus = status, healthVisitType = if (vaccination) null else visitType,

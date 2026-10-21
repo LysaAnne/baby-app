@@ -17,9 +17,10 @@ internal fun RegistrationTextField(value: String, onValueChange: (String) -> Uni
     readOnly: Boolean = false, enabled: Boolean = true, singleLine: Boolean = false,
     isError: Boolean = false, minLines: Int = 1, maxLines: Int = Int.MAX_VALUE,
     trailingIcon: @Composable (() -> Unit)? = null, keyboardOptions: KeyboardOptions = KeyboardOptions.Default) {
-    OutlinedTextField(value, onValueChange, modifier, label = label, placeholder = placeholder, readOnly = readOnly,
+    // Full width by default, so every form lines up; a weight or width from the caller still applies first.
+    OutlinedTextField(value, onValueChange, modifier.fillMaxWidth(), label = label, placeholder = placeholder, readOnly = readOnly,
         enabled = enabled, singleLine = singleLine, isError = isError, minLines = minLines, maxLines = maxLines,
-        trailingIcon = trailingIcon, keyboardOptions = keyboardOptions,
+        trailingIcon = trailingIcon, keyboardOptions = keyboardOptions, shape = MaterialTheme.shapes.small,
         colors = MaterialTheme.babyColors.let { field ->
             OutlinedTextFieldDefaults.colors(focusedContainerColor = field.fieldContainer, unfocusedContainerColor = field.fieldContainer,
                 disabledContainerColor = field.fieldContainer, errorContainerColor = field.fieldContainer,

@@ -1,6 +1,7 @@
 package dk.babyapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import dk.babyapp.data.preferences.QuickActionCategory
 import dk.babyapp.data.tracking.ActivityType
@@ -49,5 +50,13 @@ class BabyColorsTest {
         assertEquals(CareCategory.Health, event.copy(type = CareEventType.Activity, activityType = ActivityType.Medicine).careCategory)
         assertEquals(CareCategory.Misc, event.copy(type = CareEventType.Activity, activityType = ActivityType.Bath).careCategory)
         assertEquals(QuickActionCategory.entries.size, QuickActionCategory.entries.map { it.careCategory }.distinct().size)
+    }
+
+    @Test fun fieldsStayReadableInUserMadeDarkProfiles() {
+        darkBackgrounds.forEach { background ->
+            val field = DarkBabyColors.fieldContainer.compositeOver(background)
+            assertTrue(contrast(DarkBabyColors.fieldText, field) >= 7.0)
+            assertTrue(contrast(DarkBabyColors.fieldLabel, field) >= 4.5)
+        }
     }
 }

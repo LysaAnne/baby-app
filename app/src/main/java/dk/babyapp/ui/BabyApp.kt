@@ -41,23 +41,8 @@ fun BabyApp(
     }
     val activeColorProfile = state.activeChild?.colorTheme?.let { id -> state.colorProfiles.firstOrNull { it.id == id } }
         ?: state.colorProfiles.firstOrNull()
-    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val darkTheme = when (state.preferences.theme) {
-        dk.babyapp.data.preferences.ThemePreference.System -> systemDark
-        dk.babyapp.data.preferences.ThemePreference.Light -> false
-        dk.babyapp.data.preferences.ThemePreference.Dark -> true
-    }
-    val nightMode = state.preferences.nightMode
-    // Re-checked every minute so automatic night mode switches on and off by itself.
-    val clock by androidx.compose.runtime.produceState(java.time.LocalTime.now(), nightMode) {
-        while (nightMode == dk.babyapp.data.preferences.NightModePreference.Automatic) {
-            value = java.time.LocalTime.now()
-            kotlinx.coroutines.delay(60_000)
-        }
-    }
-    val night = nightMode == dk.babyapp.data.preferences.NightModePreference.On ||
-        (nightMode == dk.babyapp.data.preferences.NightModePreference.Automatic && dk.babyapp.ui.theme.isNightTime(clock))
-    val shownDark = night || (activeColorProfile?.isDark ?: false) || darkTheme
+    // Only a dark colour profile the user made gives dark bars; the app is otherwise always light.
+    val shownDark = activeColorProfile?.isDark ?: false
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         (view.context as? android.app.Activity)?.window?.let { window ->
@@ -67,7 +52,7 @@ fun BabyApp(
             }
         }
     }
-    BabyAppTheme(childColorTheme = activeColorProfile, darkTheme = darkTheme, night = night) {
+    BabyAppTheme(childColorTheme = activeColorProfile) {
         Surface(modifier = Modifier.fillMaxSize()) {
             when {
                 !state.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -96,7 +81,6 @@ fun BabyApp(
                     runningEvents = state.unfinishedEvents,
                     recentFrom = state.recentFrom,
                     childHistory = { viewModel.childHistory.collectAsState().value ?: state.recentEvents },
-                    onUpdateNightMode = settings::updateNightMode,
                     bookPages = state.bookPages,
                     onSaveBookPage = book::saveBookPage,
                     colorProfiles = state.colorProfiles,

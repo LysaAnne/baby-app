@@ -104,7 +104,6 @@ fun BabyAppNavigation(
     recentFrom: LocalDate? = null,
     /** The active child's whole history. Only called by screens that show history, so it is loaded only there. */
     childHistory: @Composable () -> List<CareEventEntity> = { careEvents },
-    onUpdateNightMode: (dk.babyapp.data.preferences.NightModePreference) -> Unit = {},
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
     colorProfiles: List<ColorProfile> = emptyList(),
@@ -403,7 +402,6 @@ fun BabyAppNavigation(
         preferences = preferences,
         activeChild = activeChild,
         careEvents = childHistory(),
-        onUpdateNightMode = onUpdateNightMode,
         onUpdateBookReminderFrequency = onUpdateBookReminderFrequency,
         onUpdateBookReminders = onUpdateBookReminders,
         onUpdateDailyReminder = onUpdateDailyReminder,

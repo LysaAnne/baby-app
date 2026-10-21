@@ -137,18 +137,6 @@ internal val DarkBabyColors = sharedColors.copy(
     ),
 )
 
-/** Night mode: the dark category colours, with warm, dim fields so nothing on screen is bright. */
-internal val NightBabyColors = DarkBabyColors.copy(
-    fieldContainer = Color(0xFF24170F),
-    fieldText = Color(0xFFE3D2C2),
-    fieldLabel = Color(0xFFBFA894),
-    fieldLabelFocused = Color(0xFFE3D2C2),
-    fieldIcon = Color(0xFFBFA894),
-    fieldPlaceholder = Color(0xFF8C7865),
-    hiddenContainer = Color(0xFF24170F),
-    hiddenContent = Color(0xFF8C7865),
-)
-
 internal val LocalBabyColors = staticCompositionLocalOf { LightBabyColors }
 
 val MaterialTheme.babyColors: BabyColors

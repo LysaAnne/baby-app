@@ -103,7 +103,7 @@ private fun ToothEditor(record: ToothRecord, onDismiss: () -> Unit, onSave: (Too
     var emerged by remember(record) { mutableStateOf(record.emerged?.let(LocalDate::parse)) }
     var lost by remember(record) { mutableStateOf(record.lost?.let(LocalDate::parse)) }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Tand ${record.tooth}") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Health, onDismissRequest = onDismiss, title = { Text("Tand ${record.tooth}") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val jaw = if (record.tooth / 10 in listOf(5, 6)) "Overmund" else "Undermund"
             val side = if (record.tooth / 10 in listOf(5, 8)) "højre" else "venstre"
@@ -114,10 +114,10 @@ private fun ToothEditor(record: ToothRecord, onDismiss: () -> Unit, onSave: (Too
             Text("Datoen for frembrud må gerne være ukendt, selv om tanden er tabt.", style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
-    }, confirmButton = { TextButton(onClick = {
+    }, confirmButton = { Button(onClick = {
         val updated = record.copy(emerged = emerged?.toString(), lost = lost?.toString())
         runCatching { updated.validate() }.onSuccess { onSave(updated) }.onFailure { error = it.message }
-    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

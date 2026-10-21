@@ -1,6 +1,5 @@
 package dk.babyapp.ui.family
 
-import dk.babyapp.data.preferences.ThemePreference
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -322,9 +321,7 @@ fun SettingsDialog(
     exportColorProfiles: () -> String,
     importColorProfiles: (String, (Boolean) -> Unit) -> Unit,
     onDismiss: () -> Unit,
-    onUpdateNightMode: (dk.babyapp.data.preferences.NightModePreference) -> Unit = {},
 ) {
-    var nightMode by remember(preferences) { mutableStateOf(preferences.nightMode) }
     var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
     var confirmClearData by remember { mutableStateOf(false) }
     var testFamilyCreated by remember { mutableStateOf(false) }
@@ -346,27 +343,6 @@ fun SettingsDialog(
                 MeasurementUnits.entries.forEach { units ->
                     FilterChip(settings.units == units, onClick = { update(settings.copy(units = units)) }, label = { Text(stringResource(if (units == MeasurementUnits.Metric) R.string.units_metric else R.string.units_imperial)) })
                 }
-                Text("Udseende")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ThemePreference.entries.forEach { theme ->
-                        FilterChip(settings.theme == theme, onClick = { update(settings.copy(theme = theme)) }, label = { Text(stringResource(when (theme) {
-                            ThemePreference.System -> R.string.theme_system
-                            ThemePreference.Light -> R.string.theme_light
-                            ThemePreference.Dark -> R.string.theme_dark
-                        })) })
-                    }
-                }
-                Text("Nattilstand")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    dk.babyapp.data.preferences.NightModePreference.entries.forEach { mode ->
-                        FilterChip(nightMode == mode, onClick = { nightMode = mode; onUpdateNightMode(mode) }, label = { Text(when (mode) {
-                            dk.babyapp.data.preferences.NightModePreference.Off -> "Fra"
-                            dk.babyapp.data.preferences.NightModePreference.On -> "Til"
-                            dk.babyapp.data.preferences.NightModePreference.Automatic -> "Automatisk"
-                        }) })
-                    }
-                }
-                Text("Varme, dæmpede farver til natlig brug. Automatisk: kl. 21–06.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = { reminderSettingsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Notifikationer") }
                 OutlinedButton(onClick = { dataManagementOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Eksport og backup") }
                 if (BuildConfig.DEBUG) {
