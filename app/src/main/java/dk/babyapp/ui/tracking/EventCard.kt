@@ -1,5 +1,7 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -42,41 +44,64 @@ import dk.babyapp.data.tracking.segmentIntervals
 import java.text.DateFormat
 import java.util.Date
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdit: () -> Unit, onDelete: () -> Unit, onResume: (() -> Unit)? = null, onMeasurements: (() -> Unit)? = null) {
     var expanded by remember(event.id) { mutableStateOf(false) }
+    var menuOpen by remember(event.id) { mutableStateOf(false) }
     LaunchedEffect(expandAll) { expandAll?.let { expanded = it } }
-    Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.padding(end = 10.dp).size(40.dp).background(MaterialTheme.babyColors.category(event.careCategory).container, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) { Text(event.icon(), style = MaterialTheme.typography.titleMedium) }
-                Column(Modifier.weight(1f)) {
-                    Text(eventTitle(event), style = MaterialTheme.typography.titleSmall)
-                    Text("${event.recordedAt()}  ·  ${event.summary()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (event.isRunning) Text("Kører nu", color = MaterialTheme.colorScheme.primary)
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val colors = MaterialTheme.babyColors.category(event.careCategory)
+    val canEdit = event.endedAt != null || event.type == CareEventType.Breastfeeding
+    val canResume = onResume != null && event.type == CareEventType.Breastfeeding && event.endedAt != null
+    androidx.compose.material3.Surface(
+        Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+    ) {
+        Box {
+            // Tap shows details; holding a registration opens Rediger and Slet.
+            Column(
+                Modifier.fillMaxWidth()
+                    .combinedClickable(onClickLabel = if (expanded) "Fold sammen" else "Vis detaljer", onLongClickLabel = "Flere valg", onClick = { expanded = !expanded }, onLongClick = {
+                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuOpen = true
+                    })
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(36.dp).background(colors.container, CircleShape), contentAlignment = Alignment.Center) { Text(event.icon(), style = MaterialTheme.typography.titleMedium) }
+                    Column(Modifier.weight(1f)) {
+                        Text(eventTitle(event), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text("${event.recordedAt()}  ·  ${event.summary()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        if (event.isRunning) Text("Kører nu", style = MaterialTheme.typography.labelMedium, color = colors.accent)
+                    }
+                    if (event.type == CareEventType.Measurement && onMeasurements != null) IconButton(onClick = onMeasurements) { Icon(Icons.Outlined.ShowChart, "Vis målegrafer") }
+                    Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (expanded) "Fold sammen" else "Vis detaljer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (event.type == CareEventType.Measurement && onMeasurements != null) IconButton(onClick = onMeasurements) { Icon(Icons.Outlined.ShowChart, "Vis målegrafer") }
-                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (expanded) "Fold sammen" else "Vis detaljer")
-            }
-            if (expanded) {
-                Text(event.details(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val recordedIntervals = event.segmentIntervals()
-                val intervals = if (recordedIntervals.isEmpty() && event.type == CareEventType.Breastfeeding) listOf(event.startedAt to event.endedAt) else recordedIntervals
-                if (intervals.isNotEmpty()) {
-                    Text("Tidsintervaller", style = MaterialTheme.typography.labelLarge)
-                    intervals.forEachIndexed { index, (start, end) ->
-                        val side = when ((if (recordedIntervals.isEmpty() && (event.leftSeconds == 0L || event.rightSeconds == 0L)) event.activeSide?.name else event.timerSegmentSides.split(';').getOrNull(index))) { "Left" -> "Venstre"; "Right" -> "Højre"; else -> "Side ikke registreret" }
-                        Text(compactInterval(start, end, anchor = event.startedAt) + if (event.type == CareEventType.Breastfeeding) (" · $side") else "", style = MaterialTheme.typography.bodySmall)
+                if (expanded) Column(Modifier.padding(start = 46.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    event.details().takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                    val recordedIntervals = event.segmentIntervals()
+                    val intervals = if (recordedIntervals.isEmpty() && event.type == CareEventType.Breastfeeding) listOf(event.startedAt to event.endedAt) else recordedIntervals
+                    if (intervals.isNotEmpty()) {
+                        Text("Tidsintervaller", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        intervals.forEachIndexed { index, (start, end) ->
+                            val side = when ((if (recordedIntervals.isEmpty() && (event.leftSeconds == 0L || event.rightSeconds == 0L)) event.activeSide?.name else event.timerSegmentSides.split(';').getOrNull(index))) { "Left" -> "Venstre"; "Right" -> "Højre"; else -> "Side ikke registreret" }
+                            Text(compactInterval(start, end, anchor = event.startedAt) + if (event.type == CareEventType.Breastfeeding) (" · $side") else "", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                        if (canResume) TextButton(onClick = { onResume?.invoke() }) { Text("Fortsæt amning") }
+                        if (canEdit) TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp)); Text(" Rediger") }
+                        TextButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Text(" Slet", color = MaterialTheme.colorScheme.error) }
                     }
                 }
-                if (onResume != null && event.type == CareEventType.Breastfeeding && event.endedAt != null) TextButton(onClick = onResume) { Text("Fortsæt amning") }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    if (event.endedAt != null || event.type == CareEventType.Breastfeeding) TextButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Rediger") }
-                    TextButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null); Text("Slet", color = MaterialTheme.colorScheme.error) }
-                }
+            }
+            androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (canEdit) androidx.compose.material3.DropdownMenuItem(text = { Text("Rediger") }, leadingIcon = { Icon(Icons.Outlined.Edit, null) }, onClick = { menuOpen = false; onEdit() })
+                if (canResume) androidx.compose.material3.DropdownMenuItem(text = { Text("Fortsæt amning") }, leadingIcon = { Icon(Icons.Outlined.PlayArrow, null) }, onClick = { menuOpen = false; onResume?.invoke() })
+                androidx.compose.material3.DropdownMenuItem(text = { Text("Slet", color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }, onClick = { menuOpen = false; onDelete() })
             }
         }
     }

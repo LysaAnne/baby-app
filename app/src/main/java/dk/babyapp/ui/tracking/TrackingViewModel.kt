@@ -194,6 +194,9 @@ class TrackingViewModel @Inject constructor(
         if (event.endedAt == null) timerNotifications.hide()
     }
 
+    /** Brings back a registration deleted moments ago (Fortryd). */
+    fun restoreCareEvent(event: CareEventEntity) = viewModelScope.launch { careEventRepository.save(event.copy(deletedAt = null)) }
+
     fun saveHealthRecord(event: CareEventEntity, onComplete: () -> Unit = {}) = viewModelScope.launch {
         careEventRepository.save(event)
         if (event.type == CareEventType.Pumping) preferencesRepository.updateLastPumpingMethod(event.pumpingMethod)

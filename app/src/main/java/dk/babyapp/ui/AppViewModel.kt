@@ -63,6 +63,9 @@ data class AppUiState(
         get() = profiles.firstOrNull { it.id == preferences.activeChildId } ?: profiles.firstOrNull()
 }
 
+/** The days of the active child's history that Journal has loaded, and whether older registrations exist. */
+data class JournalSlice(val events: List<CareEventEntity>, val hasOlder: Boolean)
+
 data class OnboardingSettings(
     val languageTag: String = "da",
     val region: DanishRegion = DanishRegion.Hovedstaden,
@@ -80,7 +83,7 @@ class AppViewModel @Inject constructor(
     profilesRepository: ChildProfileRepository,
     private val preferencesRepository: AppPreferencesRepository,
     parentRepository: ParentProfileRepository,
-    careEventRepository: CareEventRepository,
+    private val careEventRepository: CareEventRepository,
     private val timerNotifications: TimerNotificationController,
     colorProfileRepository: ColorProfileRepository,
     bookRepository: BabyBookRepository? = null,
@@ -138,6 +141,24 @@ class AppViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    // Journal starts with the last month and loads two more months each time its end comes into view.
+    private val journalDays = kotlinx.coroutines.flow.MutableStateFlow(JOURNAL_FIRST_DAYS)
+
+    init {
+        viewModelScope.launch { activeChildId.collect { journalDays.value = JOURNAL_FIRST_DAYS } }
+    }
+
+    val journal: StateFlow<JournalSlice?> = combine(activeChildId, journalDays) { id, days -> id to days }.flatMapLatest { (id, days) ->
+        if (id == null) flowOf(JournalSlice(emptyList(), hasOlder = false)) else {
+            val from = LocalDate.now().minusDays(days).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            combine(careEventRepository.recentEventsForChild(id, from), careEventRepository.oldestStart(id)) { events, oldest ->
+                JournalSlice(events, hasOlder = oldest != null && oldest < from)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun loadOlderJournal() { journalDays.value += JOURNAL_MORE_DAYS }
+
     fun completeOnboarding(
         settings: OnboardingSettings,
         onComplete: () -> Unit,
@@ -169,5 +190,7 @@ class AppViewModel @Inject constructor(
 
     private companion object {
         const val RECENT_DAYS = 35L
+        const val JOURNAL_FIRST_DAYS = 30L
+        const val JOURNAL_MORE_DAYS = 60L
     }
 }

@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, punkt 3.2 og 3.3: +-menuen og Journal (aftales først med en skitse).
+**Fase 3 – Skærmene redesignes**, punkt 3.4: Overblik → Indsigt (aftales først med en skitse).
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -19,7 +19,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
 | 2 | Designsystem | ✅ Færdig |
-| 3 | Skærmene redesignes én ad gangen | 🔄 I gang · 3.1 færdig |
+| 3 | Skærmene redesignes én ad gangen | 🔄 I gang · 3.1–3.3 færdige |
 | 4 | Nye funktioner | Venter |
 
 ## Regler, der gælder for alle faser
@@ -112,13 +112,18 @@ Aftalt ud fra skitse 2 (samme struktur, mere kompakt). Færdig:
 
 Backup af udseendet før 3.1: git-mærket `for-redesign-i-dag` og `backups/babyapp-for-redesign-i-dag-d585cba.apk`.
 
-### 3.2 +-menuen
+### 3.2 +-menuen ✅
+
+Færdig: bundark med kategorier, farvede ikoner og to knapper pr. række; kategorier med ét valg har ingen overskrift, men ikonet i knappen.
+
 - Samme indhold og funktion som i dag; kategorikortene på I dag bevares.
 - Menuen bag + får det nye design: bundark, kategorier med farvede ikoner, knapper to pr. række.
 
-### 3.3 Journal
+### 3.3 Journal ✅
+
+Færdig: ikoner i overskriften, filterchips på én linje, dagsoverskrift med dagens tal (samme felter som Dagens overblik), kompakte registreringer, hold inde for Rediger/Slet (ingen swipe), sletning uden bekræftelse men med **Fortryd**, og gradvis indlæsning (30 dage, derefter 60 dage ad gangen).
+
 - Samme struktur, mere kompakt: registreringer i samme stil som I dag.
-- Swipe for at redigere eller slette, og **fortryd** via snackbar efter sletning.
 - **Gradvis indlæsning** mens man scroller, i stedet for hele historikken på én gang (i dag ca. 600 ms med 3 års data).
 
 ### 3.4 Overblik → Indsigt

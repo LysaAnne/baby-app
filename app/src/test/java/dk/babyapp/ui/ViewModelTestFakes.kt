@@ -133,6 +133,7 @@ internal class FakeCareEventRepository : CareEventRepository {
     override fun eventsForChild(childId: String): Flow<List<CareEventEntity>> = items.map { all -> all.filter { it.childId == childId } }
     override fun recentEventsForChild(childId: String, from: Long): Flow<List<CareEventEntity>> =
         items.map { all -> all.filter { it.childId == childId && (it.startedAt >= from || it.endedAt == null || it.isDraft) } }
+    override fun oldestStart(childId: String): Flow<Long?> = items.map { all -> all.filter { it.childId == childId && it.deletedAt == null }.minOfOrNull { it.startedAt } }
     override val unfinishedEvents: Flow<List<CareEventEntity>> = items.map { all -> all.filter { it.endedAt == null && it.deletedAt == null } }
     override suspend fun unfinished() = items.value.filter { it.endedAt == null && it.deletedAt == null }
     override suspend fun sleepsOverlapping(childId: String, start: Long, end: Long) =

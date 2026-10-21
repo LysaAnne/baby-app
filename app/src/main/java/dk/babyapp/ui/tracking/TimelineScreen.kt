@@ -1,5 +1,17 @@
 package dk.babyapp.ui.tracking
 
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ViewStream
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -83,7 +95,24 @@ fun TimelineScreen(
     quickFilters: List<String> = dk.babyapp.data.preferences.AppPreferences().journalQuickFilters,
     onUpdateQuickFilters: (List<String>) -> Unit = {},
     medicines: List<dk.babyapp.data.medicine.MedicinePlan> = emptyList(),
+    onRestore: (CareEventEntity) -> Unit = {},
+    hasOlder: Boolean = false,
+    onLoadOlder: () -> Unit = {},
+    /** The whole history, read only while the measurement charts are open. */
+    history: @Composable () -> List<CareEventEntity> = { events },
 ) {
+    val snackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Deleting needs no confirmation; the snackbar offers to bring the registration straight back.
+    fun deleteWithUndo(event: CareEventEntity) {
+        onDelete(event)
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val result = snackbar.showSnackbar("${eventTitle(event)} slettet", actionLabel = "Fortryd", duration = androidx.compose.material3.SnackbarDuration.Long)
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) onRestore(event)
+        }
+    }
     var typeFilters by remember { mutableStateOf(emptySet<String>()) }
     var editQuickFilters by remember { mutableStateOf(false) }
     var resumeEvent by remember { mutableStateOf<CareEventEntity?>(null) }
@@ -97,7 +126,6 @@ fun TimelineScreen(
     var manualMeasurementType by remember { mutableStateOf(MeasurementType.Weight) }
     var addKind by remember { mutableStateOf<AddKind?>(null) }
     var editing by remember { mutableStateOf<CareEventEntity?>(null) }
-    var deleting by remember { mutableStateOf<CareEventEntity?>(null) }
     var overlapError by remember { mutableStateOf(false) }
     var selectChildError by remember { mutableStateOf(false) }
     var dayExpansion by remember(activeChildId) { mutableStateOf(emptyMap<LocalDate, Boolean>()) }
@@ -115,8 +143,18 @@ fun TimelineScreen(
     val nearestDay = groups.keys.minByOrNull { kotlin.math.abs(it.toEpochDay() - LocalDate.now().toEpochDay()) }
     val collapsedDays = groups.keys.filter { !(dayExpansion[it] ?: (it == nearestDay)) }.toSet()
 
+    // Older days are loaded when the end of the list comes into view.
+    val nearEnd by remember { androidx.compose.runtime.derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= listState.layoutInfo.totalItemsCount - 3 } ?: false } }
+    LaunchedEffect(nearEnd, hasOlder, events.size) { if (nearEnd && hasOlder) onLoadOlder() }
+
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        // Dark neutral snackbar with a light action, readable whatever the child's colours are.
+        snackbarHost = {
+            androidx.compose.material3.SnackbarHost(snackbar) { data ->
+                androidx.compose.material3.Snackbar(data, containerColor = androidx.compose.ui.graphics.Color(0xFF2E2A2C), contentColor = androidx.compose.ui.graphics.Color.White, actionColor = MaterialTheme.colorScheme.primaryContainer)
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(modifier = Modifier.padding(bottom = contentPadding.calculateBottomPadding()), onClick = { if (activeChildId != null) addMenu = true else selectChildError = true }) {
                 Icon(Icons.Outlined.Add, "Manuel registrering")
@@ -124,51 +162,67 @@ fun TimelineScreen(
         },
     ) { inner ->
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + inner.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding() + 88.dp, start = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Journal", style = MaterialTheme.typography.headlineSmall)
-
+                val allDaysExpanded = groups.isNotEmpty() && groups.keys.none { it in collapsedDays }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("Journal", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                    IconButton(enabled = groups.isNotEmpty(), onClick = { dayExpansion = groups.keys.associateWith { !allDaysExpanded } }) {
+                        Icon(if (allDaysExpanded) Icons.Outlined.UnfoldLess else Icons.Outlined.UnfoldMore, if (allDaysExpanded) "Kollaps datoer" else "Udfold datoer")
+                    }
+                    IconButton(enabled = groups.isNotEmpty(), onClick = { expandAllRecords = expandAllRecords != true; if (expandAllRecords == true) dayExpansion = groups.keys.associateWith { true } }) {
+                        Icon(if (expandAllRecords == true) Icons.Outlined.ViewAgenda else Icons.Outlined.ViewStream, if (expandAllRecords == true) "Kollaps registreringer" else "Udfold registreringer")
+                    }
+                    IconButton(onClick = { filtersOpen = true }) {
+                        androidx.compose.material3.BadgedBox(badge = { val extra = typeFilters.count { it !in quickFilters }; if (extra > 0) androidx.compose.material3.Badge { Text("$extra") } }) {
+                            Icon(Icons.Outlined.FilterList, "Flere filtre")
+                        }
+                    }
                 }
             }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val allDaysExpanded = groups.isNotEmpty() && groups.keys.none { it in collapsedDays }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        androidx.compose.material3.FilledTonalButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp), enabled = groups.isNotEmpty(), onClick = { dayExpansion = groups.keys.associateWith { !allDaysExpanded } }) {
-                            Text(if (allDaysExpanded) "Kollaps datoer" else "Udfold datoer", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                        }
-                        androidx.compose.material3.FilledTonalButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp), enabled = groups.isNotEmpty(), onClick = { expandAllRecords = expandAllRecords != true; if (expandAllRecords == true) dayExpansion = groups.keys.associateWith { true } }) {
-                            Text(if (expandAllRecords == true) "Kollaps registreringer" else "Udfold registreringer", style = MaterialTheme.typography.labelSmall, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                        }
+                // Quick filters on one line; "Fjern filtre" clears every filter, also those set under Flere filtre.
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    quickFilters.forEach { label ->
+                        FilterChip(label in typeFilters, { typeFilters = if (label in typeFilters) typeFilters - label else typeFilters + label }, { Text(journalFilterLabel(label), style = MaterialTheme.typography.labelLarge) })
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        quickFilters.forEach { label ->
-                            FilterChip(label in typeFilters, { typeFilters = if (label in typeFilters) typeFilters - label else typeFilters + label },
-                                { Text(journalFilterLabel(label), style = MaterialTheme.typography.labelSmall, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }, modifier = Modifier.weight(1f), colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, labelColor = MaterialTheme.colorScheme.onSecondaryContainer, selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary))
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        androidx.compose.material3.FilledTonalButton(modifier = Modifier.weight(1f), onClick = { filtersOpen = true }) { Text("Flere filtre", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
-                        androidx.compose.material3.FilledTonalButton(modifier = Modifier.weight(1f), enabled = typeFilters.isNotEmpty(), onClick = { typeFilters = emptySet() }) { Text("Fjern filtre", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
-                    }
+                    androidx.compose.material3.AssistChip(onClick = { typeFilters = emptySet() }, enabled = typeFilters.isNotEmpty(), label = { Text("Fjern filtre", style = MaterialTheme.typography.labelLarge) }, leadingIcon = { Icon(Icons.Outlined.Close, null, Modifier.size(16.dp)) })
                 }
             }
             if (groups.isEmpty()) item { BabyEmptyState(Icons.Outlined.History, "Ingen registreringer fundet", "Prøv at nulstille filtrene, eller tilføj en ny registrering.") }
             groups.forEach { (date, dayEvents) ->
                 item(key = "day-$date") {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(0.dp), onClick = { dayExpansion = dayExpansion + (date to (date in collapsedDays)) }) {
-                            Text("${if (date !in collapsedDays) "▾" else "▸"} ${date.format(DateTimeFormatter.ofPattern("EEE d. MMM yyyy"))}", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                    val expanded = date !in collapsedDays
+                    Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Row(
+                                Modifier.weight(1f).heightIn(min = 40.dp).clickable(onClickLabel = if (expanded) "Fold dagen sammen" else "Fold dagen ud") { dayExpansion = dayExpansion + (date to !expanded) },
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(if (expanded) Icons.Outlined.ExpandMore else Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Text(date.format(DateTimeFormatter.ofPattern("EEEE d. MMM yyyy", java.util.Locale.forLanguageTag("da"))).replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                                if (!expanded) Text("· ${dayEvents.size} reg.", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = { overviewDate = date }) { Icon(Icons.Outlined.BarChart, "Opsummer dag", tint = MaterialTheme.colorScheme.primary) }
                         }
-                        TextButton(onClick = { overviewDate = date }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) { Text("Opsummer dag", style = MaterialTheme.typography.labelSmall) }
+                        if (expanded) journalDayLine(dayEvents, dashboardMetrics)?.let { line ->
+                            Text(line, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 26.dp, bottom = 2.dp))
+                        }
                     }
                 }
                 if (date !in collapsedDays) items(dayEvents, key = { it.id }) { event ->
-                    EventCard(event, onMeasurements = { chartsOpen = true }, expandAll = expandAllRecords, onEdit = { editing = event }, onDelete = { deleting = event }, onResume = { resumeEvent = event })
+                    EventCard(event, onMeasurements = { chartsOpen = true }, expandAll = expandAllRecords, onEdit = { editing = event }, onDelete = { deleteWithUndo(event) }, onResume = { resumeEvent = event })
                 }
+            }
+            if (groups.isNotEmpty() || hasOlder) item(key = "end") {
+                Text(
+                    if (hasOlder) "Henter ældre registreringer …" else "Ikke flere registreringer",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
         }
     }
@@ -205,7 +259,7 @@ fun TimelineScreen(
     if (editQuickFilters) JournalQuickFiltersDialog(quickFilters, { editQuickFilters = false; filtersOpen = true }) {
         onUpdateQuickFilters(it); editQuickFilters = false; filtersOpen = true
     }
-    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(events, activeChildId, chartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
+    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(history(), activeChildId, chartSettings, onUpdateMeasurementChartSettings) { chartsOpen = false }
     if (addMenu) ManualRegistrationMenu(
         listOf("Amning" to AddKind.Breastfeeding, "Flaske" to AddKind.Bottle, "Pumpning" to AddKind.Pumping,
             "Ble" to AddKind.Diaper, "Søvn" to AddKind.Sleep, "Vægt" to AddKind.Measurement, "Højde" to AddKind.Measurement, "Hovedomkreds" to AddKind.Measurement, "Temperatur" to AddKind.Measurement, "Fast føde" to AddKind.SolidFood,
@@ -242,12 +296,6 @@ fun TimelineScreen(
             onUpdate(updated) { success -> overlapError = !success; if (success) editing = null }
         }
     }
-    deleting?.let { event -> AlertDialog(
-        onDismissRequest = { deleting = null }, title = { Text("Slet registrering?") },
-        text = { Text("Registreringen fjernes fra journalen, men bevares internt.") },
-        confirmButton = { Button(onClick = { onDelete(event); deleting = null }) { Text("Slet") } },
-        dismissButton = { TextButton(onClick = { deleting = null }) { Text("Annuller") } },
-    ) }
     if (overlapError) AlertDialog(
         onDismissRequest = { overlapError = false }, title = { Text("Registreringen kunne ikke gemmes") },
         text = { Text("Søvntider må ikke overlappe. Hvis ammetimeren er ændret imens, skal du lukke redigeringen og åbne den igen.") },
@@ -277,4 +325,24 @@ private fun JournalQuickFiltersDialog(current: List<String>, onDismiss: () -> Un
             }
         }
     }, confirmButton = { Button(onClick = { onSave(selected) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+}
+
+/** The day's totals for the fields chosen in Dagens overblik, e.g. "4 madninger · 105 ml · 3 bleer · 9 t 15 m søvn". */
+internal fun journalDayLine(events: List<CareEventEntity>, metrics: List<dk.babyapp.data.preferences.DashboardMetric>): String? {
+    fun minutes(seconds: Long) = (seconds / 60).let { if (it >= 60) "${it / 60} t ${it % 60} m" else "$it m" }
+    val parts = metrics.mapNotNull { metric ->
+        when (metric) {
+            dk.babyapp.data.preferences.DashboardMetric.Feeding -> {
+                val feeds = events.filter { it.type == CareEventType.Breastfeeding || it.type == CareEventType.Bottle }
+                val ml = events.filter { it.type == CareEventType.Bottle }.sumOf { it.amountConsumedMl ?: 0 }
+                feeds.size.takeIf { it > 0 }?.let { n -> listOfNotNull("$n ${if (n == 1) "madning" else "madninger"}", "$ml ml".takeIf { ml > 0 }).joinToString(" · ") }
+            }
+            dk.babyapp.data.preferences.DashboardMetric.Diapers -> events.count { it.type == CareEventType.Diaper }.takeIf { it > 0 }?.let { "$it ${if (it == 1) "ble" else "bleer"}" }
+            dk.babyapp.data.preferences.DashboardMetric.Sleep -> events.filter { it.type == CareEventType.Sleep }.sumOf { it.elapsedSeconds() }.takeIf { it > 0 }?.let { "${minutes(it)} søvn" }
+            dk.babyapp.data.preferences.DashboardMetric.TummyTime -> events.filter { it.activityType == ActivityType.TummyTime }.sumOf { it.activityDurationSeconds ?: it.elapsedSeconds() }.takeIf { it > 0 }?.let { "${minutes(it)} mavetid" }
+            dk.babyapp.data.preferences.DashboardMetric.Pumping -> events.filter { it.type == CareEventType.Pumping }.sumOf { it.pumpedAmountMl ?: 0 }.takeIf { it > 0 }?.let { "$it ml pumpet" }
+            else -> null
+        }
+    }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }

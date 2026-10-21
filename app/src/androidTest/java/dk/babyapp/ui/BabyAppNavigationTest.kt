@@ -1,5 +1,8 @@
 package dk.babyapp.ui
 
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -53,6 +56,29 @@ class BabyAppNavigationTest {
         }
     }
 
+    @Test fun journalDeletesWithUndoAndOffersEditAndDeleteOnLongPress() {
+        val child = ChildProfile(id = "child", name = "Freja")
+        val now = System.currentTimeMillis()
+        val diaper = dk.babyapp.data.tracking.CareEventEntity(id = "diaper", childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Diaper, startedAt = now, endedAt = now, diaperType = dk.babyapp.data.tracking.DiaperType.Wet)
+        var events by mutableStateOf(listOf(diaper))
+        var restored: String? = null
+        composeRule.setContent {
+            BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" },
+                preferences = AppPreferences(hasSeenGettingStarted = true), careEvents = events,
+                onDeleteCareEvent = { deleted -> events = events.filterNot { it.id == deleted.id } },
+                onRestoreCareEvent = { back -> restored = back.id; events = events + back })
+        }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(isSelectable()).onFirst().performClick()
+        composeRule.onNodeWithText("Ble – Våd").performTouchInput { longClick() }
+        composeRule.onNodeWithText("Rediger").assertIsDisplayed()
+        composeRule.onNodeWithText("Slet").performClick()
+        composeRule.onNodeWithText("Ble – Våd").assertDoesNotExist()
+        composeRule.onNodeWithText("Fortryd").performClick()
+        composeRule.runOnIdle { org.junit.Assert.assertEquals("diaper", restored) }
+        composeRule.onNodeWithText("Ble – Våd").assertExists()
+    }
+
     @Test fun historyIsOnlyLoadedForScreensThatShowIt() {
         val child = ChildProfile(id = "child", name = "Freja")
         val now = System.currentTimeMillis()
@@ -62,7 +88,8 @@ class BabyAppNavigationTest {
         composeRule.setContent {
             BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" },
                 preferences = AppPreferences(hasSeenGettingStarted = true), careEvents = listOf(recent), recentFrom = java.time.LocalDate.now().minusDays(1),
-                childHistory = { historyCollected = true; listOf(recent, older) })
+                childHistory = { historyCollected = true; listOf(recent, older) },
+                journal = { dk.babyapp.ui.JournalSlice(listOf(recent, older), hasOlder = false) })
         }
         composeRule.waitForIdle()
         composeRule.runOnIdle { org.junit.Assert.assertFalse(historyCollected) }
@@ -72,8 +99,8 @@ class BabyAppNavigationTest {
         composeRule.runOnIdle { org.junit.Assert.assertTrue(historyCollected) }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(isSelectable()).onFirst().performClick()
-        composeRule.onNodeWithText("Udfold datoer").performClick()
-        composeRule.onNodeWithText("Udfold registreringer").performClick()
+        composeRule.onNodeWithContentDescription("Udfold datoer").performClick()
+        composeRule.onNodeWithContentDescription("Udfold registreringer").performClick()
         composeRule.onAllNodesWithText("Fra historikken", substring = true).onFirst().assertExists()
     }
 
@@ -161,9 +188,9 @@ class BabyAppNavigationTest {
         composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(isSelectable()).onFirst().performClick()
         composeRule.onAllNodesWithContentDescription("Vis detaljer").assertCountEquals(1)
         composeRule.onNodeWithText("Rediger").assertDoesNotExist()
-        composeRule.onNodeWithText("Udfold datoer").performClick()
+        composeRule.onNodeWithContentDescription("Udfold datoer").performClick()
         composeRule.onAllNodesWithContentDescription("Vis detaljer").assertCountEquals(2)
-        composeRule.onNodeWithText("Kollaps datoer").performClick()
+        composeRule.onNodeWithContentDescription("Kollaps datoer").performClick()
         composeRule.onAllNodesWithContentDescription("Vis detaljer").assertCountEquals(0)
         composeRule.onNodeWithText("Fjern filtre").assertIsNotEnabled()
     }
@@ -260,7 +287,7 @@ class BabyAppNavigationTest {
         composeRule.onNodeWithText("0 ml").assertExists()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(hasClickAction()).onFirst().performClick()
-        composeRule.onNodeWithText("Opsummer dag").performClick()
+        composeRule.onNodeWithContentDescription("Opsummer dag").performClick()
         // Total and bottle-content subtotal both show the same amount.
         composeRule.onAllNodesWithText("125 ml spist").assertCountEquals(2)
     }

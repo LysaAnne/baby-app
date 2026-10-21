@@ -104,6 +104,10 @@ fun BabyAppNavigation(
     recentFrom: LocalDate? = null,
     /** The active child's whole history. Only called by screens that show history, so it is loaded only there. */
     childHistory: @Composable () -> List<CareEventEntity> = { careEvents },
+    /** The part of the history Journal has loaded; it grows with [onLoadOlderJournal]. */
+    journal: @Composable () -> dk.babyapp.ui.JournalSlice = { dk.babyapp.ui.JournalSlice(careEvents, hasOlder = false) },
+    onLoadOlderJournal: () -> Unit = {},
+    onRestoreCareEvent: (CareEventEntity) -> Unit = {},
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
     colorProfiles: List<ColorProfile> = emptyList(),
@@ -318,6 +322,7 @@ fun BabyAppNavigation(
                 }
             }
             composable<AppDestination.Timeline> {
+                val journalSlice = journal()
                 TimelineScreen(
                     chartSettings = preferences.measurementChartSettings,
                     onUpdateMeasurementChartSettings = onUpdateMeasurementChartSettings,
@@ -328,7 +333,11 @@ fun BabyAppNavigation(
                     onUpdateQuickFilters = onUpdateJournalQuickFilters,
                     activeChildId = activeChild?.id,
                     medicines = medicines,
-                    events = visible(childHistory()),
+                    events = journalSlice.events.let(::visible),
+                    hasOlder = journalSlice.hasOlder,
+                    onLoadOlder = onLoadOlderJournal,
+                    onRestore = onRestoreCareEvent,
+                    history = childHistory,
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     contentPadding = contentPadding,
                     onAddSleep = onAddSleep,

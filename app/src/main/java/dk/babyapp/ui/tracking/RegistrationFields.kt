@@ -1,5 +1,12 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import dk.babyapp.ui.theme.careCategory
+import dk.babyapp.data.preferences.orderedQuickActionCategories
+import dk.babyapp.data.preferences.QuickActionCategory
 import dk.babyapp.ui.theme.babyColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -32,30 +39,61 @@ internal fun RegistrationTextField(value: String, onValueChange: (String) -> Uni
         })
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun ManualRegistrationMenu(options: List<Pair<String, () -> Unit>>, onDismiss: () -> Unit) {
     fun category(label: String) = when (label) {
-        "Amning", "Flaske", "Pumpning" -> "Madning"
-        "Ble" -> "Ble"
-        "Søvn" -> "Søvn"
-        "Mål", "Vægt", "Højde", "Hovedomkreds", "Temperatur" -> "Mål"
-        "Fast føde" -> "Fast føde"
-        "Diverse", "Mavetid", "Bad", "Leg", "Udetid", "Andet" -> "Diverse"
-        else -> "Sundhed"
+        "Amning", "Flaske", "Pumpning" -> QuickActionCategory.Feeding
+        "Ble" -> QuickActionCategory.Diaper
+        "Søvn" -> QuickActionCategory.Sleep
+        "Mål", "Vægt", "Højde", "Hovedomkreds", "Temperatur" -> QuickActionCategory.Measurements
+        "Fast føde" -> QuickActionCategory.SolidFood
+        "Diverse", "Mavetid", "Bad", "Leg", "Udetid", "Andet" -> QuickActionCategory.Misc
+        else -> QuickActionCategory.Health
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Manuel registrering") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            dk.babyapp.data.preferences.orderedQuickActionCategories(emptyList()).forEach { title ->
-                val items = options.filter { category(it.first) == title.label }
-                if (items.isNotEmpty()) OutlinedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(title.label, style = MaterialTheme.typography.titleMedium)
-                        items.forEach { (label, select) -> FilledTonalButton(onClick = select, modifier = Modifier.fillMaxWidth()) { Text(label) } }
+    val groups = orderedQuickActionCategories(emptyList()).map { it to options.filter { option -> category(option.first) == it } }.filter { it.second.isNotEmpty() }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Manuel registrering", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 4.dp))
+            // A category with one choice gets no heading of its own (a heading "Ble" over a button "Ble" reads oddly);
+            // its button carries the category icon instead, and such buttons share rows.
+            val singles = mutableListOf<Pair<QuickActionCategory, Pair<String, () -> Unit>>>()
+            @Composable fun flushSingles() {
+                if (singles.isEmpty()) return
+                val rows = singles.toList().chunked(2)
+                singles.clear()
+                Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    rows.forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            row.forEach { (group, option) ->
+                                FilledTonalButton(onClick = option.second, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                    Icon(group.careCategory.icon, contentDescription = null, tint = MaterialTheme.babyColors.category(group.careCategory).accent, modifier = Modifier.size(18.dp))
+                                    Text(" " + option.first, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                                }
+                            }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
+            groups.forEach { (group, items) ->
+                if (items.size == 1) singles += group to items.single() else {
+                    flushSingles()
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(group.careCategory.icon, contentDescription = null, tint = MaterialTheme.babyColors.category(group.careCategory).accent, modifier = Modifier.size(20.dp))
+                        Text(group.label, style = MaterialTheme.typography.titleSmall)
+                    }
+                    items.chunked(2).forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            row.forEach { (label, select) -> QuickButton(label, Modifier.weight(1f), onClick = select) }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+            flushSingles()
         }
-    }, confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text("Luk") } })
+    }
 }
 
 internal fun manualActivityTypeFor(label: String): dk.babyapp.data.tracking.ActivityType =

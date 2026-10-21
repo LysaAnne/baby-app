@@ -21,6 +21,10 @@ interface CareEventDao {
     @Query("SELECT * FROM care_events WHERE endedAt IS NULL AND deletedAt IS NULL ORDER BY startedAt DESC")
     fun observeUnfinished(): Flow<List<CareEventEntity>>
 
+    /** When the child's oldest registration started, or null when there is none. */
+    @Query("SELECT MIN(startedAt) FROM care_events WHERE childId = :childId AND deletedAt IS NULL")
+    fun observeOldestStart(childId: String): Flow<Long?>
+
     @Query("SELECT * FROM care_events WHERE endedAt IS NULL AND deletedAt IS NULL")
     suspend fun unfinished(): List<CareEventEntity>
 

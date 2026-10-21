@@ -12,6 +12,7 @@ interface CareEventRepository {
     fun eventsForChild(childId: String): Flow<List<CareEventEntity>>
     /** Registrations started at or after [from] plus unfinished timers and drafts. */
     fun recentEventsForChild(childId: String, from: Long): Flow<List<CareEventEntity>>
+    fun oldestStart(childId: String): Flow<Long?>
     /** Started timers of every child, newest first. */
     val unfinishedEvents: Flow<List<CareEventEntity>>
     suspend fun unfinished(): List<CareEventEntity>
@@ -27,6 +28,7 @@ class DefaultCareEventRepository @Inject constructor(
 ) : CareEventRepository {
     override fun eventsForChild(childId: String) = dao.observeForChild(childId)
     override fun recentEventsForChild(childId: String, from: Long) = dao.observeRecentForChild(childId, from)
+    override fun oldestStart(childId: String) = dao.observeOldestStart(childId)
     override val unfinishedEvents = dao.observeUnfinished()
     override suspend fun unfinished() = dao.unfinished()
     override suspend fun sleepsOverlapping(childId: String, start: Long, end: Long) = dao.sleepsOverlapping(childId, start, end)

@@ -116,4 +116,27 @@ class AppViewModelTest {
         history.cancel()
         collector.cancel()
     }
+
+    @Test
+    fun `journal loads whole days from the last month and more on request`() = runTest(dispatcher) {
+        val alma = ChildProfile(name = "Alma", birthDate = java.time.LocalDate.of(2024, 1, 1))
+        val now = System.currentTimeMillis()
+        val day = 86_400_000L
+        val events = FakeCareEventRepository().also { repo ->
+            repo.items.value = listOf(10L, 40L, 200L).map { daysAgo ->
+                CareEventEntity(id = "d$daysAgo", childId = alma.id, type = CareEventType.Diaper, startedAt = now - daysAgo * day, endedAt = now - daysAgo * day)
+            }
+        }
+        val viewModel = AppViewModel(FakeProfilesRepository(listOf(alma)), FakePreferencesRepository(AppPreferences(true, alma.id)), FakeParentRepository(), events, FakeTimerNotifications(), FakeColorProfileRepository())
+        val collector = launch { viewModel.journal.collect {} }
+        advanceUntilIdle()
+        assertEquals(listOf("d10"), viewModel.journal.value?.events?.map { it.id })
+        assertEquals(true, viewModel.journal.value?.hasOlder)
+        viewModel.loadOlderJournal(); advanceUntilIdle()
+        assertEquals(setOf("d10", "d40"), viewModel.journal.value?.events?.map { it.id }?.toSet())
+        repeat(2) { viewModel.loadOlderJournal() }; advanceUntilIdle()
+        assertEquals(3, viewModel.journal.value?.events?.size)
+        assertEquals(false, viewModel.journal.value?.hasOlder)
+        collector.cancel()
+    }
 }
