@@ -102,7 +102,8 @@ internal fun manualActivityTypeFor(label: String): dk.babyapp.data.tracking.Acti
 
 @Composable
 internal fun WeightUnitSelector(unit: String, value: String, onChange: (String, String) -> Unit) {
-    SelectionDropdown("Enhed", if (unit == "g") "Gram" else "Kg", listOf("g" to "Gram", "kg" to "Kg")) { selected ->
+    ChoiceChips(listOf("g" to "Gram", "kg" to "Kg"), unit) { picked ->
+        val selected = picked ?: return@ChoiceChips
         val converted = value.toDoubleOrNull()?.let { amount ->
             val result = if (unit == selected) amount else if (selected == "g") amount * 1000 else amount / 1000
             java.math.BigDecimal.valueOf(result).stripTrailingZeros().toPlainString()

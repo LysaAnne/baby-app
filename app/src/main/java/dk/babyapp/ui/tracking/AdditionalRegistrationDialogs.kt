@@ -26,8 +26,8 @@ import dk.babyapp.data.tracking.CareEventType
 
 @Composable
 internal fun DiaperObservationField(value: String, onChange: (String) -> Unit) {
-    val options = listOf("", "Rød numse", "Irriteret hud", "Udslæt", "Sår på huden", "Andet")
-    SelectionDropdown("Observation", value.ifBlank { "Ingen observation" }, (options + listOfNotNull(value.takeIf { it.isNotBlank() && it !in options })).map { it to it.ifBlank { "Ingen observation" } }, onChange)
+    val options = listOf("Rød numse", "Irriteret hud", "Udslæt", "Sår på huden", "Andet")
+    ChoiceChips((options + listOfNotNull(value.takeIf { it.isNotBlank() && it !in options })).map { it to it }, value.ifBlank { null }, allowNone = true, label = "Observation") { onChange(it.orEmpty()) }
     if (value == "Andet") Text("Beskriv observationen i Noter.", style = MaterialTheme.typography.bodySmall)
 }
 
@@ -37,16 +37,16 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Registrer pumpning") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Pumpning") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DateTimeFields(time) { time = it }
-            SelectionDropdown("Pumpetype", method.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { method = it }
-            RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            AmountField(amount, { amount = it }, "Pumpet (ml)")
+            PumpingMethodChips(method) { method = it }
+            MoreDetails("noter") { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
         }
     }, confirmButton = { Button(enabled = amount.isBlank() || amount.toIntOrNull() != null, onClick = {
         onSave(CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = time, endedAt = time, pumpedAmountMl = amount.toIntOrNull(), pumpingMethod = method, notes = notes))
-    }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
@@ -68,23 +68,27 @@ internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.d
                 }
             }
         }
-    }, confirmButton = { Button(onClick = { onSave(selectedHidden, selectedOrder) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+    }, confirmButton = { Button(onClick = { onSave(selectedHidden, selectedOrder) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
 internal fun SolidFoodDialog(childId: String, existing: CareEventEntity?, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
     val now = remember { System.currentTimeMillis() }
     var draft by remember { mutableStateOf(existing ?: CareEventEntity(childId = childId, type = CareEventType.SolidFood, startedAt = now, endedAt = now)) }
-    FormDialog(category = dk.babyapp.ui.theme.CareCategory.SolidFood, onDismissRequest = onDismiss, title = { Text(if (existing == null) "Registrér fast føde" else "Rediger fast føde") }, text = {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.SolidFood, onDismissRequest = onDismiss, title = { Text(if (existing == null) "Fast føde" else "Rediger fast føde") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DateAndOptionalTimeFields(draft.startedAt, draft.timeSpecified, { draft = draft.copy(startedAt = it, endedAt = it) }, { draft = draft.copy(timeSpecified = it) })
             RegistrationTextField(draft.foodName, { draft = draft.copy(foodName = it) }, label = { Text("Mad / ingredienser *") })
-            SelectionDropdown("Konsistens", draft.foodTexture.ifBlank { "Vælg" }, listOf("Smagsprøve", "Grød", "Fin mos", "Grov mos", "Bløde stykker / fingermad", "Familiemad", "Andet").map { it to it }) { draft = draft.copy(foodTexture = it) }
-            RegistrationTextField(draft.foodAmount, { draft = draft.copy(foodAmount = it) }, label = { Text("Spist mængde, fx 3 tsk eller 40 g") })
-            SelectionDropdown("Oplevelse / reaktion", draft.foodReaction.ifBlank { "Ikke angivet" }, listOf("Ikke angivet", "Spiste med appetit", "Smagte lidt", "Afviste maden", "Gylp / opkast", "Hudreaktion", "Andet").map { it to it }) { draft = draft.copy(foodReaction = it) }
-            RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter, fx nye ingredienser") })
+            val textures = listOf("Smagsprøve", "Grød", "Fin mos", "Grov mos", "Bløde stykker / fingermad", "Familiemad", "Andet")
+            ChoiceChips((textures + listOfNotNull(draft.foodTexture.takeIf { it.isNotBlank() && it !in textures })).map { it to it }, draft.foodTexture.ifBlank { null }, allowNone = true, label = "Konsistens") { draft = draft.copy(foodTexture = it.orEmpty()) }
+            DateAndOptionalTimeFields(draft.startedAt, draft.timeSpecified, { draft = draft.copy(startedAt = it, endedAt = it) }, { draft = draft.copy(timeSpecified = it) })
+            MoreDetails("mængde, reaktion, noter", listOf(draft.foodAmount, draft.foodReaction, draft.notes).any(String::isNotBlank)) {
+                RegistrationTextField(draft.foodAmount, { draft = draft.copy(foodAmount = it) }, label = { Text("Spist mængde, fx 3 tsk eller 40 g") })
+                val reactions = listOf("Spiste med appetit", "Smagte lidt", "Afviste maden", "Gylp / opkast", "Hudreaktion", "Andet")
+                ChoiceChips((reactions + listOfNotNull(draft.foodReaction.takeIf { it.isNotBlank() && it != "Ikke angivet" && it !in reactions })).map { it to it }, draft.foodReaction.takeIf { it.isNotBlank() && it != "Ikke angivet" }, allowNone = true, label = "Oplevelse / reaktion") { draft = draft.copy(foodReaction = it.orEmpty()) }
+                RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter, fx nye ingredienser") })
+            }
         }
-    }, confirmButton = { Button(enabled = draft.foodName.isNotBlank(), onClick = { onSave(draft.copy(foodName = draft.foodName.trim())) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+    }, confirmButton = { Button(enabled = draft.foodName.isNotBlank(), onClick = { onSave(draft.copy(foodName = draft.foodName.trim())) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
@@ -111,4 +115,10 @@ internal fun BottleRatioField(value: String, onChange: (String) -> Unit) {
 @Composable
 internal fun CustomizationIconButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
     FilledTonalIconButton(onClick = onClick, enabled = enabled) { Icon(icon, contentDescription = label) }
+}
+
+/** Pumping method as chips; "" means not given. */
+@Composable
+internal fun PumpingMethodChips(value: String, onChange: (String) -> Unit) {
+    ChoiceChips(listOf("Hånd", "Maskine", "Manuel pumpe").map { it to it }, value.ifBlank { null }, allowNone = true, label = "Pumpetype") { onChange(it.orEmpty()) }
 }

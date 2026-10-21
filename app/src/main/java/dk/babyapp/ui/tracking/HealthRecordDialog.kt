@@ -76,70 +76,10 @@ fun HealthRecordDialog(
     var reactions by remember { mutableStateOf(existing?.reactionNotes.orEmpty()) }
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     var officialKey by remember { mutableStateOf(existing?.officialScheduleKey) }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                FormHeader(if (vaccination) "Registrér vaccination" else "Registrér sundhedsbesøg", dk.babyapp.ui.theme.CareCategory.Health)
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Dette er dine egne noter og ikke en officiel sundhedsjournal.")
-            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
-            SelectionDropdown("Status *", status.displayLabel(), HealthRecordStatus.entries.map { it to it.displayLabel() }) { status = it }
-            if (vaccination) {
-                val selectedTemplate = danishVaccinationTemplates.firstOrNull { it.key == officialKey }
-                SelectionDropdown(
-                    "Dansk vaccinationsprogram",
-                    selectedTemplate?.title ?: "Ingen standardskabelon",
-                    listOf<String?>(null).map { it to "Ingen standardskabelon" } + danishVaccinationTemplates.map { it.key as String? to it.title },
-                ) { key ->
-                    officialKey = key
-                    danishVaccinationTemplates.firstOrNull { it.key == key }?.let { template -> vaccine = template.vaccineName; dose = template.dose }
-                }
-                RegistrationTextField(vaccine, { vaccine = it }, label = { Text("Vaccine *") })
-                RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
-                RegistrationTextField(batch, { batch = it }, label = { Text("Batchnummer") })
-                RegistrationTextField(site, { site = it }, label = { Text("Injektionssted") })
-                RegistrationTextField(reactions, { reactions = it }, label = { Text("Reaktioner") })
-            } else {
-                val selectedTemplate = danishPreventiveExaminationTemplates.firstOrNull { it.key == officialKey }
-                SelectionDropdown(
-                    "Forebyggende børneundersøgelse",
-                    selectedTemplate?.title ?: "Ingen standardskabelon",
-                    listOf<String?>(null).map { it to "Ingen standardskabelon" } + danishPreventiveExaminationTemplates.map { it.key as String? to it.title },
-                ) { key ->
-                    officialKey = key
-                    danishPreventiveExaminationTemplates.firstOrNull { it.key == key }?.let { template -> title = template.title; visitType = HealthVisitType.PreventiveExam }
-                }
-                SelectionDropdown("Besøgstype *", visitType.displayLabel(), HealthVisitType.entries.map { it to it.displayLabel() }) { visitType = it }
-                if (providers.isNotEmpty()) {
-                    SelectionDropdown(
-                        "Registreret behandler",
-                        providers.firstOrNull { it.id == providerId }?.name ?: "Ingen valgt",
-                        listOf<String?>(null).map { it to "Ingen valgt" } + providers.map { it.id as String? to it.name },
-                    ) { id -> providerId = id; providerName = providers.firstOrNull { it.id == id }?.name.orEmpty() }
-                }
-                RegistrationTextField(providerName, { providerName = it; providerId = null }, label = { Text("Behandler") })
-                RegistrationTextField(title, { title = it }, label = { Text("Titel") })
-                RegistrationTextField(reason, { reason = it }, label = { Text("Årsag til besøget") })
-                RegistrationTextField(observations, { observations = it }, label = { Text("Observationer og målinger") })
-                RegistrationTextField(advice, { advice = it }, label = { Text("Råd og aftaler") })
-                if (childQuestions.isNotEmpty()) {
-                    Text("Dine spørgsmål", style = MaterialTheme.typography.titleSmall)
-                    childQuestions.forEach { question ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(question.id in attach, { on -> attach = if (on) attach + question.id else attach - question.id })
-                            Text(question.text, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                    Text("De afkrydsede spørgsmål gemmes på besøget og fjernes fra listen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                RegistrationTextField(questions, { questions = it }, label = { Text("Spørgsmål") })
-                RegistrationTextField(followUp, { followUp = it }, label = { Text("Opfølgning") })
-            }
-            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.OutlinedButton(onClick = onDismiss) { Text("Annuller") }
-                    Button(enabled = !vaccination || vaccine.isNotBlank(), onClick = {
+    // The essentials first; everything else is folded away and opens by itself when it has content.
+    FormScreen(if (vaccination) "Vaccination" else "Sundhedsbesøg", dk.babyapp.ui.theme.CareCategory.Health, onDismiss, footer = {
+        TextButton(onClick = onDismiss) { Text("Annuller") }
+        Button(enabled = !vaccination || vaccine.isNotBlank(), onClick = {
                         if (!vaccination) childQuestions.filter { it.id in attach }.takeIf { it.isNotEmpty() }?.let(onQuestionsAttached)
                         onSave((existing ?: CareEventEntity(childId = childId, type = if (vaccination) CareEventType.Vaccination else CareEventType.HealthVisit, startedAt = time, endedAt = time)).copy(
                             startedAt = time, endedAt = time, healthStatus = status, healthVisitType = if (vaccination) null else visitType,
@@ -149,9 +89,76 @@ fun HealthRecordDialog(
                             reactionNotes = reactions, notes = notes, officialScheduleKey = officialKey, timeSpecified = timeSpecified,
                         ))
                     }) { Text("Gem") }
+    }) {
+        if (vaccination) {
+            val selectedTemplate = danishVaccinationTemplates.firstOrNull { it.key == officialKey }
+            SelectionDropdown(
+                "Fra programmet",
+                selectedTemplate?.let { "${it.title} · ${it.dose.lowercase()}" } ?: "Ingen – udfyld selv",
+                listOf<String?>(null).map { it to "Ingen – udfyld selv" } + danishVaccinationTemplates.map { it.key as String? to "${it.title} · ${it.dose.lowercase()}" },
+            ) { key ->
+                officialKey = key
+                danishVaccinationTemplates.firstOrNull { it.key == key }?.let { template -> vaccine = template.vaccineName; dose = template.dose }
+            }
+            if (selectedTemplate == null) {
+                RegistrationTextField(vaccine, { vaccine = it }, label = { Text("Vaccine *") })
+                RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
+            }
+            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
+            ChoiceChips(HealthRecordStatus.entries.map { it to it.displayLabel() }, status, label = "Status") { it?.let { status = it } }
+            MoreDetails("batch, injektionssted, reaktioner, noter", listOf(batch, site, reactions, notes).any(String::isNotBlank)) {
+                if (selectedTemplate != null) {
+                    RegistrationTextField(vaccine, { vaccine = it }, label = { Text("Vaccine *") })
+                    RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
                 }
+                RegistrationTextField(batch, { batch = it }, label = { Text("Batchnummer") })
+                RegistrationTextField(site, { site = it }, label = { Text("Injektionssted") })
+                RegistrationTextField(reactions, { reactions = it }, label = { Text("Reaktioner") })
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            }
+        } else {
+            val selectedTemplate = danishPreventiveExaminationTemplates.firstOrNull { it.key == officialKey }
+            SelectionDropdown(
+                "Børneundersøgelse",
+                selectedTemplate?.title ?: "Ingen – andet besøg",
+                listOf<String?>(null).map { it to "Ingen – andet besøg" } + danishPreventiveExaminationTemplates.map { it.key as String? to it.title },
+            ) { key ->
+                officialKey = key
+                danishPreventiveExaminationTemplates.firstOrNull { it.key == key }?.let { template -> title = template.title; visitType = HealthVisitType.PreventiveExam }
+            }
+            if (selectedTemplate == null) ChoiceChips(HealthVisitType.entries.map { it to it.displayLabel() }, visitType, label = "Besøgstype") { it?.let { visitType = it } }
+            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
+            ChoiceChips(HealthRecordStatus.entries.map { it to it.displayLabel() }, status, label = "Status") { it?.let { status = it } }
+            if (childQuestions.isNotEmpty()) {
+                Text("Dine spørgsmål", style = MaterialTheme.typography.titleSmall)
+                childQuestions.forEach { question ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(question.id in attach, { on -> attach = if (on) attach + question.id else attach - question.id })
+                        Text(question.text, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                Text("De afkrydsede spørgsmål gemmes på besøget og fjernes fra listen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            MoreDetails("behandler, årsag, observationer, råd, spørgsmål, opfølgning, noter",
+                listOf(providerName, reason, observations, advice, questions, followUp, notes).any(String::isNotBlank) || (title.isNotBlank() && selectedTemplate == null)) {
+                if (providers.isNotEmpty()) {
+                    SelectionDropdown(
+                        "Registreret behandler",
+                        providers.firstOrNull { it.id == providerId }?.name ?: "Ingen valgt",
+                        listOf<String?>(null).map { it to "Ingen valgt" } + providers.map { it.id as String? to it.name },
+                    ) { id -> providerId = id; providerName = providers.firstOrNull { it.id == id }?.name.orEmpty() }
+                }
+                RegistrationTextField(providerName, { providerName = it; providerId = null }, label = { Text("Behandler") })
+                if (selectedTemplate == null) RegistrationTextField(title, { title = it }, label = { Text("Titel") })
+                RegistrationTextField(reason, { reason = it }, label = { Text("Årsag til besøget") })
+                RegistrationTextField(observations, { observations = it }, label = { Text("Observationer og målinger") })
+                RegistrationTextField(advice, { advice = it }, label = { Text("Råd og aftaler") })
+                RegistrationTextField(questions, { questions = it }, label = { Text("Spørgsmål") })
+                RegistrationTextField(followUp, { followUp = it }, label = { Text("Opfølgning") })
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
             }
         }
+        Text("Dine egne noter – ikke en officiel sundhedsjournal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

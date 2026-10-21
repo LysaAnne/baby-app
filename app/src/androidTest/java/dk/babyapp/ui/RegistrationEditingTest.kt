@@ -53,6 +53,7 @@ class RegistrationEditingTest {
         compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.PumpingDialog("child", "Manuel pumpe", {}) { saved = it } } }
         compose.onNodeWithText("Manuel pumpe").assertExists()
         compose.onNodeWithText("Pumpet (ml)").performTextInput("85")
+        compose.onNodeWithText("Flere detaljer", substring = true).performClick()
         compose.onNodeWithText("Noter").performTextInput("Test")
         compose.onNodeWithText("Gem").performClick()
         compose.runOnIdle {

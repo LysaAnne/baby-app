@@ -9,6 +9,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.ExpandMore
+import dk.babyapp.data.tracking.segmentIntervals
+import dk.babyapp.ui.theme.careCategory
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,8 +43,8 @@ import dk.babyapp.ui.theme.BabySpacing
 
 /**
  * Running and paused timers, shown on every screen just above the menu bar while they exist.
- * Compact by default; each can be expanded for intervals, keep-screen-on and cancel. Stopping a
- * timer opens it for saving, and a timer that was stopped earlier but not yet saved opens again.
+ * Compact by default; each can be expanded for intervals and keep-screen-on. A stopped timer is saved at once
+ * and a short window offers optional details; a draft left by an older version opens the same way.
  */
 @Composable
 internal fun ActiveTimers(
@@ -54,9 +64,10 @@ internal fun ActiveTimers(
     onUpdateDefaultNippleShield: (Boolean) -> Unit,
 ) {
     var editing by remember { mutableStateOf<CareEventEntity?>(null) }
+    var done by remember { mutableStateOf<CareEventEntity?>(null) }
     var saveFailed by remember { mutableStateOf(false) }
     LaunchedEffect(activeChildId, recentEvents) {
-        if (editing == null) editing = recentEvents.firstOrNull { it.childId == activeChildId && it.isDraft && it.deletedAt == null }
+        if (editing == null && done == null) done = recentEvents.firstOrNull { it.childId == activeChildId && it.isDraft && it.deletedAt == null }
     }
     if (timers.isNotEmpty()) {
         // At most about 60 % of the screen, so content above stays reachable even with an expanded timer.
@@ -74,7 +85,7 @@ internal fun ActiveTimers(
                         event = event,
                         onToggle = onToggle,
                         onSwitch = onSwitchSide,
-                        onStop = { running -> onStop(running, null) { editing = it } },
+                        onStop = { running -> onStop(running, null) { done = it } },
                         onCancel = onDelete,
                         onEdit = { editing = it },
                         onShield = { current, enabled ->
@@ -98,10 +109,60 @@ internal fun ActiveTimers(
         else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, dismiss, medicines, onSave = save)
         else EditEventDialog(event, dismiss, save)
     }
+    done?.let { event ->
+        TimerDoneDialog(event,
+            onDone = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> saveFailed = !success; if (success) done = null } },
+            onDelete = { onDelete(event); done = null },
+            onMoreDetails = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> if (success) { done = null; editing = updated.copy(isDraft = false) } else saveFailed = true } })
+    }
     if (saveFailed) AlertDialog(
         onDismissRequest = { saveFailed = false },
         title = { Text("Registreringen kan ikke gemmes") },
         text = { Text("Der kan være overlappende søvn, eller amningen er ændret imens. Kontrollér tiderne, eller luk redigeringen og åbn den igen.") },
         confirmButton = { Button(onClick = { saveFailed = false }) { Text("OK") } },
     )
+}
+
+/** After a timer: already saved, so only quick optional choices, Færdig, or the bin to throw it away. */
+@Composable
+private fun TimerDoneDialog(event: CareEventEntity, onDone: (CareEventEntity) -> Unit, onDelete: () -> Unit, onMoreDetails: (CareEventEntity) -> Unit) {
+    var draft by remember(event.id) { mutableStateOf(event) }
+    var pumped by remember(event.id) { mutableStateOf(event.pumpedAmountMl?.toString().orEmpty()) }
+    val clock = java.time.format.DateTimeFormatter.ofPattern("HH.mm")
+    fun time(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).format(clock)
+    val pauses = (event.segmentIntervals().size - 1).coerceAtLeast(0)
+    val what = when (event.type) {
+        CareEventType.Breastfeeding -> "Amning"
+        CareEventType.Sleep -> if (event.sleepType == dk.babyapp.data.tracking.SleepType.Night) "Nattesøvn" else "Lur"
+        CareEventType.Pumping -> "Pumpning"
+        else -> event.activityType?.displayLabel() ?: "Aktivitet"
+    }
+    val subtitle = listOfNotNull("${time(event.startedAt)}–${time(event.endedAt ?: event.startedAt)}", formatDuration(event.elapsedSeconds()),
+        pauses.takeIf { it > 0 }?.let { if (it == 1) "1 pause" else "$it pauser" }).joinToString(" · ")
+    fun current() = draft.copy(pumpedAmountMl = if (event.type == CareEventType.Pumping) pumped.toIntOrNull() else draft.pumpedAmountMl)
+    FormDialog(onDismissRequest = { onDone(current()) }, category = event.careCategory, title = { Text("$what gemt") }, subtitle = subtitle, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (event.type) {
+                CareEventType.Breastfeeding -> {
+                    Text("Venstre ${event.leftSeconds / 60} min · højre ${event.rightSeconds / 60} min", style = MaterialTheme.typography.bodyMedium)
+                    ChoiceChips(dk.babyapp.data.tracking.BreastfeedingIssue.entries.map { it to it.displayLabel() }, draft.breastfeedingIssue, allowNone = true, label = "Gener (valgfrit)") { draft = draft.copy(breastfeedingIssue = it) }
+                }
+                CareEventType.Sleep -> {
+                    ChoiceChips(dk.babyapp.data.tracking.SleepQuality.entries.map { it to it.displayLabel() }, draft.sleepQuality, allowNone = true, label = "Hvordan gik det? (valgfrit)") { draft = draft.copy(sleepQuality = it) }
+                    SleepPlaceField(draft.sleepLocation) { draft = draft.copy(sleepLocation = it) }
+                }
+                CareEventType.Pumping -> {
+                    AmountField(pumped, { pumped = it }, "Pumpet (ml)")
+                    PumpingMethodChips(draft.pumpingMethod) { draft = draft.copy(pumpingMethod = it) }
+                }
+                else -> Text("Tiden er gemt.", style = MaterialTheme.typography.bodyMedium)
+            }
+            TextButton(onClick = { onMoreDetails(current()) }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                Icon(Icons.Outlined.ExpandMore, null); Text(" Flere detaljer · intervaller, noter")
+            }
+        }
+    }, dismissButton = {
+        IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Kassér registreringen", tint = MaterialTheme.colorScheme.error) }
+        Spacer(Modifier.weight(1f))
+    }, confirmButton = { Button(onClick = { onDone(current()) }) { Text("Færdig") } })
 }

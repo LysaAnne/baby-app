@@ -120,16 +120,16 @@ class TrackingViewModelTest {
     }
 
     @Test
-    fun `stopped timer stays a draft until saved and cancellation removes it`() = runTest(dispatcher) {
+    fun `stopped timer is saved at once and can still be thrown away`() = runTest(dispatcher) {
         val events = FakeCareEventRepository()
         val viewModel = dk.babyapp.ui.tracking.TrackingViewModel(events, FakePreferencesRepository(), FakeTimerNotifications())
         viewModel.startSleep("child-1", SleepType.Nap)
         advanceUntilIdle()
         viewModel.stopTimer(events.items.value.single())
         advanceUntilIdle()
-        val draft = events.items.value.single()
-        assertTrue(draft.isDraft)
-        viewModel.deleteCareEvent(draft)
+        val stopped = events.items.value.single()
+        assertFalse(stopped.isDraft)
+        viewModel.deleteCareEvent(stopped)
         advanceUntilIdle()
         assertTrue(events.items.value.isEmpty())
 

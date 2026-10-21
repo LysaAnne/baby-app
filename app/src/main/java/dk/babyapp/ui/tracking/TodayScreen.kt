@@ -694,34 +694,40 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
 @Composable internal fun BottleDialog(onDismiss: () -> Unit, onSave: (Long, BottleContent, Int?, Int?, String, String) -> Unit) {
     var ratio by remember { mutableStateOf("") }
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var offered by remember { mutableStateOf("") }; var consumed by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }; var content by remember { mutableStateOf(BottleContent.BreastMilk) }
-    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Tilføj flaske") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Flaske") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeFields(time) { time = it }
-        SelectionDropdown("Indhold *", content.displayLabel(), BottleContent.entries.map { it to it.displayLabel() }) { content = it }
+        ChoiceChips(BottleContent.entries.map { it to it.displayLabel() }, content) { it?.let { content = it } }
         if (content == BottleContent.Mixed) BottleRatioField(ratio) { ratio = it }
-        RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-        RegistrationTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-        RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(onClick = { onSave(time, content, listOfNotNull(offered.toIntOrNull(), consumed.toIntOrNull()).maxOrNull(), consumed.toIntOrNull(), notes, if (content == BottleContent.Mixed) ratio else "") }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+        AmountField(consumed, { consumed = it }, "Spist (ml)")
+        MoreDetails("tilbudt, noter") {
+            RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+        }
+    } }, confirmButton = { Button(onClick = { onSave(time, content, listOfNotNull(offered.toIntOrNull(), consumed.toIntOrNull()).maxOrNull(), consumed.toIntOrNull(), notes, if (content == BottleContent.Mixed) ratio else "") }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable internal fun DiaperDialog(onDismiss: () -> Unit, initialType: DiaperType = DiaperType.Wet, onSave: (Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String) -> Unit) {
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var type by remember { mutableStateOf(initialType) }; var color by remember { mutableStateOf<DiaperColor?>(null) }; var consistency by remember { mutableStateOf<DiaperConsistency?>(null) }; var observation by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
-    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Diaper, onDismissRequest = onDismiss, title = { Text("Tilføj ble") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        DateTimeFields(time) { time = it }; SelectionDropdown("Type *", type.displayLabel(), DiaperType.entries.map { it to it.displayLabel() }) { type = it }
-        SelectionDropdown("Farve", color?.displayLabel() ?: "Ikke angivet", listOf<DiaperColor?>(null).map { it to "Ikke angivet" } + DiaperColor.entries.map { it as DiaperColor? to it.displayLabel() }) { color = it }
-        SelectionDropdown("Konsistens", consistency?.displayLabel() ?: "Ikke angivet", listOf<DiaperConsistency?>(null).map { it to "Ikke angivet" } + DiaperConsistency.entries.map { it as DiaperConsistency? to it.displayLabel() }) { consistency = it }
-        DiaperObservationField(observation) { observation = it }; RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(onClick = { onSave(time, type, color, consistency, observation, notes) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Diaper, onDismissRequest = onDismiss, title = { Text("Ble") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        DateTimeFields(time) { time = it }
+        ChoiceChips(DiaperType.entries.map { it to it.displayLabel() }, type) { it?.let { type = it } }
+        MoreDetails("farve, konsistens, observation, noter") {
+            ChoiceChips(DiaperColor.entries.map { it to it.displayLabel() }, color, allowNone = true, label = "Farve") { color = it }
+            ChoiceChips(DiaperConsistency.entries.map { it to it.displayLabel() }, consistency, allowNone = true, label = "Konsistens") { consistency = it }
+            DiaperObservationField(observation) { observation = it }; RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+        }
+    } }, confirmButton = { Button(onClick = { onSave(time, type, color, consistency, observation, notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable internal fun ManualTimerDialog(type: CareEventType, onDismiss: () -> Unit, onSave: (CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit) {
     var start by remember { mutableLongStateOf(System.currentTimeMillis() - 600_000) }; var end by remember { mutableLongStateOf(System.currentTimeMillis()) }; var side by remember { mutableStateOf(BreastSide.Left) }; var amount by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
-    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text(if (type == CareEventType.Breastfeeding) "Manuel amning" else "Manuel pumpning") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Start *"); DateTimeFields(start) { start = it }; Text("Slut *"); DateTimeFields(end) { end = it }
-        if (type == CareEventType.Breastfeeding) Row { BreastSide.entries.forEach { TextButton(onClick = { side = it }) { Text(if (side == it) "✓ ${sideLabel(it)}" else sideLabel(it)) } } }
-        if (type == CareEventType.Pumping) RegistrationTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Mængde (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-        RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
-    } }, confirmButton = { Button(enabled = end >= start, onClick = { onSave(type, start, end, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+    FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text(if (type == CareEventType.Breastfeeding) "Amning" else "Pumpning") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (type == CareEventType.Breastfeeding) ChoiceChips(BreastSide.entries.map { it to sideLabel(it).replaceFirstChar { c -> c.uppercase() } }, side) { it?.let { side = it } }
+        Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
+        Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
+        if (type == CareEventType.Pumping) AmountField(amount, { amount = it }, "Mængde (ml)")
+        MoreDetails("noter", notes.isNotBlank()) { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
+    } }, confirmButton = { Button(enabled = end >= start, onClick = { onSave(type, start, end, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
@@ -740,20 +746,34 @@ internal fun SleepDialog(
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Sleep,
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "Tilføj søvn" else "Rediger søvn") },
+        title = { Text(if (existing == null) "Søvn" else "Rediger søvn") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row { SleepType.entries.forEach { option -> TextButton(onClick = { type = option }) { Text(if (type == option) "✓ ${if (option == SleepType.Nap) "Lur" else "Nattesøvn"}" else if (option == SleepType.Nap) "Lur" else "Nattesøvn") } } }
-            Text("Start *"); DateTimeFields(start) { start = it }; Text("Slut *"); DateTimeFields(end) { end = it }
-            RegistrationTextField(location, { location = it }, label = { Text("Sovested") })
-            RegistrationTextField(settling, { settling = it }, label = { Text("Puttemetode") })
-            RegistrationTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-            Text("Søvnkvalitet")
-            Row { SleepQuality.entries.forEach { option -> TextButton(onClick = { quality = if (quality == option) null else option }) { Text(if (quality == option) "✓ ${option.displayLabel()}" else option.displayLabel()) } } }
-            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            ChoiceChips(SleepType.entries.map { it to if (it == SleepType.Nap) "Lur" else "Nattesøvn" }, type) { it?.let { type = it } }
+            Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
+            Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
+            MoreDetails("sted, puttemetode, opvågninger, kvalitet, noter", listOf(location, settling, awakenings, notes).any(String::isNotBlank) || quality != null) {
+                SleepPlaceField(location) { location = it }
+                RegistrationTextField(settling, { settling = it }, label = { Text("Puttemetode") })
+                RegistrationTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+                ChoiceChips(SleepQuality.entries.map { it to it.displayLabel() }, quality, allowNone = true, label = "Søvnkvalitet") { quality = it }
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            }
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, location, settling, awakenings.toIntOrNull(), quality, notes) }) { Text("Gem") } },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
+}
+
+/** Common sleeping places as chips; anything else can still be written. */
+@Composable
+internal fun SleepPlaceField(value: String, onChange: (String) -> Unit) {
+    val places = listOf("Seng", "Barnevogn", "På arm", "Bil", "Bæresele")
+    var other by remember { mutableStateOf(value.isNotBlank() && value !in places) }
+    ChoiceChips(places.map { it to it } + ("" to "Andet"), if (other) "" else value.takeIf { it in places }, allowNone = true, label = "Sovested") { picked ->
+        other = picked == ""
+        onChange(if (picked == "") value.takeIf { it !in places }.orEmpty() else picked.orEmpty())
+    }
+    if (other) RegistrationTextField(value.takeIf { it !in places }.orEmpty(), onChange, label = { Text("Andet sted") })
 }
 
 @Composable
@@ -770,16 +790,18 @@ internal fun MeasurementDialog(
     var notes by remember { mutableStateOf("") }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Measurement,
         onDismissRequest = onDismiss,
-        title = { Text("Registrér mål") },
+        title = { Text("Måling") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
-            SelectionDropdown("Måling *", type.displayLabel(), MeasurementType.entries.map { it to it.displayLabel() }) { if (type != it) { type = it; unit = if (it == MeasurementType.Weight) "g" else it.defaultUnit(); value = "" } }
+            ChoiceChips(MeasurementType.entries.map { it to it.displayLabel() }, type) { new -> if (new != null && type != new) { type = new; unit = if (new == MeasurementType.Weight) "g" else new.defaultUnit(); value = "" } }
             if (type == MeasurementType.Weight) WeightUnitSelector(unit, value) { newUnit, newValue -> unit = newUnit; value = newValue }
             RegistrationTextField(value, { value = it.replace(',', '.').filter { char -> char.isDigit() || char == '.' } }, label = { Text("Værdi ($unit) *") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal))
-            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            MoreDetails("dato, tidspunkt, noter") {
+                DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            }
         } },
         confirmButton = { Button(enabled = value.toDoubleOrNull() != null, onClick = { onSave(time, timeSpecified, type, value.toDouble(), unit, notes) }) { Text("Gem") } },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -796,16 +818,15 @@ internal fun ActivityDialog(
     val availableTypes = if (initialType == ActivityType.Medicine) listOf(ActivityType.Medicine) else ActivityType.entries.filter { it != ActivityType.Medicine }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Misc,
         onDismissRequest = onDismiss,
-        title = { Text("Registrér diverse") },
+        title = { Text(if (availableTypes.size > 1) "Diverse" else type.displayLabel()) },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (availableTypes.size > 1) SelectionDropdown("Type *", type.displayLabel(), availableTypes.map { it to it.displayLabel() }) { type = it }
-            else Text("Type: ${type.displayLabel()}", style = MaterialTheme.typography.labelLarge)
-            Text("Start *"); DateTimeFields(start) { start = it }
-            Text("Slut *"); DateTimeFields(end) { end = it }
-            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            if (availableTypes.size > 1) ChoiceChips(availableTypes.map { it to it.displayLabel() }, type) { it?.let { type = it } }
+            Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
+            Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
+            MoreDetails("noter") { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
         } },
         confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, notes) }) { Text("Gem") } },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -816,12 +837,9 @@ private fun StartActivityDialog(onDismiss: () -> Unit, onStart: (ActivityType) -
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Misc,
         onDismissRequest = onDismiss,
         title = { Text("Start aktivitet") },
-        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Vælg aktiviteten. Tælleren starter, når du trykker Start.")
-            SelectionDropdown("Aktivitet *", type.displayLabel(), choices.map { it to it.displayLabel() }) { type = it }
-        } },
+        text = { ChoiceChips(choices.map { it to it.displayLabel() }, type) { it?.let { type = it } } },
         confirmButton = { Button(onClick = { onStart(type) }) { Text("Start") } },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -836,19 +854,21 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
     val name = selectedPlan?.name ?: existing?.medicationName.orEmpty()
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Health,
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "Registrér medicin" else "Rediger medicin") },
+        title = { Text(if (existing == null) "Medicin" else "Rediger medicin") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Registrér kun medicin, som barnet faktisk har fået.")
-            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
             if (plans.isEmpty()) Text("Tilføj eller aktivér medicin på medicinkortet før registrering.")
+            if (existing != null && selectedPlan == null) Text("Tidligere registrering: ${existing.medicationName}")
+            // Few medicines as chips, many in a list.
+            if (plans.size in 1..4) ChoiceChips(plans.map { it to it.name }, selectedPlan) { plan -> plan?.let { selectedPlan = it; dose = it.dose } }
+            else if (plans.isNotEmpty()) SelectionDropdown("Fra medicinkort *", selectedPlan?.name ?: "Vælg medicin", plans.map { it to "${it.name} · ${it.dose}" }) { plan -> selectedPlan = plan; dose = plan.dose }
             // The medicine card is reached from here rather than from the Today card.
             if (onOpenMedicineCard != null) TextButton(onClick = onOpenMedicineCard, contentPadding = PaddingValues(horizontal = 4.dp)) {
                 Icon(Icons.Outlined.Medication, null, Modifier.size(18.dp)); Text(" Åbn medicinkort")
             }
-            if (existing != null && selectedPlan == null) Text("Tidligere registrering: ${existing.medicationName}")
-            if (plans.isNotEmpty()) SelectionDropdown("Fra medicinkort *", selectedPlan?.name ?: "Vælg medicin", plans.map { it to "${it.name} · ${it.dose}" }) { plan -> selectedPlan = plan; dose = plan.dose }
             RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
-            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
+            MoreDetails("noter", notes.isNotBlank()) { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
+            Text("Registrér kun medicin, som barnet faktisk har fået.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } },
         confirmButton = { Button(enabled = name.isNotBlank() && (selectedPlan != null || existing != null), onClick = {
             onSave((existing ?: CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = time)).copy(
@@ -856,7 +876,7 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
                 activityDurationSeconds = null, medicineId = selectedPlan?.id ?: existing?.medicineId.orEmpty(), timeSpecified = timeSpecified, medicationName = name, medicationDose = dose, notes = notes,
             ))
         }) { Text("Gem") } },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
 
@@ -931,20 +951,22 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
                         listOf<BreastfeedingIssue?>(null).map { it to "Ingen angivet" } + BreastfeedingIssue.entries.map { it as BreastfeedingIssue? to it.displayLabel() }) { draft = draft.copy(breastfeedingIssue = it) }
                 }
                 CareEventType.Bottle -> {
-                    SelectionDropdown("Indhold *", draft.bottleContent.displayLabel(), BottleContent.entries.map { it to it.displayLabel() }) { draft = draft.copy(bottleContent = it) }
+                    ChoiceChips(BottleContent.entries.map { it to it.displayLabel() }, draft.bottleContent) { it?.let { draft = draft.copy(bottleContent = it) } }
                     if (draft.bottleContent == BottleContent.Mixed) BottleRatioField(draft.bottleMixRatio) { draft = draft.copy(bottleMixRatio = it) }
+                    AmountField(consumed, { consumed = it }, "Spist (ml)")
                     RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-                    RegistrationTextField(consumed, { consumed = it.filter(Char::isDigit) }, label = { Text("Spist (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
                 }
                 CareEventType.Pumping -> {
-                    SelectionDropdown("Pumpetype", draft.pumpingMethod.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { draft = draft.copy(pumpingMethod = it) }
-                    RegistrationTextField(pumped, { pumped = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+                    AmountField(pumped, { pumped = it }, "Pumpet (ml)")
+                    PumpingMethodChips(draft.pumpingMethod) { draft = draft.copy(pumpingMethod = it) }
                 }
                 CareEventType.Diaper -> {
-                    SelectionDropdown("Type *", draft.diaperType.displayLabel(), DiaperType.entries.map { it to it.displayLabel() }) { draft = draft.copy(diaperType = it) }
-                    SelectionDropdown("Farve", draft.diaperColor?.displayLabel() ?: "Ikke angivet", listOf<DiaperColor?>(null).map { it to "Ikke angivet" } + DiaperColor.entries.map { it as DiaperColor? to it.displayLabel() }) { draft = draft.copy(diaperColor = it) }
-                    SelectionDropdown("Konsistens", draft.diaperConsistency?.displayLabel() ?: "Ikke angivet", listOf<DiaperConsistency?>(null).map { it to "Ikke angivet" } + DiaperConsistency.entries.map { it as DiaperConsistency? to it.displayLabel() }) { draft = draft.copy(diaperConsistency = it) }
-                    DiaperObservationField(draft.observation) { draft = draft.copy(observation = it) }
+                    ChoiceChips(DiaperType.entries.map { it to it.displayLabel() }, draft.diaperType) { it?.let { draft = draft.copy(diaperType = it) } }
+                    MoreDetails("farve, konsistens, observation", draft.diaperColor != null || draft.diaperConsistency != null || draft.observation.isNotBlank()) {
+                        ChoiceChips(DiaperColor.entries.map { it to it.displayLabel() }, draft.diaperColor, allowNone = true, label = "Farve") { draft = draft.copy(diaperColor = it) }
+                        ChoiceChips(DiaperConsistency.entries.map { it to it.displayLabel() }, draft.diaperConsistency, allowNone = true, label = "Konsistens") { draft = draft.copy(diaperConsistency = it) }
+                        DiaperObservationField(draft.observation) { draft = draft.copy(observation = it) }
+                    }
                 }
                 CareEventType.Measurement -> {
                     val type = draft.measurementType ?: MeasurementType.Weight
@@ -952,10 +974,10 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
                     if (type == MeasurementType.Weight) WeightUnitSelector(unit, value) { newUnit, newValue -> unit = newUnit; value = newValue }
                     RegistrationTextField(value, { value = it.replace(',', '.') }, label = { Text("Værdi ($unit) *") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal))
                 }
-                CareEventType.Activity -> SelectionDropdown("Type *", draft.activityType?.displayLabel() ?: "Andet", ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }) { draft = draft.copy(activityType = it) }
+                CareEventType.Activity -> ChoiceChips(ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }, draft.activityType ?: ActivityType.Other) { it?.let { draft = draft.copy(activityType = it) } }
                 else -> Unit
             }
-            RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter") })
+            MoreDetails("noter", draft.notes.isNotBlank()) { RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter") }) }
         }
     }, confirmButton = { Button(enabled = valid, onClick = {
         val changed = start != event.startedAt || end != event.endedAt
@@ -971,7 +993,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
             bottleMixRatio = if (draft.bottleContent == BottleContent.Mixed) draft.bottleMixRatio.trim() else "",
             amountOfferedMl = listOfNotNull(offered.toIntOrNull(), consumed.toIntOrNull()).maxOrNull(), amountConsumedMl = consumed.toIntOrNull(), pumpedAmountMl = pumped.toIntOrNull(),
             measurementValue = value.toDoubleOrNull(), measurementUnit = if (event.type == CareEventType.Measurement) unit else event.measurementUnit, activityDurationSeconds = if (event.type == CareEventType.Activity) duration else event.activityDurationSeconds))
-    }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+    }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

@@ -117,7 +117,8 @@ class TrackingViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         val accrued = event.accrueUntil(now).closeSegment(now)
         val completed = accrued.copy(
-            isDraft = !event.nursingContinued,
+            // Saved straight away; the window that follows only adds optional details.
+            isDraft = false,
             endedAt = now,
             runningSince = null,
             pumpedAmountMl = amountMl ?: event.pumpedAmountMl,

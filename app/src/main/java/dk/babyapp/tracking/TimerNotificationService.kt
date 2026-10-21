@@ -80,7 +80,7 @@ class TimerNotificationService : Service() {
                 ACTION_STOP -> {
                     val now = System.currentTimeMillis()
                     val accrued = accrue(event).closeSegment(now)
-                    repository.save(accrued.copy(isDraft = !event.nursingContinued, endedAt = now, runningSince = null, activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds))
+                    repository.save(accrued.copy(isDraft = false, endedAt = now, runningSince = null, activityDurationSeconds = accrued.elapsedSeconds().takeIf { event.type == CareEventType.Activity } ?: event.activityDurationSeconds))
                     // Reconcile all active timers below, including other children.
                 }
             }
