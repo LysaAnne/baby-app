@@ -53,3 +53,16 @@ fun nextBookReminderAt(children: List<ChildProfile>, now: ZonedDateTime, frequen
     return (0L..32L).map { now.toLocalDate().plusDays(it).atTime(20, 0).atZone(now.zone) }
         .first { it > now && isBookReminderDay(it.toLocalDate(), frequency) }
 }
+
+/** Whole months since birth, or null before the child is born. */
+fun ChildProfile.bookAgeMonths(today: LocalDate): Int? =
+    birthDate?.takeIf { birthStatus == BirthStatus.Born && it <= today }?.let { Period.between(it, today).toTotalMonths().toInt() }
+
+/** The page the book suggests next: this month's page if it's empty, otherwise the first empty page that is ready. */
+fun nextBookPage(child: ChildProfile, pages: List<BabyBookPage>, today: LocalDate): BookPageTemplate? {
+    val empty = babyBookTemplates.filter { template ->
+        bookPageAvailable(template, child, today) && !bookPageHasContent(pages.firstOrNull { it.childId == child.id && it.pageId == template.id })
+    }
+    val month = child.bookAgeMonths(today)
+    return empty.firstOrNull { it.id == "month-$month" } ?: empty.firstOrNull()
+}

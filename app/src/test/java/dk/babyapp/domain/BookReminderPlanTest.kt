@@ -52,4 +52,12 @@ class BookReminderPlanTest {
         assertTrue(bookPageHasContent(BabyBookPage("child", "cover", "{\"Barnets navn\":\"Freja\"}")))
         assertTrue(bookPageHasContent(BabyBookPage("child", "cover", photosJson = "[\"photo.jpg\"]")))
     }
+    @Test fun nextPageIsThisMonthsPageWhenEmptyOtherwiseTheFirstEmptyPage() {
+        val today = LocalDate.of(2026, 6, 2)
+        assertEquals(4, child.bookAgeMonths(today))
+        assertEquals("month-4", nextBookPage(child, emptyList(), today)?.id)
+        val filled = listOf(BabyBookPage("child", "month-4", "{\"Dato\":\"2. juni\"}"), BabyBookPage("child", "cover", "{\"Barnets navn\":\"Freja\"}"))
+        assertEquals(babyBookTemplates[1].id, nextBookPage(child, filled, today)?.id)
+        assertEquals("month-4", nextBookPage(child, filled.map { it.copy(childId = "other") }, today)?.id)
+    }
 }

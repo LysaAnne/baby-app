@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, punkt 3.6: Barnets bog (aftales først med en skitse).
+**Fase 3 – Skærmene redesignes**, Fase 3 er færdig. Næste skridt aftales: WHO-vækstkurver (se GROWTH-REFERENCE-PLAN.md) eller fase 4.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -134,9 +134,9 @@ Færdig: fanen hedder Indsigt. Periode 7 eller 30 dage (huskes). Kort for søvn,
 
 Færdig: Familie viser børn som kort (alder, aktivt barn, antal forældre og sundhedspersoner) og forældre/familie i én liste. Profilen åbner som fuld skærm med sammenfoldelige sektioner og knapper til at ringe eller skrive til behandlere. + åbner et valg mellem barn, forælder og andet familiemedlem. Indstillinger er en fuld skærm i grupper (Generelt, Påmindelser, Data, Om appen) med dato for seneste backup. Udviklerværktøjer findes kun i debug-versionen.
 
-### 3.6 Barnets bog
-- Mere visuelt kapiteloverblik med fremdrift og billeder.
-- Svar, der er gemt under gamle spørgsmålstekster, vises fortsat.
+### 3.6 Barnets bog ✅
+
+Færdig: forsiden viser fremdrift for hele bogen, et forslag til næste side (månedens side, når den er tom) og kapitlerne to og to med billede og fremdrift. Kapitler viser hver side med status (tom, påbegyndt, udfyldt), og den aktuelle måned er fremhævet. Siden har billeder øverst, Gem i toppen og knapper til forrige og næste side, som gemmer undervejs. Svar under gamle spørgsmålstekster vises fortsat, og eksporten er uændret.
 
 **For hver skærm:** Funktionslisten holder. Gamle registreringer vises korrekt. UI-tests er opdateret. Skærmen er afprøvet med flere farveprofiler.
 

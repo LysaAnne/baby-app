@@ -371,11 +371,13 @@ fun BabyAppNavigation(
             composable<BookPageDestination> { entry ->
                 val target = entry.toRoute<BookPageDestination>()
                 dk.babyapp.ui.book.BabyBookScreen(child = profiles.firstOrNull { it.id == target.childId }, pages = bookPages, contentPadding = contentPadding,
-                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected, initialPageId = target.pageId)
+                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
+                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, dismiss) }, initialPageId = target.pageId)
             }
             composable<AppDestination.Guide> {
                 dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
-                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected)
+                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
+                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, dismiss) })
 
             }
             composable<AppDestination.Family> {

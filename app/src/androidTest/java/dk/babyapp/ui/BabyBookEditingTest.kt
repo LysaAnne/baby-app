@@ -26,7 +26,7 @@ class BabyBookEditingTest {
         var dismissed = false
         compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), babyBookTemplates.first(), null, { saves++ }, { null }, { "photo" }, { dismissed = true }) } }
         compose.onNodeWithText("Barnets navn").performTextInput("Freja")
-        compose.onNodeWithText("Annuller").performClick()
+        compose.onNodeWithContentDescription("Tilbage").performClick()
         compose.onNodeWithText("Kassér ændringer?").assertExists()
         compose.onNodeWithText("Kassér").performClick()
         compose.runOnIdle { assertTrue(dismissed); assertEquals(0, saves) }
@@ -40,16 +40,16 @@ class BabyBookEditingTest {
         compose.onNodeWithText("Fortsæt amning").performClick()
         compose.runOnIdle { assertTrue(resumed) }
     }
-    @Test fun chapterButtonsProtectUnsavedTextBeforeReturning() {
-        var returned = false
-        compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), babyBookTemplates.first(), null, {}, { null }, { "photo" }, onDismiss = {}, onAllChapters = { returned = true }) } }
-        compose.onAllNodesWithText("‹ Alle kapitler").assertCountEquals(2)
+    @Test fun nextPageSavesChangesAndOpensTheNextPage() {
+        var saved: BabyBookPage? = null
+        var opened: String? = null
+        val cover = babyBookTemplates.first()
+        compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), cover, null, { saved = it }, { null }, { "photo" }, onDismiss = {}, onOpenPage = { opened = it }) } }
+        compose.onNodeWithText("side 1 af", substring = true).assertExists()
         compose.onNodeWithText("Barnets navn").performTextInput("Freja")
-        compose.onAllNodesWithText("‹ Alle kapitler").onFirst().performClick()
-        compose.onNodeWithText("Kassér ændringer?").assertExists()
-        compose.runOnIdle { assertFalse(returned) }
-        compose.onNodeWithText("Kassér").performClick()
-        compose.runOnIdle { assertTrue(returned) }
+        compose.onNodeWithText(babyBookTemplates[1].title).performClick()
+        compose.runOnIdle { assertEquals("Freja", saved?.answers()?.get("Barnets navn")); assertEquals(babyBookTemplates[1].id, opened) }
     }
+
 
 }
