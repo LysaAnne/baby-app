@@ -4,7 +4,15 @@ import java.time.LocalDate
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ToothRecord(val childId: String, val tooth: Int, val emerged: String? = null, val lost: String? = null)
+data class ToothRecord(
+    val childId: String,
+    val tooth: Int,
+    val emerged: String? = null,
+    val lost: String? = null,
+    /** Signs noticed before the tooth came, as their labels, comma separated. */
+    val signs: String = "",
+    val note: String = "",
+)
 
 val upperMilkTeeth = listOf(55, 54, 53, 52, 51, 61, 62, 63, 64, 65)
 val lowerMilkTeeth = listOf(85, 84, 83, 82, 81, 71, 72, 73, 74, 75)

@@ -19,26 +19,31 @@ class TeethAndReminderTest {
         var saves = 0
         compose.setContent { MaterialTheme { TeethDialog("child", records, { value ->
             saves++
-            records = records.filterNot { it.childId == value.childId && it.tooth == value.tooth } + value
-        }, {}) } }
-        compose.onNodeWithContentDescription("Tand 51, Frembrudt").performClick()
-        compose.onNodeWithText("Ryd").performClick()
+            records = records.filterNot { it.childId == value.childId && it.tooth == value.tooth } + listOfNotNull(value.takeIf { it.emerged != null || it.lost != null })
+        }) {} } }
+        compose.onNodeWithContentDescription("Øverste midterste fortand, barnets højre, kommet").performClick()
         compose.onNodeWithText("Annuller").performClick()
         compose.runOnIdle { assertEquals(0, saves) }
-        compose.onNodeWithContentDescription("Tand 51, Frembrudt").performClick()
-        compose.onNodeWithText("Ryd").performClick()
-        compose.onNodeWithText("Gem").performClick()
-        compose.onNodeWithContentDescription("Tand 51, Ikke registreret").assertExists()
+        compose.onNodeWithContentDescription("Øverste midterste fortand, barnets højre, kommet").performClick()
+        compose.onNodeWithText("Fjern").performClick()
+        compose.onNodeWithContentDescription("Øverste midterste fortand, barnets højre, ikke kommet endnu").assertExists()
         compose.runOnIdle { assertEquals(1, saves); assertEquals("2026-01-02", records.single { it.childId == "other" }.lost) }
-        compose.onNodeWithContentDescription("Tand 85, Ikke registreret").performScrollTo()
+        compose.onNodeWithContentDescription("Nederste anden kindtand, barnets højre, ikke kommet endnu").performClick()
+        compose.onNodeWithText("Nederste anden kindtand").assertIsDisplayed()
+    }
+
+    @Test fun newToothIsRegisteredTodayWithSignsFromThePicker() {
+        var saved: ToothRecord? = null
+        compose.setContent { MaterialTheme { TeethDialog("child", emptyList(), { saved = it }) {} } }
+        compose.onNodeWithText("Registrér ny tand", substring = true).performScrollTo().performClick()
+        compose.onAllNodesWithText("Nederste midterste fortand").onFirst().performClick()
+        compose.onNodeWithText("Savler").performClick()
+        compose.onNodeWithText("Gem").performClick()
         compose.runOnIdle {
-            val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
-            val screenshot = instrumentation.uiAutomation.takeScreenshot()
-            java.io.File(instrumentation.targetContext.getExternalFilesDir(null), "teeth-chart.png").outputStream().use { screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-            screenshot.recycle()
+            assertEquals(81, saved?.tooth)
+            assertEquals(java.time.LocalDate.now().toString(), saved?.emerged)
+            assertEquals("Savler", saved?.signs)
         }
-        compose.onNodeWithContentDescription("Tand 85, Ikke registreret").performClick()
-        compose.onNodeWithText("Tand 85").assertIsDisplayed()
     }
 
     @Test fun reminderSettingsHaveOnlyBookChoiceAndSaveFrequency() {

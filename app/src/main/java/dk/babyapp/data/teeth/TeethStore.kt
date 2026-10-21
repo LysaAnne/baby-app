@@ -23,10 +23,12 @@ data class ToothRecordEntity(
     val emerged: String?,
     val lost: String?,
     val sortOrder: Int,
+    @androidx.room.ColumnInfo(defaultValue = "''") val signs: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "''") val note: String = "",
 )
 
-fun ToothRecord.toEntity(sortOrder: Int) = ToothRecordEntity(childId, tooth, emerged, lost, sortOrder)
-fun ToothRecordEntity.toRecord() = ToothRecord(childId, tooth, emerged, lost)
+fun ToothRecord.toEntity(sortOrder: Int) = ToothRecordEntity(childId, tooth, emerged, lost, sortOrder, signs, note)
+fun ToothRecordEntity.toRecord() = ToothRecord(childId, tooth, emerged, lost, signs, note)
 
 @Dao
 interface TeethDao {

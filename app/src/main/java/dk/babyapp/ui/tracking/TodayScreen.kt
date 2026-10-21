@@ -271,11 +271,15 @@ fun TodayScreen(
                     QuickButtonRows(buttons, columns = 2)
                     if (category == QuickActionCategory.Health && childId != null) MedicineStatus(medicines.filter { it.childId == childId && it.active }, childEvents)
                     if (category == QuickActionCategory.Health && child != null) HealthProgrammeStatus(dk.babyapp.domain.upcomingProgramme(child, historyEvents ?: events, today).take(3), today)
-                    if (category == QuickActionCategory.Health) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
-                        TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
+                    if (category == QuickActionCategory.Health) {
+                        // Same tonal buttons as the rest of the card, two per row.
+                        val toothCount = teeth.count { it.childId == childId && it.lost == null }
                         val questionCount = preferences.healthQuestions.count { it.childId == childId }
-                        TextButton(onClick = { questionsOpen = true }, enabled = childId != null) { Text(if (questionCount == 0) "Spørgsmål til besøg" else "Spørgsmål ($questionCount)") }
+                        QuickButtonRows(listOf(
+                            QuickButtonSpec(if (toothCount == 0) "Tænder" else "Tænder · $toothCount", childId != null) { teethOpen = true },
+                            QuickButtonSpec("Medicinkort", childId != null) { medicineCardOpen = true },
+                            QuickButtonSpec(if (questionCount == 0) "Spørgsmål til besøg" else "Spørgsmål ($questionCount)", childId != null) { questionsOpen = true },
+                        ), columns = 2)
                     }
                 }
             }
@@ -322,7 +326,7 @@ fun TodayScreen(
         EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
-    if (teethOpen && childId != null) TeethDialog(childId, teeth, onSaveTooth) { teethOpen = false }
+    if (teethOpen && childId != null) TeethDialog(childId, teeth, onSaveTooth, child) { teethOpen = false }
     if (medicineCardOpen && childId != null) MedicineCardDialog(childId, medicines, onUpdateMedicines, { medicineCardOpen = false }, childEvents)
     deleteTarget?.let { event -> AlertDialog(
         onDismissRequest = { deleteTarget = null },

@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, Fase 3 og WHO-vækstkurverne er færdige. Fase 4 punkt 1, 3, 5, 6 og 7 er bygget. Næste skridt: nyt tanddesign (skitse lavet), derefter fase 4 punkt 2, 4, 8 og 10.
+**Fase 3 – Skærmene redesignes**, Fase 3 og WHO-vækstkurverne er færdige. Fase 4 punkt 1, 3, 5, 6 og 7 er bygget. Tænderne er redesignet. Næste skridt: fase 4 punkt 2, 4, 8 og 10.
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
