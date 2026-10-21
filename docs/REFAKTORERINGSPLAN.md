@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, punkt 3.4: Overblik → Indsigt (aftales først med en skitse).
+**Fase 3 – Skærmene redesignes**, punkt 3.5: Familie og Indstillinger (aftales først med en skitse).
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -19,7 +19,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
 | 2 | Designsystem | ✅ Færdig |
-| 3 | Skærmene redesignes én ad gangen | 🔄 I gang · 3.1–3.3 færdige |
+| 3 | Skærmene redesignes én ad gangen | 🔄 I gang · 3.1–3.4 færdige |
 | 4 | Nye funktioner | Venter |
 
 ## Regler, der gælder for alle faser
@@ -126,11 +126,9 @@ Færdig: ikoner i overskriften, filterchips på én linje, dagsoverskrift med da
 - Samme struktur, mere kompakt: registreringer i samme stil som I dag.
 - **Gradvis indlæsning** mens man scroller, i stedet for hele historikken på én gang (i dag ca. 600 ms med 3 års data).
 
-### 3.4 Overblik → Indsigt
-- Rigtigt dashboard med 7- og 30-dages tendenser for søvn, madning og bleer.
-- Døgnrytmegraf og favoritside.
-- Vækstkurver med WHO-referencer (se [GROWTH-REFERENCE-PLAN.md](GROWTH-REFERENCE-PLAN.md)).
-- Grafer bliver rigtige skærme, ikke dialoger.
+### 3.4 Overblik → Indsigt ✅
+
+Færdig: fanen hedder Indsigt. Periode 7 eller 30 dage (huskes). Kort for søvn, madning, bleer, døgnrytme, vækst og favoritside, som kan sorteres og slås fra. Snit over hele dage siden første registrering; søvn deles ved midnat. Detaljesider for søvn, madning, bleer og døgnrytme; vækst og favoritside åbner de eksisterende grafer. WHO-vækstkurver kommer som eget punkt (se GROWTH-REFERENCE-PLAN.md).
 
 ### 3.5 Familie og Indstillinger
 - Enklere profilvisning.

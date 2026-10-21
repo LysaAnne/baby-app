@@ -45,6 +45,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateInsightCards(cards: List<dk.babyapp.data.preferences.InsightCard>) = viewModelScope.launch { preferencesRepository.updateInsightCards(cards) }
+    fun updateInsightPeriod(days: Int) = viewModelScope.launch { preferencesRepository.updateInsightPeriod(days) }
+
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {
         preferencesRepository.updateQuickActions(showBreastfeeding, showBottle, showPumping, showDiaper)
     }

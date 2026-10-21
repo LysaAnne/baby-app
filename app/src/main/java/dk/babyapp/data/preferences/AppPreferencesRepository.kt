@@ -24,6 +24,8 @@ interface AppPreferencesRepository {
     suspend fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int)
     suspend fun updateInsightDashboardMetrics(metrics: List<String>)
     suspend fun markGettingStartedSeen()
+    suspend fun updateInsightCards(cards: List<InsightCard>)
+    suspend fun updateInsightPeriod(days: Int)
     suspend fun updateQuickActionCategoryOrder(order: List<QuickActionCategory>)
     suspend fun updateDefaultNippleShield(enabled: Boolean)
     suspend fun updateJournalQuickFilters(filters: List<String>)

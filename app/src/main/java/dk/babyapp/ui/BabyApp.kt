@@ -84,6 +84,8 @@ fun BabyApp(
                     journal = { viewModel.journal.collectAsState().value ?: JournalSlice(state.recentEvents, hasOlder = false) },
                     onLoadOlderJournal = viewModel::loadOlderJournal,
                     onRestoreCareEvent = tracking::restoreCareEvent,
+                    onUpdateInsightCards = settings::updateInsightCards,
+                    onUpdateInsightPeriod = settings::updateInsightPeriod,
                     bookPages = state.bookPages,
                     onSaveBookPage = book::saveBookPage,
                     colorProfiles = state.colorProfiles,

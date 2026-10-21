@@ -48,6 +48,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             measurementChartSettings = values[MEASUREMENT_CHART_SETTINGS]?.let { runCatching { Json.decodeFromString<MeasurementChartSettings>(it) }.getOrNull() } ?: MeasurementChartSettings(),
             lastPumpingMethod = values[LAST_PUMPING_METHOD] ?: "",
             journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize) ?: AppPreferences().journalQuickFilters,
+            insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } } ?: InsightCard.entries,
+            insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it == 7 || it == 30 } ?: 7,
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
         )
     }
@@ -156,6 +158,14 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[JOURNAL_QUICK_FILTERS] = filters.joinToString(",") }
     }
 
+    override suspend fun updateInsightCards(cards: List<InsightCard>) {
+        context.appPreferencesDataStore.edit { it[INSIGHT_CARDS] = cards.joinToString(",") { card -> card.name } }
+    }
+
+    override suspend fun updateInsightPeriod(days: Int) {
+        context.appPreferencesDataStore.edit { it[INSIGHT_PERIOD] = days }
+    }
+
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) {
         context.appPreferencesDataStore.edit { it[HIDDEN_QUICK_ACTIONS] = hidden.joinToString(",") }
     }
@@ -187,6 +197,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val LAST_PUMPING_METHOD = stringPreferencesKey("last_pumping_method")
         val JOURNAL_QUICK_FILTERS = stringPreferencesKey("journal_quick_filters")
         val HIDDEN_QUICK_ACTIONS = stringPreferencesKey("hidden_quick_actions")
+        val INSIGHT_CARDS = stringPreferencesKey("insight_cards")
+        val INSIGHT_PERIOD = intPreferencesKey("insight_period")
     }
 }
 

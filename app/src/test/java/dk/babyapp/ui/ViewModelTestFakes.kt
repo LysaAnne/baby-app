@@ -102,6 +102,8 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
     override suspend fun updateDefaultNippleShield(enabled: Boolean) { items.value = items.value.copy(defaultNippleShield = enabled) }
     override suspend fun updateJournalQuickFilters(filters: List<String>) { items.value = items.value.copy(journalQuickFilters = filters) }
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) { items.value = items.value.copy(hiddenQuickActions = hidden) }
+    override suspend fun updateInsightCards(cards: List<dk.babyapp.data.preferences.InsightCard>) { items.value = items.value.copy(insightCards = cards) }
+    override suspend fun updateInsightPeriod(days: Int) { items.value = items.value.copy(insightPeriodDays = days) }
     override suspend fun markGettingStartedSeen() { items.value = items.value.copy(hasSeenGettingStarted = true) }
 }
 

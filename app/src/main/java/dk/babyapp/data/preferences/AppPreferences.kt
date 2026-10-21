@@ -26,7 +26,13 @@ data class AppPreferences(
     val headSideStatistics: HeadSideStatisticsSettings = HeadSideStatisticsSettings(),
     val measurementChartSettings: MeasurementChartSettings = MeasurementChartSettings(),
     val lastPumpingMethod: String = "",
+    /** Cards shown on Indsigt, in order; cards left out are hidden. */
+    val insightCards: List<InsightCard> = InsightCard.entries,
+    val insightPeriodDays: Int = 7,
 )
+
+/** The cards on Indsigt. Stored by name, so names must not change. */
+enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Favoritside") }
 
 @kotlinx.serialization.Serializable
 data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null)

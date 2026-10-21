@@ -108,6 +108,8 @@ fun BabyAppNavigation(
     journal: @Composable () -> dk.babyapp.ui.JournalSlice = { dk.babyapp.ui.JournalSlice(careEvents, hasOlder = false) },
     onLoadOlderJournal: () -> Unit = {},
     onRestoreCareEvent: (CareEventEntity) -> Unit = {},
+    onUpdateInsightCards: (List<dk.babyapp.data.preferences.InsightCard>) -> Unit = {},
+    onUpdateInsightPeriod: (Int) -> Unit = {},
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
     colorProfiles: List<ColorProfile> = emptyList(),
@@ -351,10 +353,14 @@ fun BabyAppNavigation(
                 )
             }
             composable<AppDestination.Overview> {
-                dk.babyapp.ui.tracking.OverviewScreen(
+                dk.babyapp.ui.tracking.InsightsScreen(
                     childId = activeChild?.id,
                     events = visible(childHistory()),
                     contentPadding = contentPadding,
+                    cards = preferences.insightCards,
+                    periodDays = preferences.insightPeriodDays,
+                    onPeriodChange = onUpdateInsightPeriod,
+                    onCardsChange = onUpdateInsightCards,
                     chartSettings = preferences.measurementChartSettings,
                     onChartSettingsChange = onUpdateMeasurementChartSettings,
                     statisticsSettings = preferences.headSideStatistics,

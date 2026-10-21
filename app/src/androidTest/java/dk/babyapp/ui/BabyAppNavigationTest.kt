@@ -115,30 +115,30 @@ class BabyAppNavigationTest {
         composeRule.runOnIdle { org.junit.Assert.assertFalse(savedDefault); org.junit.Assert.assertEquals("$now-", event.timerSegments) }
     }
 
-    @Test fun overviewOpensChartsAndBrowsesChildDailySummary() {
+    @Test fun insightsShowsAveragesOpensDetailsAndSavesCardChoices() {
         val child = ChildProfile(id = "child", name = "Freja")
         val today = LocalDate.now()
         fun atDay(date: LocalDate) = date.atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         val recent = dk.babyapp.data.tracking.CareEventEntity(id = "recent", childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Bottle, startedAt = atDay(today), endedAt = atDay(today), amountConsumedMl = 90)
         val older = recent.copy(id = "older", startedAt = atDay(today.minusDays(1)), endedAt = atDay(today.minusDays(1)), amountConsumedMl = 60)
         val otherChild = recent.copy(id = "other", childId = "other", amountConsumedMl = 999)
-        composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(recent, older, otherChild), preferences = AppPreferences(hasSeenGettingStarted = true)) }
+        var savedCards: List<dk.babyapp.data.preferences.InsightCard>? = null
+        composeRule.setContent {
+            BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" },
+                careEvents = listOf(recent, older, otherChild), preferences = AppPreferences(hasSeenGettingStarted = true), onUpdateInsightCards = { savedCards = it })
+        }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.onAllNodesWithText(context.getString(R.string.nav_insights)).filter(isSelectable()).onFirst().performClick()
-        composeRule.onNodeWithText("Grafer").performClick()
-        composeRule.onNodeWithText("Målenes udvikling").assertIsDisplayed()
-        composeRule.onNodeWithText("Luk").performClick()
-        composeRule.onNodeWithText("Dagens overblik").performClick()
-        composeRule.onAllNodesWithText("90 ml spist").onFirst().assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Næste dag").assertIsNotEnabled()
-        composeRule.onNodeWithContentDescription("Forrige dag").performClick()
-        composeRule.onAllNodesWithText("60 ml spist").onFirst().assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Forrige dag").performClick()
-        composeRule.onNodeWithText("0 registreringer i alt").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Næste dag").performClick()
-        composeRule.onAllNodesWithText("60 ml spist").onFirst().assertIsDisplayed()
-        composeRule.onNode(hasText("I dag") and hasAnyAncestor(isDialog())).performClick()
-        composeRule.onAllNodesWithText("90 ml spist").onFirst().assertIsDisplayed()
+        // Averages use finished days only: yesterday's 60 ml, not today's bottle or another child's.
+        composeRule.onNodeWithText("flaske 60 ml", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("999", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("Madning").performClick()
+        composeRule.onAllNodesWithText("Madninger pr. døgn").onFirst().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Tilbage").performClick()
+        composeRule.onNodeWithContentDescription("Tilpas Indsigt").performClick()
+        composeRule.onNodeWithContentDescription("Vis Bleer").performClick()
+        composeRule.onNodeWithText("Gem").performClick()
+        composeRule.runOnIdle { org.junit.Assert.assertEquals(dk.babyapp.data.preferences.InsightCard.entries.filterNot { it == dk.babyapp.data.preferences.InsightCard.Diapers }, savedCards) }
     }
 
     @Test fun measurementChartsOpenFromTodayAndJournal() {
