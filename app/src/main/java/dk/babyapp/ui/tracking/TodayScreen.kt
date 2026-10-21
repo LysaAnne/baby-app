@@ -488,7 +488,7 @@ private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx
 }
 
 @Composable private fun QuickButton(text: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) =
-    FilledTonalButton(modifier = modifier.heightIn(min = dk.babyapp.ui.theme.BabyTouch.primary), enabled = enabled, onClick = onClick) { Text(text, style = MaterialTheme.typography.labelLarge) }
+    FilledTonalButton(modifier = modifier, enabled = enabled, onClick = onClick) { Text(text, style = MaterialTheme.typography.labelLarge) }
 
 @Composable
 internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = true, onMinimizedChange: (Boolean) -> Unit = {}) {

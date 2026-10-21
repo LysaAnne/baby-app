@@ -77,11 +77,11 @@ Færdig: Indstillinger → Udseende (System/Lys/Mørk) og Nattilstand (Fra/Til/A
 
 ### 2.3 Typografi og afstande ✅
 
-Færdig: Nunito i hele appen (lagt ind, virker offline), afstande (`BabySpacing`) og trykflader (`BabyTouch`), hurtigknapper 56 dp. `TouchTargetTest` kræver mindst 48 dp for alt, der kan trykkes på, på I dag og i Journal. Skærmene tager afstandene i brug, efterhånden som de redesignes i fase 3.
+Færdig: Nunito i hele appen (lagt ind, virker offline), afstande (`BabySpacing`) og trykflader (`BabyTouch`). Hurtigknapperne blev gjort 56 dp høje, men er sat tilbage til den tidligere højde, fordi de fyldte for meget i højden; trykfladen er stadig mindst 48 dp. `TouchTargetTest` kræver mindst 48 dp for alt, der kan trykkes på, på I dag og i Journal. Skærmene tager afstandene i brug, efterhånden som de redesignes i fase 3.
 
 - Én afrundet skrifttype (forslag: Nunito) og færre tekststørrelser.
 - Faste afstande og hjørner, så kort, knapper og dialoger står ens.
-- Store trykflader: mindst 48 dp, og de vigtigste knapper 56 dp.
+- Trykflader på mindst 48 dp uden at gøre knapperne højere end nødvendigt; skærmen skal kunne rumme meget uden at scrolle.
 
 ### 2.4 Fælles komponenter ✅
 
