@@ -1,5 +1,10 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.SwapHoriz
 import dk.babyapp.ui.theme.babyColors
 import dk.babyapp.ui.theme.careCategory
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -139,8 +144,6 @@ fun TodayScreen(
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onUpdateDashboardMetrics: (List<DashboardMetric>) -> Unit,
     scrollToTopRequest: Int = 0,
-    keepTimerAwake: Boolean = false,
-    onKeepTimerAwake: (Boolean) -> Unit = {},
     onUpdateQuickActionCategoryOrder: (List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit = {},
     onUpdateDefaultNippleShield: (Boolean) -> Unit = {},
     onUpdateHeadSideStatistics: (dk.babyapp.data.preferences.HeadSideStatisticsSettings) -> Unit = {},
@@ -154,7 +157,6 @@ fun TodayScreen(
     history: @Composable () -> List<CareEventEntity> = { events },
 ) {
     val childEvents = childId?.let { id -> events.filter { it.childId == id && !it.isDraft && it.deletedAt == null } }.orEmpty()
-    val active = childEvents.filter { it.endedAt == null && it.type in listOf(CareEventType.Breastfeeding, CareEventType.Pumping, CareEventType.Sleep, CareEventType.Activity) }
     fun visible(action: QuickAction): Boolean = action.name !in preferences.hiddenQuickActions && when (action) {
         QuickAction.Breastfeeding -> preferences.showBreastfeedingQuickAction
         QuickAction.Bottle -> preferences.showBottleQuickAction
@@ -164,14 +166,10 @@ fun TodayScreen(
     }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(scrollToTopRequest) { if (scrollToTopRequest > 0) listState.scrollToItem(0) }
-    var timerPanelHeight by remember { mutableIntStateOf(0) }
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val maxTimerHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.6f).dp
     val today = LocalDate.now()
     var overviewDate by remember(childId) { mutableStateOf(today) }
     var dialog by remember { mutableStateOf<EditorKind?>(null) }
     var selectedDiaperType by remember { mutableStateOf(DiaperType.Wet) }
-    var editing by remember { mutableStateOf<CareEventEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<CareEventEntity?>(null) }
     var customizeOpen by remember { mutableStateOf(false) }
     var dashboardCustomizeOpen by remember { mutableStateOf(false) }
@@ -185,15 +183,12 @@ fun TodayScreen(
     // [events] only covers recent days; the whole history is loaded while an older day or a chart is shown.
     val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen)) history() else null
     val allChildEvents = historyEvents?.let { all -> all.filter { it.childId == childId && !it.isDraft && it.deletedAt == null } } ?: childEvents
-    LaunchedEffect(childId, events) {
-        if (editing == null) editing = events.firstOrNull { it.childId == childId && it.isDraft && it.deletedAt == null }
-    }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 16.dp, bottom = contentPadding.calculateBottomPadding() + if (active.isEmpty()) 100.dp else with(density) { timerPanelHeight.toDp() } + 94.dp, start = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 8.dp, bottom = contentPadding.calculateBottomPadding() + 88.dp, start = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
         if (overdueDueDate != null) item {
             Card(
@@ -214,12 +209,12 @@ fun TodayScreen(
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { overviewDate = overviewDate.minusDays(1) }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Forrige dags overblik") }
-                TextButton(enabled = overviewDate != today, onClick = { overviewDate = today }) { Text(if (overviewDate == today) "I dag" else "Tilbage til i dag") }
-                IconButton(enabled = overviewDate < today, onClick = { overviewDate = overviewDate.plusDays(1) }) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Næste dags overblik") }
-            }
-            DailyOverview(dk.babyapp.domain.eventsForDay(allChildEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true })
+            DailyOverview(
+                dk.babyapp.domain.eventsForDay(allChildEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true },
+                onPrevious = { overviewDate = overviewDate.minusDays(1) },
+                onNext = { overviewDate = overviewDate.plusDays(1) }.takeIf { overviewDate < today },
+                onBackToToday = { overviewDate = today }.takeIf { overviewDate != today },
+            )
         }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
@@ -229,44 +224,24 @@ fun TodayScreen(
             if (actions.isEmpty()) return@forEach
             item {
                 QuickActionCard(category.careCategory.icon, category.label, MaterialTheme.babyColors.category(category.careCategory).accent, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
-                    if (QuickAction.Breastfeeding in actions) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            BreastSide.entries.forEach { side ->
-                                QuickButton(sideLabel(side).replaceFirstChar { it.uppercase() }, Modifier.weight(1f), childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, CareEventType.Breastfeeding)) {
-                                    childId?.let { onStartBreastfeeding(it, side) }
-                                }
+                    fun canStart(type: CareEventType) = childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, type)
+                    val buttons = actions.filterNot { it == QuickAction.HeadSide }.flatMap { action ->
+                        when (action) {
+                            QuickAction.Breastfeeding -> BreastSide.entries.map { side ->
+                                QuickButtonSpec(sideLabel(side).replaceFirstChar { it.uppercase() }, canStart(CareEventType.Breastfeeding)) { childId?.let { onStartBreastfeeding(it, side) } }
                             }
-                        }
-                    }
-                    if (QuickAction.HeadSide in actions) {
-                        HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord)
-                    }
-                    if (QuickAction.Diaper in actions) {
-                        DiaperType.entries.chunked(2).forEach { types ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                types.forEach { type ->
-                                    QuickButton(type.displayLabel(), Modifier.weight(1f), childId != null) {
-                                        selectedDiaperType = type
-                                        dialog = EditorKind.Diaper
-                                    }
-                                }
+                            QuickAction.Diaper -> DiaperType.entries.map { type ->
+                                QuickButtonSpec(type.displayLabel(), childId != null) { selectedDiaperType = type; dialog = EditorKind.Diaper }
                             }
-                        }
-                    }
-                    if (category == QuickActionCategory.Sleep) Text("Søvn", style = MaterialTheme.typography.labelMedium)
-                    actions.filterNot { it == QuickAction.Breastfeeding || it == QuickAction.Diaper || it == QuickAction.HeadSide }.chunked(2).forEach { row ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { action ->
-                                val timer = action in setOf(QuickAction.Breastfeeding, QuickAction.Nap, QuickAction.Night, QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity)
-                                QuickButton(action.label, Modifier.weight(1f), childId != null && (!timer || dk.babyapp.domain.canStartTimer(childEvents, childId, when (action) {
-                                    QuickAction.Pumping -> CareEventType.Pumping
+                            else -> {
+                                val timerType = when (action) {
                                     QuickAction.Nap, QuickAction.Night -> CareEventType.Sleep
                                     QuickAction.TummyTime, QuickAction.Bath, QuickAction.Play, QuickAction.OutdoorTime, QuickAction.Activity -> CareEventType.Activity
-                                    else -> CareEventType.Breastfeeding
-                                }))) {
-                                    val id = childId ?: return@QuickButton
+                                    else -> null
+                                }
+                                listOf(QuickButtonSpec(action.label, if (timerType == null) childId != null else canStart(timerType)) {
+                                    val id = childId ?: return@QuickButtonSpec
                                     when (action) {
-                                        QuickAction.Breastfeeding -> dialog = EditorKind.StartBreast
                                         QuickAction.Pumping -> dialog = EditorKind.ManualPumping
                                         QuickAction.Nap -> onStartSleep(id, SleepType.Nap) { sleepError = !it }
                                         QuickAction.Night -> onStartSleep(id, SleepType.Night) { sleepError = !it }
@@ -277,39 +252,34 @@ fun TodayScreen(
                                         QuickAction.Activity -> onStartActivity(id, ActivityType.Other) { sleepError = !it }
                                         else -> dialog = EditorKind.valueOf(action.name)
                                     }
-                                }
+                                })
                             }
                         }
                     }
-                    if (category == QuickActionCategory.Health) OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
-                    if (category == QuickActionCategory.Health) TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
+                    if (category == QuickActionCategory.Sleep && QuickAction.HeadSide in actions) {
+                        // Favourite side and sleep side by side, each with its small heading.
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.weight(1f)) { HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord) }
+                            if (buttons.isNotEmpty()) Column(Modifier.weight(1f)) {
+                                Text("Søvn", style = MaterialTheme.typography.labelMedium)
+                                QuickButtonRows(buttons, columns = 2)
+                            }
+                        }
+                    } else {
+                        if (category == QuickActionCategory.Sleep) Text("Søvn", style = MaterialTheme.typography.labelMedium)
+                        // Four to a row when the labels are short, otherwise two, so long words are never cut.
+                        QuickButtonRows(buttons, columns = if (buttons.all { it.label.length <= 10 }) 4 else 2)
+                    }
+                    if (category == QuickActionCategory.Health) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { teethOpen = true }, enabled = childId != null) { Text("Tænder") }
+                        TextButton(onClick = { medicineCardOpen = true }, enabled = childId != null) { Text("Åbn medicinkort") }
+                    }
                 }
             }
         }
 
         }
         if (childId != null) FloatingActionButton(onClick = { manualMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = contentPadding.calculateBottomPadding() + 16.dp)) { Icon(Icons.Outlined.Add, "Manuel registrering") }
-        Column(Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = contentPadding.calculateBottomPadding() + 82.dp)
-            .heightIn(max = maxTimerHeight).onSizeChanged { timerPanelHeight = it.height }.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        active.forEach { event -> androidx.compose.runtime.key(event.id) {
-            var timerMinimized by androidx.compose.runtime.saveable.rememberSaveable(event.id) { mutableStateOf(true) }
-            ActiveTimerCard(
-                minimized = timerMinimized,
-                onMinimizedChange = { timerMinimized = it },
-                event = event,
-                onToggle = onToggleTimer,
-                onSwitch = onSwitchSide,
-                onStop = { running ->
-                    onStopTimer(running, null) { editing = it }
-                },
-                onShield = { current, enabled -> onUpdate(current.changeNippleShield(enabled, System.currentTimeMillis())) { success -> sleepError = !success; if (success) onUpdateDefaultNippleShield(enabled) } },
-                onEdit = { editing = it },
-                onCancel = onDelete,
-                keepAwake = keepTimerAwake, onKeepAwake = onKeepTimerAwake,
-
-            )
-        } }
-        }
     }
 
     if (headSideOpen && childId != null) HeadSideStatisticsDialog(childId, historyEvents ?: events, preferences.headSideStatistics, onUpdateHeadSideStatistics) { headSideOpen = false }
@@ -350,13 +320,6 @@ fun TodayScreen(
     }
     if (teethOpen && childId != null) TeethDialog(childId, teeth, onSaveTooth) { teethOpen = false }
     if (medicineCardOpen && childId != null) MedicineCardDialog(childId, medicines, onUpdateMedicines, { medicineCardOpen = false })
-    editing?.let { event ->
-        val dismiss = { if (event.isDraft) onDelete(event); editing = null }
-        val save: (CareEventEntity) -> Unit = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> sleepError = !success; if (success) editing = null } }
-        if (event.type in setOf(CareEventType.HealthVisit, CareEventType.Vaccination)) HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, dismiss, save)
-        else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, dismiss, medicines, save)
-        else EditEventDialog(event, dismiss, save)
-    }
     deleteTarget?.let { event -> AlertDialog(
         onDismissRequest = { deleteTarget = null },
         title = { Text("Slet registrering?") },
@@ -379,26 +342,42 @@ private enum class EditorKind { StartBreast, SolidFood, Bottle, Diaper, ManualBr
 private data class OverviewItem(val label: String, val value: String, val event: CareEventEntity?)
 
 @Composable
-private fun SummaryMetric(label: String, value: String, detail: String? = null, modifier: Modifier = Modifier, count: Int = 0, iconValues: List<Triple<Int, String, String>>? = null) {
+private fun SummaryMetric(label: String, value: String, detail: String? = null, modifier: Modifier = Modifier, count: Int = 0, iconValues: List<Triple<Int, String, String>>? = null, category: dk.babyapp.ui.theme.CareCategory? = null) {
+    val accent = category?.let { MaterialTheme.babyColors.category(it).accent } ?: MaterialTheme.colorScheme.primary
     Card(
-        modifier.heightIn(min = 108.dp),
+        modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)),
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (category != null) Icon(category.icon, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
+                Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (iconValues == null) Text(value, style = MaterialTheme.typography.titleMedium)
-            else androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            else androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 iconValues.forEach { (icon, description, total) ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(androidx.compose.ui.res.painterResource(icon), description, Modifier.height(20.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(total.toString(), style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(androidx.compose.ui.res.painterResource(icon), description, Modifier.height(18.dp), tint = accent)
+                        Text(total, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
-            Text(if (count == 1) "1 registrering" else "$count registreringer", style = MaterialTheme.typography.labelSmall)
-            Text("Sidst: ${detail ?: "-"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                (if (count == 1) "1 registrering" else "$count registreringer") + " · sidst ${detail ?: "-"}",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2,
+            )
         }
     }
+}
+
+private val DashboardMetric.careCategory get() = when (this) {
+    DashboardMetric.Feeding, DashboardMetric.Pumping -> dk.babyapp.ui.theme.CareCategory.Feeding
+    DashboardMetric.Diapers -> dk.babyapp.ui.theme.CareCategory.Diaper
+    DashboardMetric.Sleep, DashboardMetric.HeadSide -> dk.babyapp.ui.theme.CareCategory.Sleep
+    DashboardMetric.Weight, DashboardMetric.Height, DashboardMetric.HeadCircumference -> dk.babyapp.ui.theme.CareCategory.Measurement
+    DashboardMetric.Temperature, DashboardMetric.Medicine, DashboardMetric.HealthVisits, DashboardMetric.Vaccinations -> dk.babyapp.ui.theme.CareCategory.Health
+    DashboardMetric.SolidFood -> dk.babyapp.ui.theme.CareCategory.SolidFood
+    DashboardMetric.TummyTime, DashboardMetric.Activities -> dk.babyapp.ui.theme.CareCategory.Misc
 }
 
 private fun DashboardMetric.displayLabel() = when (this) {
@@ -477,9 +456,10 @@ private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { BabySectionHeader(title, icon, iconTint) }
+        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, if (title == "Søvn") "Åbn favoritside" else "Vis målegrafer") }
             }
             content()
@@ -487,38 +467,86 @@ private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx
     }
 }
 
-@Composable private fun QuickButton(text: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) =
-    FilledTonalButton(modifier = modifier, enabled = enabled, onClick = onClick) { Text(text, style = MaterialTheme.typography.labelLarge) }
+private class QuickButtonSpec(val label: String, val enabled: Boolean, val onClick: () -> Unit)
 
 @Composable
-internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = true, onMinimizedChange: (Boolean) -> Unit = {}) {
+private fun QuickButtonRows(buttons: List<QuickButtonSpec>, columns: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        buttons.chunked(columns).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { button -> QuickButton(button.label, Modifier.weight(1f), button.enabled, button.onClick) }
+                repeat(columns - row.size) { androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable internal fun QuickButton(text: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) =
+    FilledTonalButton(modifier = modifier, enabled = enabled, onClick = onClick, contentPadding = PaddingValues(horizontal = 6.dp)) {
+        androidx.compose.foundation.text.BasicText(
+            text, maxLines = 1,
+            style = MaterialTheme.typography.labelLarge.copy(color = androidx.compose.material3.LocalContentColor.current, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.labelLarge.fontSize),
+        )
+    }
+
+@Composable
+internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = true, onMinimizedChange: (Boolean) -> Unit = {}, childLabel: String? = null) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.runningSince) { while (event.runningSince != null) { now = System.currentTimeMillis(); delay(1_000) } }
     val elapsed = event.elapsedSeconds(now)
-    Card(modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            IconButton(onClick = { onMinimizedChange(!minimized) }) { Icon(if (minimized) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, if (minimized) "Udvid tæller" else "Minimer tæller") }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(formatDuration(elapsed), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            Checkbox(keepAwake, onKeepAwake, modifier = Modifier.semantics { contentDescription = "Hold skærmen tændt" })
-            Text("Hold skærmen\ntændt", style = MaterialTheme.typography.bodySmall)
-        }
-        if (!minimized) {
+    val title = listOfNotNull(childLabel, when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }).joinToString(" · ")
+    val running = event.runningSince != null
+    val category = MaterialTheme.babyColors.category(event.careCategory)
+    val toggle: @Composable () -> Unit = {
+        androidx.compose.material3.FilledTonalIconButton(onClick = { onToggle(event) }) { Icon(if (running) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, if (running) "Pause" else "Fortsæt") }
+    }
+    val expandButton: @Composable () -> Unit = {
+        IconButton(onClick = { onMinimizedChange(!minimized) }) { Icon(if (minimized) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (minimized) "Udvid tæller" else "Minimer tæller") }
+    }
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+    ) {
+        if (minimized) {
+            // Compact: one line with the essentials, so the timer never covers much of the screen.
+            Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 2.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(32.dp).background(category.container, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(event.careCategory.icon, contentDescription = null, tint = category.accent, modifier = Modifier.size(18.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(formatDuration(elapsed) + if (running) "" else " · pause", style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                }
+                if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
+                toggle()
+                androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, "Stop") }
+                expandButton()
+            }
+        } else Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                expandButton()
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(formatDuration(elapsed), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                Checkbox(keepAwake, onKeepAwake, modifier = Modifier.semantics { contentDescription = "Hold skærmen tændt" })
+                Text("Hold skærmen\ntændt", style = MaterialTheme.typography.bodySmall)
+            }
             if (event.type != CareEventType.Breastfeeding) TextButton(onClick = { onCancel(event) }) { Text("Annuller") }
             if (event.type == CareEventType.Breastfeeding) {
                 NursingIntervalOverview(event, now)
                 OutlinedButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
+                Text("Venstre ${formatDuration(event.leftSeconds)}  •  Højre ${formatDuration(event.rightSeconds)}")
             }
-            if (event.type == CareEventType.Breastfeeding) Text("Venstre ${formatDuration(event.leftSeconds)}  •  Højre ${formatDuration(event.rightSeconds)}")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                toggle()
+                if (event.type == CareEventType.Breastfeeding) OutlinedButton(onClick = { onSwitch(event) }) { Text("Skift side") }
+                Button(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, null); Text("Stop") }
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            androidx.compose.material3.OutlinedIconButton(onClick = { onToggle(event) }) { Icon(if (event.runningSince == null) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, if (event.runningSince == null) "Fortsæt" else "Pause") }
-            if (event.type == CareEventType.Breastfeeding) OutlinedButton(onClick = { onSwitch(event) }) { Text("Skift side") }
-            Button(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, null); Text("Stop") }
-        }
-    } }
+    }
 }
 
 private fun formatMinutes(minutes: Long) = if (minutes >= 60) "${minutes / 60} t ${minutes % 60} min" else "$minutes min"
@@ -849,7 +877,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 }
 
 @Composable
-internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null) {
+internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null, onPrevious: (() -> Unit)? = null, onNext: (() -> Unit)? = null, onBackToToday: (() -> Unit)? = null) {
             val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
             val lastNursing = dk.babyapp.domain.lastNursingInterval(todayEvents)
             val lastSide = lastNursing?.second
@@ -898,13 +926,20 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
             ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (date == LocalDate.now()) "Dagens overblik" else date.format(java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy")), style = MaterialTheme.typography.titleLarge)
+                Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Day browsing sits in the heading row so the overview starts right away.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (onPrevious != null) IconButton(onClick = onPrevious) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Forrige dags overblik") }
+                        Column(Modifier.weight(1f).padding(start = if (onPrevious == null) 10.dp else 0.dp)) {
+                            Text(if (date == LocalDate.now()) "Dagens overblik" else date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d. MMM", java.util.Locale.forLanguageTag("da"))).replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleMedium)
+                            if (onBackToToday != null) TextButton(onClick = onBackToToday, contentPadding = PaddingValues(horizontal = 0.dp)) { Text("Tilbage til i dag", style = MaterialTheme.typography.labelMedium) }
+                        }
+                        if (onPrevious != null) IconButton(onClick = { onNext?.invoke() }, enabled = onNext != null) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Næste dags overblik") }
                         if (onCustomize != null) IconButton(onClick = onCustomize) { Icon(Icons.Outlined.Tune, "Tilpas Dagens overblik") }
                     }
+                    Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     overviewItems.chunked(2).forEachIndexed { rowIndex, row ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEachIndexed { columnIndex, item ->
                                 val metric = metrics[rowIndex * 2 + columnIndex]
                                 val count = todayEvents.count { event -> when (metric) {
@@ -918,7 +953,7 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                                 val lastDetail = lastTime?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }?.let { time ->
                                     time + if (metric == DashboardMetric.Feeding) when (lastSide) { BreastSide.Left -> " - V"; BreastSide.Right -> " - H"; null -> "" } else ""
                                 }
-                                SummaryMetric(item.label, item.value, lastDetail, Modifier.weight(1f), count, when (metric) {
+                                SummaryMetric(item.label, item.value, lastDetail, Modifier.weight(1f).fillMaxHeight(), count, category = metric.careCategory, iconValues = when (metric) {
                                     DashboardMetric.Diapers -> listOf(Triple(dk.babyapp.R.drawable.ic_diaper_wet, "Våd", wetDiapers.toString()), Triple(dk.babyapp.R.drawable.ic_diaper_stool, "Afføring", dirtyDiapers.toString()))
                                     DashboardMetric.Feeding -> listOf(Triple(dk.babyapp.R.drawable.ic_feeding_bottle, "Flaske", "$bottleMl ml"), Triple(dk.babyapp.R.drawable.ic_feeding_breast, "Amning", breastSummary))
                                     else -> null
@@ -926,6 +961,7 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                             }
                             if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                         }
+                    }
                     }
                 }
             }

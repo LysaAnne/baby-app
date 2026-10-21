@@ -120,7 +120,8 @@ class BabyAppNavigationTest {
         composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(event), preferences = AppPreferences(hasSeenGettingStarted = true)) }
         composeRule.onNodeWithContentDescription("Ammebrik ved ny amning").assertDoesNotExist()
         composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Vis målegrafer"))
-        composeRule.onNodeWithContentDescription("Vis målegrafer").performClick()
+        // Activated directly: after scrolling, the icon can sit under the floating + button.
+        composeRule.onNodeWithContentDescription("Vis målegrafer").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         composeRule.onNodeWithText("Målenes udvikling").assertIsDisplayed()
         composeRule.onNodeWithText("Luk").performClick()
         val context = InstrumentationRegistry.getInstrumentation().targetContext

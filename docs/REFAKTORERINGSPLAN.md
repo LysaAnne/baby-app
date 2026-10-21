@@ -6,7 +6,7 @@ Sidst opdateret: 20. oktober 2026
 
 ## Næste skridt
 
-**Fase 3 – Skærmene redesignes**, punkt 3.1: I dag.
+**Fase 3 – Skærmene redesignes**, punkt 3.2: Registrer-arket (aftales først med en skitse).
 
 Alt i fase 0 og 1, der handler om data, er færdigt. Punkt 1.5 og 1.6 laves sammen med de skærme, de hører til i fase 3.
 
@@ -19,7 +19,7 @@ Før du installerer en ny version på telefonen: tag en krypteret backup (Indsti
 | 0 | Sikkerhedsnet for data | ✅ Færdig |
 | 1 | Teknisk fundament | ✅ Data færdig · 1.5 og 1.6 følger fase 3 |
 | 2 | Designsystem | ✅ Færdig |
-| 3 | Skærmene redesignes én ad gangen | ⏭️ Næste |
+| 3 | Skærmene redesignes én ad gangen | 🔄 I gang · 3.1 færdig |
 | 4 | Nye funktioner | Venter |
 
 ## Regler, der gælder for alle faser
@@ -103,11 +103,15 @@ Byggeklodser, som fase 3 bruger:
 
 Én skærm ad gangen, hver i sin egen commit. Punkt 1.5 og 1.6 laves for den skærm, der redesignes.
 
-### 3.1 I dag
-- **Statuskort øverst:** "Sidst spist for 2 t 10 m (venstre)", "Sover siden 14.05", "Sidste ble for 1 t".
-- **Hovedhandlinger:** et gitter med ca. 6 valgfrie hovedhandlinger og en "Mere"-knap i stedet for de lange kategorikort.
-- **Kørende timere:** vises som en fast mini-afspiller over menulinjen og ligger ikke længere oven på indholdet.
-- **Dagens tal** som kompakte chips og de seneste 3–5 registreringer.
+### 3.1 I dag ✅
+
+Aftalt ud fra skitse 2 (samme struktur, mere kompakt). Færdig:
+- Dagens overblik: dagbladring i overskriften, ikoner i hvert felt, lavere felter. Felterne vælges og sorteres stadig selv.
+- Kategorikort: ét kort pr. kategori som før (kan sorteres og skjules), mindre luft, fire knapper pr. række når teksterne er korte, Favoritside og Søvn side om side. Knapperne har den tidligere højde.
+- Tællere: kompakte bjælker over menulinjen på alle faner, kun når en tæller er i gang, op til to; kan udvides til den fulde visning. Stop gemmes fra den fane, man står på. Tælleren i topbjælken er fjernet.
+- +-knappen er bevaret og ligger altid over tællerne.
+
+Backup af udseendet før 3.1: git-mærket `for-redesign-i-dag` og `backups/babyapp-for-redesign-i-dag-d585cba.apk`.
 
 ### 3.2 Ét samlet "Registrer"-ark
 - Erstatter både kategorikortene og den separate "+"-menu.

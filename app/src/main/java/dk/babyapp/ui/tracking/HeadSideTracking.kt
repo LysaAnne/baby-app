@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoGraph
@@ -18,17 +19,17 @@ import java.time.LocalDate
 internal fun HeadSideQuickButtons(events: List<CareEventEntity>, childId: String?, onOpenStatistics: (() -> Unit)? = null, onSave: (CareEventEntity) -> Unit) {
     val counts = headSideTotals(eventsForDay(events.filter { it.childId == childId }, LocalDate.now()))
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = if (onOpenStatistics != null) 48.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Favoritside", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
             if (onOpenStatistics != null) IconButton(onClick = onOpenStatistics, enabled = childId != null) {
                 Icon(Icons.Outlined.AutoGraph, contentDescription = "Åbn favoritside")
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             HeadSide.entries.forEach { side ->
-                FilledTonalButton(modifier = Modifier.weight(1f).semantics { contentDescription = "Registrer hovedside ${side.displayLabel().lowercase()}" }, enabled = childId != null, onClick = {
+                QuickButton("${side.displayLabel()} · ${if (side == HeadSide.Left) counts.left else counts.right}", Modifier.weight(1f).semantics { contentDescription = "Registrer hovedside ${side.displayLabel().lowercase()}" }, childId != null) {
                     childId?.let { onSave(headSideObservation(it, side)) }
-                }) { Text("${side.displayLabel()} · ${if (side == HeadSide.Left) counts.left else counts.right}") }
+                }
             }
         }
     }

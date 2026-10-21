@@ -208,17 +208,21 @@ class RegistrationEditingTest {
         compose.setContent { MaterialTheme {
             dk.babyapp.ui.tracking.ActiveTimerCard(event, { event = it.copy(runningSince = System.currentTimeMillis()) }, { switches++ }, { stops++ }, {}, {}, { _, _ -> }, awake, { awake = it }, minimized = minimized, onMinimizedChange = { minimized = it })
         } }
+        // Compact: one line with side switch, pause/resume and stop; details only when expanded.
         compose.onNodeWithContentDescription("Udvid tæller").assertExists()
-        compose.onNodeWithContentDescription("Hold skærmen tændt").performClick()
-        compose.runOnIdle { assertTrue(awake) }
+        compose.onNodeWithContentDescription("Hold skærmen tændt").assertDoesNotExist()
         compose.onNodeWithText("Ret intervaller").assertDoesNotExist()
         compose.onNodeWithText("Fortsæt").assertDoesNotExist()
         compose.onNodeWithContentDescription("Fortsæt").performClick()
         compose.onNodeWithContentDescription("Pause").assertExists()
-        compose.onNodeWithText("Skift side").performClick()
-        compose.onNodeWithText("Stop").performClick()
+        compose.onNodeWithContentDescription("Skift side").performClick()
+        compose.onNodeWithContentDescription("Stop").performClick()
         compose.runOnIdle { assertEquals(1, switches); assertEquals(1, stops) }
         compose.onNodeWithContentDescription("Udvid tæller").performClick()
-        compose.onNodeWithContentDescription("Hold skærmen tændt").assertExists()
+        compose.onNodeWithContentDescription("Hold skærmen tændt").performClick()
+        compose.runOnIdle { assertTrue(awake) }
+        compose.onNodeWithText("Ret intervaller").assertExists()
+        compose.onNodeWithContentDescription("Minimer tæller").performClick()
+        compose.onNodeWithContentDescription("Hold skærmen tændt").assertDoesNotExist()
     }
 }

@@ -219,9 +219,6 @@ fun BabyAppNavigation(
                     }
                 },
                 actions = {
-                    runningEvents.firstOrNull()?.let { event ->
-                        dk.babyapp.ui.tracking.TopBarTimer(event) { onSelectChild(event.childId); navController.navigate(AppDestination.Today) { launchSingleTop = true } }
-                    }
                     IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -230,6 +227,23 @@ fun BabyAppNavigation(
             )
         },
         bottomBar = {
+            Column {
+            dk.babyapp.ui.tracking.ActiveTimers(
+                timers = runningEvents,
+                recentEvents = careEvents,
+                activeChildId = activeChild?.id,
+                childName = { id -> profiles.firstOrNull { it.id == id }?.name },
+                careProviders = careProviders,
+                medicines = medicines,
+                keepAwake = keepTimerAwake,
+                onKeepAwake = { keepTimerAwake = it },
+                onToggle = onToggleTimer,
+                onSwitchSide = onSwitchSide,
+                onStop = onStopTimer,
+                onUpdate = onUpdateCareEvent,
+                onDelete = onDeleteCareEvent,
+                onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
+            )
             NavigationBar {
                 AppDestination.topLevel.forEach { destination ->
                     val selected = currentDestination?.hasRoute(destination::class) == true || (destination == AppDestination.Guide && currentDestination?.hasRoute<BookPageDestination>() == true)
@@ -255,6 +269,7 @@ fun BabyAppNavigation(
                     )
                 }
             }
+            }
         },
     ) { contentPadding ->
         NavHost(
@@ -277,8 +292,6 @@ fun BabyAppNavigation(
                     onUpdate = onUpdateCareEvent, onDelete = onDeleteCareEvent,
                     onUpdateQuickActions = onUpdateQuickActions,
                     onUpdateDashboardMetrics = onUpdateDashboardMetrics,
-                    keepTimerAwake = keepTimerAwake,
-                    onKeepTimerAwake = { keepTimerAwake = it },
                     onUpdateQuickActionCategoryOrder = onUpdateQuickActionCategoryOrder,
                     onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
                     onUpdateHeadSideStatistics = onUpdateHeadSideStatistics,
