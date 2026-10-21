@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -112,11 +113,12 @@ internal fun TeethDialog(childId: String, records: List<ToothRecord>, onSave: (T
                         }
                         Text("Tænderne kommer i meget forskelligt tempo. Tal med sundhedsplejersken, hvis du er i tvivl.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    val undated = teeth.values.filter { it.emerged == null && it.lost == null }
                     val timeline = teeth.values.flatMap { record ->
                         listOfNotNull(record.emerged?.let { LocalDate.parse(it) to "${toothName(record.tooth)}, ${toothSide(record.tooth).removePrefix("barnets ")}" },
                             record.lost?.let { LocalDate.parse(it) to "${toothName(record.tooth)}, ${toothSide(record.tooth).removePrefix("barnets ")}, tabt" }).map { it to record.tooth }
                     }.sortedBy { it.first.first }
-                    if (timeline.isNotEmpty()) TeethCard {
+                    if (timeline.isNotEmpty() || undated.isNotEmpty()) TeethCard {
                         Text("Tidslinje", style = MaterialTheme.typography.titleSmall)
                         timeline.forEach { (entry, tooth) ->
                             val (date, text) = entry
@@ -126,6 +128,12 @@ internal fun TeethDialog(childId: String, records: List<ToothRecord>, onSave: (T
                                     ageAt(child?.birthDate, date)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 }
                                 Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            }
+                        }
+                        undated.forEach { record ->
+                            Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable { selected = record.tooth }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("Dato ukendt", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(96.dp))
+                                Text("${toothName(record.tooth)}, ${toothSide(record.tooth).removePrefix("barnets ")}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -217,7 +225,8 @@ private fun ToothPicker(teeth: Map<Int, ToothRecord>, onDismiss: () -> Unit, onP
 @Composable
 private fun ToothSheet(record: ToothRecord, exists: Boolean, onDismiss: () -> Unit, onSave: (ToothRecord) -> Unit) {
     val today = LocalDate.now()
-    var emerged by remember(record) { mutableStateOf(record.emerged?.let(LocalDate::parse) ?: today.takeIf { !exists }) }
+    var emerged by remember(record) { mutableStateOf(record.emerged?.let(LocalDate::parse) ?: today.takeIf { !exists && !record.dateUnknown }) }
+    var unknown by remember(record) { mutableStateOf(record.dateUnknown) }
     var lost by remember(record) { mutableStateOf(record.lost?.let(LocalDate::parse)) }
     var showLost by remember(record) { mutableStateOf(record.lost != null) }
     var signs by remember(record) { mutableStateOf(record.signs.split(',').map(String::trim).filter(String::isNotBlank).toSet()) }
@@ -225,7 +234,8 @@ private fun ToothSheet(record: ToothRecord, exists: Boolean, onDismiss: () -> Un
     var error by remember { mutableStateOf<String?>(null) }
     val group = groupOf(record.tooth)
     fun save(updated: ToothRecord) = runCatching { updated.validate() }.onSuccess { onSave(updated) }.onFailure { error = it.message }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Opens fully, so everything incl. losing the tooth shows without scrolling.
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(horizontal = BabySpacing.l).padding(bottom = BabySpacing.xl).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(BabySpacing.s)) {
             Row(horizontalArrangement = Arrangement.spacedBy(BabySpacing.m), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape))
@@ -235,7 +245,7 @@ private fun ToothSheet(record: ToothRecord, exists: Boolean, onDismiss: () -> Un
                 }
             }
             Text("Hvornår kom den?", style = MaterialTheme.typography.labelLarge)
-            DateChoice(emerged, onChange = { emerged = it; error = null })
+            DateChoice(emerged, unknown = unknown, onUnknown = { unknown = true; emerged = null; error = null }, onChange = { emerged = it; unknown = false; error = null })
             Text("Første tegn (valgfrit)", style = MaterialTheme.typography.labelLarge)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 toothSigns.forEach { sign -> FilterChip(selected = sign in signs, onClick = { signs = if (sign in signs) signs - sign else signs + sign }, label = { Text(sign) }) }
@@ -248,18 +258,18 @@ private fun ToothSheet(record: ToothRecord, exists: Boolean, onDismiss: () -> Un
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BabySpacing.s, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 // A record without dates is removed, so this clears the tooth.
-                if (exists) TextButton(onClick = { save(record.copy(emerged = null, lost = null)) }) { Text("Fjern", color = MaterialTheme.colorScheme.error) }
+                if (exists) IconButton(onClick = { save(record.copy(emerged = null, lost = null, dateUnknown = false)) }) { Icon(Icons.Outlined.Delete, "Fjern tanden", tint = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.weight(1f))
                 OutlinedButton(onClick = onDismiss) { Text("Annuller") }
-                Button(onClick = { save(record.copy(emerged = emerged?.toString(), lost = lost?.takeIf { showLost }?.toString(), signs = toothSigns.filter { it in signs }.joinToString(", "), note = note.trim())) }) { Text("Gem") }
+                Button(onClick = { save(record.copy(emerged = emerged?.toString(), dateUnknown = unknown && emerged == null, lost = lost?.takeIf { showLost }?.toString(), signs = toothSigns.filter { it in signs }.joinToString(", "), note = note.trim())) }) { Text("Gem") }
             }
         }
     }
 }
 
-/** I dag, I går or a chosen date; the chosen date shows on its own chip. Dates can't be in the future. */
+/** I dag, I går, a chosen date or, where allowed, Ved ikke. The chosen date shows on its own chip. No future dates. */
 @Composable
-private fun DateChoice(value: LocalDate?, onChange: (LocalDate?) -> Unit) {
+private fun DateChoice(value: LocalDate?, unknown: Boolean = false, onUnknown: (() -> Unit)? = null, onChange: (LocalDate?) -> Unit) {
     val context = LocalContext.current
     val today = LocalDate.now()
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -272,6 +282,6 @@ private fun DateChoice(value: LocalDate?, onChange: (LocalDate?) -> Unit) {
                 datePicker.maxDate = System.currentTimeMillis()
             }.show()
         }, leadingIcon = { Icon(Icons.Outlined.CalendarToday, null, Modifier.size(16.dp)) }, label = { Text(other?.format(dateFormat) ?: "Vælg dato") })
-        if (value == null) AssistChip(onClick = {}, enabled = false, label = { Text("Ukendt dato") })
+        if (onUnknown != null) FilterChip(selected = unknown && value == null, onClick = onUnknown, label = { Text("Ved ikke") })
     }
 }

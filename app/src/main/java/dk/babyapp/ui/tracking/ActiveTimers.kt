@@ -95,7 +95,7 @@ internal fun ActiveTimers(
         val save: (CareEventEntity) -> Unit = { updated -> onUpdate(updated.copy(isDraft = false)) { success -> saveFailed = !success; if (success) editing = null } }
         val providers = careProviders.filter { it.childId == event.childId }
         if (event.type in setOf(CareEventType.HealthVisit, CareEventType.Vaccination)) HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, providers, event, dismiss, onSave = save)
-        else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, dismiss, medicines, save)
+        else if (event.activityType == ActivityType.Medicine) MedicineDialog(event.childId, event, dismiss, medicines, onSave = save)
         else EditEventDialog(event, dismiss, save)
     }
     if (saveFailed) AlertDialog(

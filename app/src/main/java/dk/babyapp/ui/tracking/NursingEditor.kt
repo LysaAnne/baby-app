@@ -1,5 +1,6 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -50,30 +51,42 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
     var settling by remember(event.id) { mutableStateOf(event.settlingMethod) }
     var awakenings by remember(event.id) { mutableStateOf(event.awakenings?.toString().orEmpty()) }
     var quality by remember(event.id) { mutableStateOf(event.sleepQuality) }
+    var activityType by remember(event.id) { mutableStateOf(event.activityType ?: ActivityType.Other) }
+    var pumpingMethod by remember(event.id) { mutableStateOf(event.pumpingMethod) }
+    var pumped by remember(event.id) { mutableStateOf(event.pumpedAmountMl?.toString().orEmpty()) }
+    val sleep = event.type == CareEventType.Sleep
     var error by remember { mutableStateOf<String?>(null) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FormHeader(if (nursing) "Rediger amning" else "Rediger søvn", event.careCategory)
+                FormHeader(when (event.type) { CareEventType.Breastfeeding -> "Rediger amning"; CareEventType.Sleep -> "Rediger søvn"; CareEventType.Pumping -> "Rediger pumpning"; else -> "Rediger ${activityType.displayLabel().lowercase()}" }, event.careCategory)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(if (nursing) "Ret tid og brystside for hvert interval. Pauser tæller ikke med. Et igangværende interval fortsætter, mens du redigerer."
                         else "Ret tiden for hvert interval. Pauser tæller ikke med. Et igangværende interval fortsætter, mens du redigerer.")
-                    if (!nursing) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (sleep) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SleepType.entries.forEach { option -> FilterChip(selected = sleepType == option, onClick = { sleepType = option }, label = { Text(if (option == SleepType.Nap) "Lur" else "Nattesøvn") }) }
                     }
                     intervals.forEachIndexed { index, interval ->
                         androidx.compose.material3.OutlinedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Interval ${index + 1} · ${((interval.end ?: now) - interval.start).coerceAtLeast(0) / 60000} min${if (interval.end == null) " · kører" else ""}", style = MaterialTheme.typography.titleMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Interval ${index + 1} · ${((interval.end ?: now) - interval.start).coerceAtLeast(0) / 60000} min${if (interval.end == null) " · kører" else ""}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                                if (nursing || intervals.size > 1) IconButton(onClick = { intervals = intervals.filterIndexed { i, _ -> i != index }; error = null }) {
+                                    Icon(androidx.compose.material.icons.Icons.Outlined.Delete, "Slet interval ${index + 1}", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
                             Text("Start")
                             DateTimeFields(interval.start) { time -> intervals = intervals.withStart(index, time); error = null }
                             if (interval.end != null) { Text("Slut"); DateTimeFields(interval.end) { time -> intervals = intervals.withEnd(index, time); error = null } }
                             if (nursing) SelectionDropdown("Brystside", interval.side?.let { if (it == BreastSide.Left) "Venstre" else "Højre" } ?: "Side ikke registreret", BreastSide.entries.map { it to if (it == BreastSide.Left) "Venstre" else "Højre" }) { side -> intervals = intervals.toMutableList().apply { this[index] = interval.copy(side = side) }; error = null }
-                            if (nursing || intervals.size > 1) TextButton(onClick = { intervals = intervals.filterIndexed { i, _ -> i != index }; error = null }) { Text("Slet interval", color = MaterialTheme.colorScheme.error) }
                         } }
                     }
                     if (intervals.isEmpty()) Text("Alle intervaller er fjernet. Gem giver 0 minutters amning. Du kan annullere for at beholde dem.")
                     if (nursing) SelectionDropdown("Gener", issue?.displayLabel() ?: "Ingen angivet", listOf<BreastfeedingIssue?>(null).map { it to "Ingen angivet" } + BreastfeedingIssue.entries.map { it as BreastfeedingIssue? to it.displayLabel() }) { issue = it }
-                    else {
+                    else if (event.type == CareEventType.Activity) SelectionDropdown("Type *", activityType.displayLabel(), ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }) { activityType = it }
+                    else if (event.type == CareEventType.Pumping) {
+                        SelectionDropdown("Pumpetype", pumpingMethod.ifBlank { "Ikke angivet" }, listOf("", "Hånd", "Maskine", "Manuel pumpe").map { it to it.ifBlank { "Ikke angivet" } }) { pumpingMethod = it }
+                        RegistrationTextField(pumped, { pumped = it.filter(Char::isDigit) }, label = { Text("Pumpet (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+                    } else {
                         RegistrationTextField(location, { location = it }, label = { Text("Sovested") })
                         RegistrationTextField(settling, { settling = it }, label = { Text("Puttemetode") })
                         RegistrationTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
@@ -88,8 +101,12 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                     Button(onClick = {
                         runCatching {
                             val edited = event.editTimerIntervals(intervals, System.currentTimeMillis()).copy(notes = notes)
-                            if (nursing) edited.copy(breastfeedingIssue = issue)
-                            else edited.copy(sleepType = sleepType, sleepLocation = location, settlingMethod = settling, awakenings = awakenings.toIntOrNull(), sleepQuality = quality)
+                            when (event.type) {
+                                CareEventType.Breastfeeding -> edited.copy(breastfeedingIssue = issue)
+                                CareEventType.Activity -> edited.copy(activityType = activityType)
+                                CareEventType.Pumping -> edited.copy(pumpingMethod = pumpingMethod, pumpedAmountMl = pumped.toIntOrNull())
+                                else -> edited.copy(sleepType = sleepType, sleepLocation = location, settlingMethod = settling, awakenings = awakenings.toIntOrNull(), sleepQuality = quality)
+                            }
                         }.onSuccess(onSave).onFailure { error = it.message ?: "Kontrollér intervallerne." }
                     }) { Text("Gem") }
                 }

@@ -69,6 +69,8 @@ fun CareEventEntity.editTimerIntervals(intervals: List<NursingInterval>, now: Lo
         leftSeconds = sorted.filter { it.end != null }.sumOf { (it.end!! - it.start) / 1000 },
         rightSeconds = 0,
         timerSegments = sorted.joinToString(";") { "${it.start}-${it.end ?: ""}" },
+        // Activities keep their stored duration in step with the intervals.
+        activityDurationSeconds = if (type == CareEventType.Activity && endedAt != null) sorted.filter { it.end != null }.sumOf { (it.end!! - it.start) / 1000 } else activityDurationSeconds,
     )
 }
 

@@ -38,7 +38,6 @@ import dk.babyapp.data.preferences.QuickActionCategory
 import dk.babyapp.data.medicine.MedicinePlan
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -54,6 +53,9 @@ import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Medication
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -268,19 +270,18 @@ fun TodayScreen(
                     }
                     if (QuickAction.HeadSide in actions) HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord)
                     if (category == QuickActionCategory.Sleep && buttons.isNotEmpty()) Text("Søvn", style = MaterialTheme.typography.labelMedium)
-                    QuickButtonRows(buttons, columns = 2)
-                    if (category == QuickActionCategory.Health && childId != null) MedicineStatus(medicines.filter { it.childId == childId && it.active }, childEvents)
-                    if (category == QuickActionCategory.Health && child != null) HealthProgrammeStatus(dk.babyapp.domain.upcomingProgramme(child, historyEvents ?: events, today).take(3), today)
-                    if (category == QuickActionCategory.Health) {
-                        // Same tonal buttons as the rest of the card, two per row.
+                    // Teeth and questions sit in the same grid as the other health buttons; status lines follow below.
+                    val healthExtras = if (category == QuickActionCategory.Health) {
                         val toothCount = teeth.count { it.childId == childId && it.lost == null }
                         val questionCount = preferences.healthQuestions.count { it.childId == childId }
-                        QuickButtonRows(listOf(
+                        listOf(
                             QuickButtonSpec(if (toothCount == 0) "Tænder" else "Tænder · $toothCount", childId != null) { teethOpen = true },
-                            QuickButtonSpec("Medicinkort", childId != null) { medicineCardOpen = true },
-                            QuickButtonSpec(if (questionCount == 0) "Spørgsmål til besøg" else "Spørgsmål ($questionCount)", childId != null) { questionsOpen = true },
-                        ), columns = 2)
-                    }
+                            QuickButtonSpec(if (questionCount == 0) "Spørgsmål" else "Spørgsmål · $questionCount", childId != null) { questionsOpen = true },
+                        )
+                    } else emptyList()
+                    QuickButtonRows(buttons + healthExtras, columns = 2)
+                    if (category == QuickActionCategory.Health && childId != null) MedicineStatus(medicines.filter { it.childId == childId && it.active }, childEvents)
+                    if (category == QuickActionCategory.Health && child != null) HealthProgrammeStatus(dk.babyapp.domain.upcomingProgramme(child, historyEvents ?: events, today).take(3), today)
                 }
             }
         }
@@ -319,7 +320,7 @@ fun TodayScreen(
         EditorKind.Height -> childId?.let { id -> MeasurementDialog(MeasurementType.Height, { dialog = null }) { time, specified, type, value, unit, notes -> onAddMeasurement(id, time, specified, type, value, unit, notes); dialog = null } }
         EditorKind.HeadCircumference -> childId?.let { id -> MeasurementDialog(MeasurementType.HeadCircumference, { dialog = null }) { time, specified, type, value, unit, notes -> onAddMeasurement(id, time, specified, type, value, unit, notes); dialog = null } }
         EditorKind.Temperature -> childId?.let { id -> MeasurementDialog(MeasurementType.Temperature, { dialog = null }) { time, specified, type, value, unit, notes -> onAddMeasurement(id, time, specified, type, value, unit, notes); dialog = null } }
-        EditorKind.Medicine -> childId?.let { id -> MedicineDialog(id, null, { dialog = null }, medicines) { onSaveHealthRecord(it); dialog = null } }
+        EditorKind.Medicine -> childId?.let { id -> MedicineDialog(id, null, { dialog = null }, medicines, onOpenMedicineCard = { medicineCardOpen = true }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.HealthNote -> childId?.let { id -> HealthNoteDialog(id, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartActivity -> StartActivityDialog({ dialog = null }) { type -> childId?.let { onStartActivity(it, type) { success -> sleepError = !success } }; dialog = null }
         EditorKind.Activity -> childId?.let { id -> ActivityDialog(manualActivityType, { dialog = null }) { start, end, type, notes -> onAddActivity(id, start, end, type, notes); dialog = null } }
@@ -457,7 +458,7 @@ private fun HealthQuestionsDialog(childId: String, all: List<dk.babyapp.data.pre
             mine.forEach { question ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("• ${question.text}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                    IconButton(onClick = { onUpdate(all - question) }) { Icon(Icons.Outlined.Close, "Fjern ${question.text}") }
+                    IconButton(onClick = { onUpdate(all - question) }) { Icon(Icons.Outlined.Delete, "Fjern ${question.text}", tint = MaterialTheme.colorScheme.error) }
                 }
             }
             RegistrationTextField(draft, { draft = it }, label = { Text("Nyt spørgsmål") })
@@ -577,9 +578,13 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                     Text(title, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     Text(formatDuration(elapsed) + if (running) "" else " · pause", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 }
-                if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
+                if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
+                // Screen on/off as an icon only; the expanded timer spells it out.
+                androidx.compose.material3.IconToggleButton(keepAwake, onKeepAwake, modifier = Modifier.size(40.dp)) {
+                    Icon(if (keepAwake) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt", tint = if (keepAwake) category.accent else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 toggle()
-                androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }) { Icon(Icons.Outlined.Stop, "Stop") }
+                androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Stop, "Stop") }
                 expandButton()
             }
         } else Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -609,13 +614,11 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                             }
                         }
                     }
-                    NursingIntervalOverview(event, now)
                 }
-                // Sleep shows its intervals once it has been paused.
-                if (event.type == CareEventType.Sleep && event.segmentIntervals().size > 1) NursingIntervalOverview(event, now)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Hold skærmen tændt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    androidx.compose.material3.Switch(keepAwake, onKeepAwake, modifier = Modifier.semantics { contentDescription = "Hold skærmen tændt" })
+                // Nursing always lists its intervals; other timers once they have been paused. Editing sits right below.
+                if (event.type == CareEventType.Breastfeeding || event.segmentIntervals().size > 1) NursingIntervalOverview(event, now)
+                TextButton(onClick = { onEdit(event) }, contentPadding = PaddingValues(horizontal = 4.dp)) {
+                    Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp)); Text(" Ret intervaller")
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.FilledTonalButton(onClick = { onToggle(event) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) {
@@ -628,7 +631,11 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                         Icon(Icons.Outlined.Stop, null, Modifier.size(18.dp)); Text(" Stop")
                     }
                 }
-                if (event.type == CareEventType.Breastfeeding || event.type == CareEventType.Sleep) TextButton(onClick = { onEdit(event) }) { Text("Ret intervaller") }
+                val awakeColors = if (keepAwake) androidx.compose.material3.ButtonDefaults.filledTonalButtonColors() else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                androidx.compose.material3.FilledTonalButton(onClick = { onKeepAwake(!keepAwake) }, colors = awakeColors, modifier = Modifier.fillMaxWidth().semantics { contentDescription = if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt" },
+                    border = if (keepAwake) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Icon(if (keepAwake) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, null, Modifier.size(18.dp)); Text(if (keepAwake) " Skærmen holdes tændt" else " Hold skærmen tændt")
+                }
             }
         }
     }
@@ -819,7 +826,7 @@ private fun StartActivityDialog(onDismiss: () -> Unit, onStart: (ActivityType) -
 }
 
 @Composable
-internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismiss: () -> Unit, medicines: List<MedicinePlan> = emptyList(), onSave: (CareEventEntity) -> Unit) {
+internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismiss: () -> Unit, medicines: List<MedicinePlan> = emptyList(), onOpenMedicineCard: (() -> Unit)? = null, onSave: (CareEventEntity) -> Unit) {
     val plans = medicines.filter { it.childId == childId && it.active }
     var selectedPlan by remember { mutableStateOf(plans.firstOrNull { it.id == existing?.medicineId }) }
     var dose by remember { mutableStateOf(existing?.medicationDose.orEmpty()) }
@@ -834,6 +841,10 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
             Text("Registrér kun medicin, som barnet faktisk har fået.")
             DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
             if (plans.isEmpty()) Text("Tilføj eller aktivér medicin på medicinkortet før registrering.")
+            // The medicine card is reached from here rather than from the Today card.
+            if (onOpenMedicineCard != null) TextButton(onClick = onOpenMedicineCard, contentPadding = PaddingValues(horizontal = 4.dp)) {
+                Icon(Icons.Outlined.Medication, null, Modifier.size(18.dp)); Text(" Åbn medicinkort")
+            }
             if (existing != null && selectedPlan == null) Text("Tidligere registrering: ${existing.medicationName}")
             if (plans.isNotEmpty()) SelectionDropdown("Fra medicinkort *", selectedPlan?.name ?: "Vælg medicin", plans.map { it to "${it.name} · ${it.dose}" }) { plan -> selectedPlan = plan; dose = plan.dose }
             RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
@@ -877,8 +888,8 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
     if (event.type == CareEventType.Activity && event.activityType == ActivityType.Medicine) {
         MedicineDialog(event.childId, event, onDismiss, onSave = onSave); return
     }
-    // A sleep that was paused, or is still running, is edited interval by interval like nursing.
-    if (event.type == CareEventType.Sleep && (event.endedAt == null || event.segmentIntervals().size > 1)) { NursingEditor(event, onDismiss, onSave); return }
+    // A timer that was paused, or is still running, is edited interval by interval like nursing.
+    if (event.type in setOf(CareEventType.Sleep, CareEventType.Activity, CareEventType.Pumping) && (event.endedAt == null || event.segmentIntervals().size > 1)) { NursingEditor(event, onDismiss, onSave); return }
     if (event.type == CareEventType.Sleep) {
         SleepDialog(event, onDismiss) { start, end, type, location, settling, awakenings, quality, notes ->
             val changed = start != event.startedAt || end != event.endedAt
@@ -965,8 +976,6 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 
 @Composable
 internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null, onPrevious: (() -> Unit)? = null, onNext: (() -> Unit)? = null, onOpenSummary: (() -> Unit)? = null) {
-            var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-            LaunchedEffect(Unit) { while (true) { delay(60_000); now = System.currentTimeMillis() } }
             val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
             val lastNursing = dk.babyapp.domain.lastNursingInterval(todayEvents)
             val lastSide = lastNursing?.second
@@ -1020,12 +1029,11 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (onPrevious != null) IconButton(onClick = onPrevious) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Forrige dags overblik") }
                         // The day's name opens the full summary of the day.
-                        val title = if (date == LocalDate.now()) "I dag" else date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d. MMM", java.util.Locale.forLanguageTag("da"))).replaceFirstChar { it.uppercase() }
+                        val title = if (date == LocalDate.now()) "I dag" else date.format(java.time.format.DateTimeFormatter.ofPattern("d. MMMM", java.util.Locale.forLanguageTag("da")))
                         Row(Modifier.weight(1f).padding(start = if (onPrevious == null) 10.dp else 0.dp).clip(MaterialTheme.shapes.small)
                             .then(if (onOpenSummary != null) Modifier.clickable(onClickLabel = "Vis dagens opsummering", onClick = onOpenSummary) else Modifier).padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                            if (onOpenSummary != null) Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(20.dp))
                         }
                         if (onPrevious != null) IconButton(onClick = { onNext?.invoke() }, enabled = onNext != null) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Næste dags overblik") }
                         if (onCustomize != null) IconButton(onClick = onCustomize) { Icon(Icons.Outlined.Tune, "Tilpas overblikket") }
@@ -1044,9 +1052,7 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                                 } }
                                 val lastTime = if (metric == DashboardMetric.Feeding && lastNursing != null) lastNursing.first else item.event?.startedAt
                                 val lastDetail = lastTime?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }?.let { time ->
-                                    time + (if (metric == DashboardMetric.Feeding) when (lastSide) { BreastSide.Left -> " - V"; BreastSide.Right -> " - H"; null -> "" } else "") +
-                                        // On today's overview, also how long ago.
-                                        if (date == LocalDate.now()) " · for ${dk.babyapp.domain.timeSinceLabel(lastTime, now)} siden" else ""
+                                    time + if (metric == DashboardMetric.Feeding) when (lastSide) { BreastSide.Left -> " - V"; BreastSide.Right -> " - H"; null -> "" } else ""
                                 }
                                 SummaryMetric(item.label, item.value, lastDetail, Modifier.weight(1f).fillMaxHeight(), count, category = metric.careCategory, iconValues = when (metric) {
                                     DashboardMetric.Diapers -> listOf(Triple(dk.babyapp.R.drawable.ic_diaper_wet, "Våd", wetDiapers.toString()), Triple(dk.babyapp.R.drawable.ic_diaper_stool, "Afføring", dirtyDiapers.toString()))

@@ -1,5 +1,8 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.Icons
 import android.app.AlarmManager
 import android.app.TimePickerDialog
 import android.content.Intent
@@ -36,7 +39,10 @@ internal fun MedicineCardDialog(childId: String, all: List<MedicinePlan>, onSave
                 Text(if (!plan.active) "Inaktiv" else if (plan.reminders && !plan.asNeeded) "Påmindelser slået til" else "Ingen påmindelser", style = MaterialTheme.typography.bodySmall)
                 if (plan.instructions.isNotBlank()) Text(plan.instructions)
                 Row { TextButton(onClick = { onSave(all.map { if (it.id == plan.id) it.copy(active = !it.active) else it }) }) { Text(if (plan.active) "Gør inaktiv" else "Aktivér") } }
-                Row { TextButton(onClick = { editing = plan }) { Text("Rediger") }; TextButton(onClick = { deleting = plan }) { Text("Slet") } }
+                Row {
+                    IconButton(onClick = { editing = plan }) { Icon(Icons.Outlined.Edit, "Rediger ${plan.name}") }
+                    IconButton(onClick = { deleting = plan }) { Icon(Icons.Outlined.Delete, "Slet ${plan.name}", tint = MaterialTheme.colorScheme.error) }
+                }
             } } }
             Button(onClick = { editing = MedicinePlan(childId = childId, name = "") }) { Text("Tilføj medicin") }
         }
@@ -65,7 +71,7 @@ private fun MedicinePlanEditor(initial: MedicinePlan, onDismiss: () -> Unit, onS
             Row { Checkbox(draft.asNeeded, { draft = draft.copy(asNeeded = it, reminders = if (it) false else draft.reminders) }); Text("PN · efter behov", Modifier.padding(top = 12.dp)) }
             if (!draft.asNeeded) {
                 Text("Daglige tidspunkter", style = MaterialTheme.typography.titleSmall)
-                draft.validTimes().forEach { time -> Row { Text(time.toString(), Modifier.weight(1f).padding(top = 12.dp)); TextButton(onClick = { draft = draft.copy(times = draft.times - time.toString()) }) { Text("Fjern") } } }
+                draft.validTimes().forEach { time -> Row { Text(time.toString(), Modifier.weight(1f).padding(top = 12.dp)); IconButton(onClick = { draft = draft.copy(times = draft.times - time.toString()) }) { Icon(Icons.Outlined.Delete, "Fjern kl. $time", tint = MaterialTheme.colorScheme.error) } } }
                 TextButton(onClick = { TimePickerDialog(context, { _, h, m -> draft = draft.copy(times = (draft.times + LocalTime.of(h, m).toString()).distinct().sorted()) }, 8, 0, true).show() }) { Text("Tilføj tidspunkt") }
                 Row { Checkbox(draft.reminders, { draft = draft.copy(reminders = it) }); Text("Påmind mig", Modifier.padding(top = 12.dp)) }
                 if (draft.reminders) {

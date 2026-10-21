@@ -150,5 +150,5 @@ private fun MedicinePlanEntity.toContentValues() = ContentValues().apply {
 }
 
 private fun ToothRecordEntity.toContentValues() = ContentValues().apply {
-    put("childId", childId); put("tooth", tooth); put("emerged", emerged); put("lost", lost); put("sortOrder", sortOrder); put("signs", signs); put("note", note)
+    put("childId", childId); put("tooth", tooth); put("emerged", emerged); put("lost", lost); put("sortOrder", sortOrder); put("signs", signs); put("note", note); put("dateUnknown", dateUnknown)
 }

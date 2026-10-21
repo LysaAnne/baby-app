@@ -25,10 +25,11 @@ data class ToothRecordEntity(
     val sortOrder: Int,
     @androidx.room.ColumnInfo(defaultValue = "''") val signs: String = "",
     @androidx.room.ColumnInfo(defaultValue = "''") val note: String = "",
+    @androidx.room.ColumnInfo(defaultValue = "0") val dateUnknown: Boolean = false,
 )
 
-fun ToothRecord.toEntity(sortOrder: Int) = ToothRecordEntity(childId, tooth, emerged, lost, sortOrder, signs, note)
-fun ToothRecordEntity.toRecord() = ToothRecord(childId, tooth, emerged, lost, signs, note)
+fun ToothRecord.toEntity(sortOrder: Int) = ToothRecordEntity(childId, tooth, emerged, lost, sortOrder, signs, note, dateUnknown)
+fun ToothRecordEntity.toRecord() = ToothRecord(childId, tooth, emerged, lost, signs, note, dateUnknown)
 
 @Dao
 interface TeethDao {
@@ -77,11 +78,11 @@ class TeethRepository @Inject constructor(
         emitAll(dao.observeAll().map { rows -> rows.map { it.toRecord() } })
     }
 
-    /** Saves one tooth; a record without any dates is removed, as before. */
+    /** Saves one tooth; a record without any dates (and not marked as come on an unknown date) is removed, as before. */
     suspend fun save(record: ToothRecord) {
         record.validate()
         migrator.ensureMigrated()
-        if (record.emerged == null && record.lost == null) {
+        if (record.emerged == null && record.lost == null && !record.dateUnknown) {
             dao.delete(record.childId, record.tooth)
         } else {
             val existing = dao.all().firstOrNull { it.childId == record.childId && it.tooth == record.tooth }

@@ -202,7 +202,7 @@ class RegistrationEditingTest {
         var saved: CareEventEntity? = null
         val event = CareEventEntity(childId = "freja", type = CareEventType.Breastfeeding, startedAt = 1000, endedAt = 21000, leftSeconds = 10, rightSeconds = 5, timerSegments = "1000-11000;16000-21000", timerSegmentSides = "Left;Right")
         compose.setContent { MaterialTheme { EditEventDialog(event, {}) { saved = it } } }
-        compose.onAllNodesWithText("Slet interval").onFirst().performScrollTo().performClick()
+        compose.onAllNodesWithContentDescription("Slet interval", substring = true).onFirst().performScrollTo().performClick()
         compose.onNodeWithContentDescription("Ammebrik").assertDoesNotExist()
         compose.onNodeWithText("Gem").performClick()
         compose.runOnIdle { assertEquals(0L, saved?.leftSeconds); assertEquals(5L, saved?.rightSeconds); assertEquals(false, saved?.nippleShield); assertEquals("16000-21000", saved?.timerSegments) }
@@ -227,19 +227,20 @@ class RegistrationEditingTest {
         } }
         // Compact: one line with side switch, pause/resume and stop; details only when expanded.
         compose.onNodeWithContentDescription("Udvid tæller").assertExists()
-        compose.onNodeWithContentDescription("Hold skærmen tændt").assertDoesNotExist()
-        compose.onNodeWithText("Ret intervaller").assertDoesNotExist()
+        compose.onNodeWithText("Ret intervaller", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Fortsæt").assertDoesNotExist()
         compose.onNodeWithContentDescription("Fortsæt").performClick()
         compose.onNodeWithContentDescription("Pause").assertExists()
         compose.onNodeWithContentDescription("Skift side").performClick()
         compose.onNodeWithContentDescription("Stop").performClick()
         compose.runOnIdle { assertEquals(1, switches); assertEquals(1, stops) }
-        compose.onNodeWithContentDescription("Udvid tæller").performClick()
+        // Keep the screen on: an icon in the compact bar, spelled out when expanded.
         compose.onNodeWithContentDescription("Hold skærmen tændt").performClick()
         compose.runOnIdle { assertTrue(awake) }
-        compose.onNodeWithText("Ret intervaller").assertExists()
+        compose.onNodeWithContentDescription("Udvid tæller").performClick()
+        compose.onNodeWithText("Skærmen holdes tændt", substring = true).assertExists()
+        compose.onNodeWithText("Ret intervaller", substring = true).assertExists()
         compose.onNodeWithContentDescription("Minimer tæller").performClick()
-        compose.onNodeWithContentDescription("Hold skærmen tændt").assertDoesNotExist()
+        compose.onNodeWithText("Skærmen holdes tændt", substring = true).assertDoesNotExist()
     }
 }

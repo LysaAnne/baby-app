@@ -12,6 +12,8 @@ data class ToothRecord(
     /** Signs noticed before the tooth came, as their labels, comma separated. */
     val signs: String = "",
     val note: String = "",
+    /** The tooth has come, but nobody knows when. */
+    val dateUnknown: Boolean = false,
 )
 
 val upperMilkTeeth = listOf(55, 54, 53, 52, 51, 61, 62, 63, 64, 65)

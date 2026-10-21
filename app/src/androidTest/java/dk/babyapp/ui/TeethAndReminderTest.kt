@@ -25,7 +25,7 @@ class TeethAndReminderTest {
         compose.onNodeWithText("Annuller").performClick()
         compose.runOnIdle { assertEquals(0, saves) }
         compose.onNodeWithContentDescription("Øverste midterste fortand, barnets højre, kommet").performClick()
-        compose.onNodeWithText("Fjern").performClick()
+        compose.onNodeWithContentDescription("Fjern tanden").performClick()
         compose.onNodeWithContentDescription("Øverste midterste fortand, barnets højre, ikke kommet endnu").assertExists()
         compose.runOnIdle { assertEquals(1, saves); assertEquals("2026-01-02", records.single { it.childId == "other" }.lost) }
         compose.onNodeWithContentDescription("Nederste anden kindtand, barnets højre, ikke kommet endnu").performClick()
