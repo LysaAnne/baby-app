@@ -325,7 +325,7 @@ private fun JournalQuickFiltersDialog(current: List<String>, onDismiss: () -> Un
     var selected by remember { mutableStateOf(current) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Rediger hurtigfiltre") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Vælg de fire filtre, der vises i Journal.")
+            Text("Vælg de filtre, der vises øverst i Journal.")
             selected.forEachIndexed { index, label ->
                 SelectionDropdown("Filter ${index + 1}", journalFilterLabel(label), journalFilters.map { it.id to journalFilterLabel(it.id) }) { replacement ->
                     selected = selected.toMutableList().apply {

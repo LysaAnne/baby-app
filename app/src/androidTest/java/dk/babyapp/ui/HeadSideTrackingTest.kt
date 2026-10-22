@@ -39,13 +39,15 @@ class HeadSideTrackingTest {
         val records = listOf(headSideObservation("child", HeadSide.Left, at(today.minusDays(1))), headSideObservation("child", HeadSide.Right, at(today)))
         var settings by mutableStateOf(HeadSideStatisticsSettings("Week", correctionDates = mapOf("child" to today.toString())))
         compose.setContent { MaterialTheme { HeadSideStatisticsDialog("child", records, settings, { settings = it }, {}) } }
-        compose.onNodeWithText("Venstre: 1 · 50,0 %").assertIsDisplayed()
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Højre: 1 · 100,0 %"))
-        compose.onNodeWithText("Højre: 1 · 100,0 %").assertIsDisplayed()
+        compose.onNodeWithText("Venstre: 1").assertIsDisplayed()
+        compose.onAllNodesWithText("50 %").assertCountEquals(2)
+        // With a comparison date, before and after are shown under the folded-out details.
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("V 0 % · H 100 %"))
+        compose.onNodeWithText("V 0 % · H 100 %").assertIsDisplayed()
         compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
         compose.onNodeWithText("1D").performClick()
         compose.runOnIdle { assertEquals("Day", settings.period); assertEquals(today.toString(), settings.correctionDates["child"]) }
-        compose.onNode(hasText("Venstre: 0 · 0,0 %") and hasParent(hasAnyChild(hasText("Favoritside · hele perioden")))).assertIsDisplayed()
+        compose.onNodeWithText("Venstre: 0").assertIsDisplayed()
     }
 
     @Test fun journalEditorChangesSideWithoutCreatingTimer() {

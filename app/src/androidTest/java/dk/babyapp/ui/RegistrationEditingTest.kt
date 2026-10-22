@@ -42,10 +42,10 @@ class RegistrationEditingTest {
         var settings by androidx.compose.runtime.mutableStateOf(dk.babyapp.data.preferences.MeasurementChartSettings())
         var open by androidx.compose.runtime.mutableStateOf(true)
         compose.setContent { MaterialTheme { if (open) dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", settings, { settings = it }) { open = false } } }
-        compose.onNodeWithText("6 måneder").performClick()
+        compose.onNodeWithText("6M").performClick()
         compose.onNodeWithContentDescription("Luk").performClick()
         compose.runOnIdle { assertEquals("SixMonths", settings.period); open = true }
-        compose.onNodeWithText("6 måneder").assertExists()
+        compose.onNodeWithText("6M").assertIsSelected()
     }
 
     @Test fun manualPumpingUsesLastMethodAndSavesWithoutTimer() {
@@ -96,8 +96,8 @@ class RegistrationEditingTest {
     @Test fun chartsOfferAllPeriodsAndCustomDates() {
         compose.setContent { MaterialTheme { dk.babyapp.ui.tracking.MeasurementChartsDialog(emptyList(), "child", onDismiss = {}) } }
         compose.onNodeWithText("Vægt (kg)").assertIsDisplayed()
-        compose.onNodeWithText("Al tid").performScrollTo().performClick()
-        compose.onNodeWithText("Valgfri periode").performScrollTo().performClick()
+        compose.onNodeWithText("Alt").performClick()
+        compose.onNodeWithText("Dato").performClick()
         compose.onNodeWithText("Fra ", substring = true).assertIsDisplayed()
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Temperatur (°C)"))
         compose.onNodeWithText("Temperatur (°C)").assertIsDisplayed()

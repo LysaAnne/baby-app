@@ -89,6 +89,9 @@ private val InsightCard.category: CareCategory get() = when (this) {
     InsightCard.Growth -> CareCategory.Measurement
 }
 
+/** The periods offered in Indsigt, as days with their short label. */
+internal val insightPeriods = listOf(7 to "1U", 30 to "1M", 90 to "3M", 180 to "6M", 365 to "1Å")
+
 internal fun formatMinutesShort(minutes: Long) = if (minutes >= 60) "${minutes / 60} t ${"%02d".format(minutes % 60)} m" else "$minutes m"
 private fun decimal(value: Double) = String.format(danish, "%.1f", value)
 
@@ -114,7 +117,9 @@ internal fun InsightsScreen(
     var detail by rememberSaveable(childId) { mutableStateOf<InsightCard?>(null) }
     var customizeOpen by remember { mutableStateOf(false) }
     val insights = remember(events, childId, periodDays) { childId?.let { periodInsights(events, it, periodDays) } }
+    // A light tint of the child's colour behind white cards, so the cards stand out.
     LazyColumn(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primaryContainer, 0.45f)),
         contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding() + 24.dp, start = 16.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -124,11 +129,7 @@ internal fun InsightsScreen(
                 IconButton(onClick = { customizeOpen = true }) { Icon(Icons.Outlined.Tune, "Tilpas Indsigt") }
             }
         }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(7, 30).forEach { days -> FilterChip(periodDays == days, { onPeriodChange(days) }, { Text("$days dage", style = MaterialTheme.typography.labelLarge) }) }
-            }
-        }
+        item { PeriodBar(insightPeriods.map { it.first.toString() to it.second }, periodDays.toString()) { onPeriodChange(it.toInt()) } }
         if (insights == null) item { Text("Opret eller vælg et barn for at se indsigt.") }
         else items(cards.size, key = { cards[it].name }) { index ->
             val card = cards[index]
@@ -156,8 +157,7 @@ private fun InsightCardFrame(card: InsightCard, onOpen: () -> Unit, content: @Co
     Surface(
         Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        color = Color.White,
     ) {
         Column(Modifier.clickable(onClickLabel = "Vis detaljer", onClick = onOpen).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -322,16 +322,17 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
     val accent = MaterialTheme.babyColors.category(card.category).accent
     val light = MaterialTheme.babyColors.category(card.category).container
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        // The card's category colour as background, white sections on top.
+        CategoryFormTheme(card.category) {
+        Surface(Modifier.fillMaxSize(), color = formBody(card.category)) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
                     Text(card.label, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    listOf(7, 30).forEach { days -> FilterChip(periodDays == days, { onPeriodChange(days) }, { Text("$days dage") }, modifier = Modifier.padding(end = 6.dp)) }
                 }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    @Composable fun Section(content: @Composable () -> Unit) = Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
+                    PeriodBar(insightPeriods.map { it.first.toString() to it.second }, periodDays.toString()) { onPeriodChange(it.toInt()) }
+                    @Composable fun Section(content: @Composable () -> Unit) = Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = Color.White) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
                     when (card) {
                         InsightCard.Sleep -> {
                             Section {
@@ -396,6 +397,7 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
                 }
             }
         }
+    }
     }
 }
 

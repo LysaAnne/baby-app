@@ -40,6 +40,8 @@ class MedicineReminderScheduler(private val context: Context) {
         val now = ZonedDateTime.now()
         var next = now.toLocalDate().atTime(time).atZone(now.zone)
         if (!next.isAfter(now)) next = next.plusDays(1)
+        // Every other day, weekly or monthly: move on to the next day the medicine is due.
+        repeat(400) { if (!plan.isDueOn(next.toLocalDate())) next = next.plusDays(1) }
         scheduleAt(next.toInstant().toEpochMilli(), pending("babyapp://medicine/${plan.id}/$time"))
     }
 

@@ -79,11 +79,11 @@ title: Fast føde – Gulerod
 summary: 2 skefulde
 details: Gulerod · Mos · 2 skefulde · Glad
 ## favourite side
-title: Favoritside – Venstre
+title: Liggeside – Venstre
 summary: Venstre
 details: Venstre
 ## favourite side unknown
-title: Favoritside – Side ikke angivet
+title: Liggeside – Side ikke angivet
 summary: Side ikke angivet
 details: Side ikke angivet
 ## day summary
@@ -113,7 +113,7 @@ Sundhedsbesøg | 1 | –
   Sundhedsplejerske | 1 | –
 Vaccination | 1 | –
 Fast føde | 1 | Gulerod
-Favoritside | 2 | –
+Liggeside | 2 | –
   Venstre | 1 | –
   Højre | 0 | –
   Side ikke angivet | 1 | –

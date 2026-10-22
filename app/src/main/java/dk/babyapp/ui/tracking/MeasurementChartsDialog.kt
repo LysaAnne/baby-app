@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class ChartPeriod(val label: String) { Week("En uge"), Month("En måned"), SixMonths("6 måneder"), Year("Et år"), All("Al tid"), Custom("Valgfri periode") }
+private enum class ChartPeriod(val label: String) { Week("1U"), Month("1M"), SixMonths("6M"), Year("1Å"), All("Alt"), Custom("Dato") }
 
 /** WHO tables from assets/growth, read once per file. */
 private object GrowthTables {
@@ -73,7 +73,8 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
     val availability = child?.growthAvailability()
     val growth = (availability as? GrowthAvailability.Ready)?.takeIf { showGrowth }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        CategoryFormTheme(dk.babyapp.ui.theme.CareCategory.Measurement) {
+        Surface(Modifier.fillMaxSize(), color = formBody(dk.babyapp.ui.theme.CareCategory.Measurement)) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = BabySpacing.xs, end = BabySpacing.l, top = BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Luk") }
@@ -95,9 +96,7 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                         }
                     }
                     item {
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(BabySpacing.s)) {
-                            ChartPeriod.entries.forEach { option -> FilterChip(selected = period == option, onClick = { period = option; saveSelection() }, label = { Text(option.label) }) }
-                        }
+                        PeriodBar(ChartPeriod.entries.map { it.name to it.label }, period.name) { picked -> period = ChartPeriod.valueOf(picked); saveSelection() }
                     }
                     if (period == ChartPeriod.Custom) item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -114,6 +113,7 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                 }
             }
         }
+    }
     }
 }
 
@@ -191,7 +191,7 @@ private fun MeasurementChartCard(type: MeasurementType, points: List<Measurement
     val birthPoint = if (curves && child != null) birthPoint(child, type, zone)?.takeIf { point -> dateOf(point.at).let { (from == null || it >= from) && it <= through } } else null
     val shown = listOfNotNull(birthPoint) + points
     fun format(value: Double, decimals: Int = 2) = String.format(locale, "%.${decimals}f", value)
-    OutlinedCard(Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+    OutlinedCard(Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = Color.White), border = androidx.compose.foundation.BorderStroke(0.dp, Color.Transparent)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("${type.displayLabel()} ($unit)", style = MaterialTheme.typography.titleMedium)
             if (shown.isEmpty()) Text("Ingen målinger i perioden", style = MaterialTheme.typography.bodyMedium)

@@ -39,10 +39,12 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
     var notes by remember { mutableStateOf("") }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Pumpning") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DateTimeFields(time) { time = it }
             AmountField(amount, { amount = it }, "Pumpet (ml)")
             PumpingMethodChips(method) { method = it }
-            MoreDetails("noter") { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
+            MoreDetails("tidspunkt, noter") {
+                DateTimeFields(time) { time = it }
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            }
         }
     }, confirmButton = { Button(enabled = amount.isBlank() || amount.toIntOrNull() != null, onClick = {
         onSave(CareEventEntity(childId = childId, type = CareEventType.Pumping, startedAt = time, endedAt = time, pumpedAmountMl = amount.toIntOrNull(), pumpingMethod = method, notes = notes))

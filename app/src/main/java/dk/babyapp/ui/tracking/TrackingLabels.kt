@@ -13,7 +13,7 @@ import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.data.tracking.ActivityType
 
 internal fun CareEventType.displayLabel() = when (this) {
-    CareEventType.HeadSide -> "Favoritside"
+    CareEventType.HeadSide -> "Liggeside"
     CareEventType.SolidFood -> "Fast føde"
     CareEventType.Breastfeeding -> "Amning"
     CareEventType.Bottle -> "Flaske"

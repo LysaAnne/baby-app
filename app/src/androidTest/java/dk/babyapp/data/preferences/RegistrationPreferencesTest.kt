@@ -58,7 +58,7 @@ class RegistrationPreferencesTest {
                 it[androidx.datastore.preferences.core.stringPreferencesKey("quick_action_category_order")] = "Sundhed,Søvn,Madning"
             }
             val preferences = DataStoreAppPreferencesRepository(context).preferences.first()
-            assertEquals(listOf("measurement:Weight", "nap", "type:Diaper", "health-all"), preferences.journalQuickFilters)
+            assertEquals(listOf("measurement:Weight", "nap", "type:Diaper", "health-all", "medicine"), preferences.journalQuickFilters)
             assertEquals(listOf(QuickActionCategory.Health, QuickActionCategory.Sleep, QuickActionCategory.Feeding), preferences.quickActionCategoryOrder)
             // The old value is only replaced when the user saves a new choice.
             assertEquals("Sundhed,Søvn,Madning", store.data.first()[androidx.datastore.preferences.core.stringPreferencesKey("quick_action_category_order")])

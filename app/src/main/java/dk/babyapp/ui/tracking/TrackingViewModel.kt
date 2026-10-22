@@ -139,7 +139,7 @@ class TrackingViewModel @Inject constructor(
     }
 
     fun addActivity(childId: String, start: Long, end: Long, type: ActivityType, notes: String) = viewModelScope.launch {
-        careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = start, endedAt = end, activityType = type, activityDurationSeconds = ((end - start).coerceAtLeast(0) / 1_000), notes = notes))
+        careEventRepository.save(CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = start, endedAt = end, activityType = type, activityDurationSeconds = ((end - start) / 1_000).takeIf { it > 0 }, notes = notes))
     }
 
     fun addManualTimer(childId: String, type: CareEventType, start: Long, end: Long, side: BreastSide?, amountMl: Int?, notes: String) = viewModelScope.launch {

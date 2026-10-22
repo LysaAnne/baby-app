@@ -10,7 +10,7 @@ import org.junit.Test
 class DaySummaryTest {
     @Test fun headSidesHaveParentTotalAndTwoCountRows() {
         val left = dk.babyapp.domain.headSideObservation("child", HeadSide.Left, 1000)
-        assertEquals(listOf(SummaryRow("Favoritside", 3, "–"), SummaryRow("Venstre", 2, "–", true), SummaryRow("Højre", 1, "–", true)), daySummaryRows(listOf(left, left.copy(id = "second"), left.copy(headSide = HeadSide.Right))))
+        assertEquals(listOf(SummaryRow("Liggeside", 3, "–"), SummaryRow("Venstre", 2, "–", true), SummaryRow("Højre", 1, "–", true)), daySummaryRows(listOf(left, left.copy(id = "second"), left.copy(headSide = HeadSide.Right))))
     }
 
     @Test fun nursingSidesCountRegistrationsAndClipAtMidnight() {

@@ -108,7 +108,7 @@ internal fun EventCard(event: CareEventEntity, expandAll: Boolean? = null, onEdi
 }
 
 internal fun eventTitle(event: CareEventEntity) = when (event.type) {
-    CareEventType.HeadSide -> "Favoritside – ${event.headSide.displayLabel()}"
+    CareEventType.HeadSide -> "Liggeside – ${event.headSide.displayLabel()}"
     CareEventType.SolidFood -> "Fast føde – ${event.foodName}"
     CareEventType.Diaper -> event.diaperType?.let { "Ble – ${it.displayLabel()}" } ?: "Ble"
     CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"

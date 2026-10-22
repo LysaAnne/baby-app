@@ -3,7 +3,7 @@ package dk.babyapp.domain
 import dk.babyapp.data.tracking.*
 import java.time.*
 
-enum class StatisticsPeriod(val label: String) { Day("1D"), Week("1U"), Month("1M"), ThreeMonths("3M"), SixMonths("6M"), Year("1Å"), Custom("Valgfri") }
+enum class StatisticsPeriod(val label: String) { Day("1D"), Week("1U"), Month("1M"), ThreeMonths("3M"), SixMonths("6M"), Year("1Å"), Custom("Dato") }
 
 data class StatisticsRange(val from: LocalDate, val through: LocalDate)
 

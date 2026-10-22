@@ -53,6 +53,7 @@ import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.filled.Lightbulb
@@ -288,7 +289,6 @@ fun TodayScreen(
                         order.mapNotNull { label -> all.firstOrNull { it.label == label } } + all.filter { it.label !in order }
                     } else buttons
                     QuickButtonRows(shown, columns = 2)
-                    if (category == QuickActionCategory.Health && childId != null) MedicineStatus(medicines.filter { it.childId == childId && it.active }, childEvents)
                     if (category == QuickActionCategory.Health && child != null) HealthProgrammeStatus(dk.babyapp.domain.upcomingProgramme(child, historyEvents ?: events, today).take(3), today)
                 }
             }
@@ -402,7 +402,7 @@ private val DashboardMetric.careCategory get() = when (this) {
 }
 
 private fun DashboardMetric.displayLabel() = when (this) {
-    DashboardMetric.HeadSide -> "Favoritside"
+    DashboardMetric.HeadSide -> "Liggeside"
     DashboardMetric.Feeding -> "Madning"
     DashboardMetric.Diapers -> "Bleer"
     DashboardMetric.Sleep -> "Søvn"
@@ -527,7 +527,7 @@ private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx
             Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
                 Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, if (title == "Søvn") "Åbn favoritside" else "Vis målegrafer") }
+                if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, if (title == "Søvn") "Åbn liggeside" else "Vis målegrafer") }
             }
             // The buttons take the category's colours.
             CategoryFormTheme(category) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
@@ -694,17 +694,30 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
         OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldText), shape = MaterialTheme.shapes.small, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline), contentPadding = PaddingValues(horizontal = 14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
             DatePickerDialog(context, { _, year, month, day -> calendar.set(year, month, day); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }) { Icon(Icons.Outlined.CalendarToday, null, Modifier.size(18.dp)); Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(value)), Modifier.weight(1f).padding(start = 10.dp)) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(timeSpecified, onCheckedChange = onTimeSpecifiedChange)
-            Text("Tilføj tidspunkt")
-        }
         if (timeSpecified) {
             Text("Tid", style = MaterialTheme.typography.labelMedium)
             OutlinedButton(colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.babyColors.fieldContainer, contentColor = MaterialTheme.babyColors.fieldText), shape = MaterialTheme.shapes.small, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline), contentPadding = PaddingValues(horizontal = 14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), onClick = {
                 TimePickerDialog(context, { _, hour, minute -> calendar.set(java.util.Calendar.HOUR_OF_DAY, hour); calendar.set(java.util.Calendar.MINUTE, minute); calendar.set(java.util.Calendar.SECOND, 0); onChange(calendar.timeInMillis) }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
             }) { Icon(Icons.Outlined.Schedule, null, Modifier.size(18.dp)); Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value)), Modifier.weight(1f).padding(start = 10.dp)) }
         }
+        // Under the time box, so it reads as adding or removing that box.
+        TimeToggle(if (timeSpecified) "Fjern tidspunkt" else "Tilføj tidspunkt", timeSpecified) { onTimeSpecifiedChange(!timeSpecified) }
     }
+}
+
+/** Adds or removes an optional time box; shows a plus or minus to say which. */
+@Composable
+internal fun TimeToggle(label: String, on: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 4.dp)) {
+        Icon(if (on) Icons.Outlined.Remove else Icons.Outlined.Add, null, Modifier.size(18.dp)); Text(" $label")
+    }
+}
+
+/** The end of a manual registration, which can be left out when only the time it happened is known. */
+@Composable
+internal fun OptionalEndField(end: Long?, onChange: (Long?) -> Unit, defaultEnd: () -> Long) {
+    if (end != null) { Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { onChange(it) } }
+    TimeToggle(if (end == null) "Tilføj sluttidspunkt" else "Fjern sluttidspunkt", end != null) { onChange(if (end == null) defaultEnd() else null) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -712,11 +725,11 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
     var ratio by remember { mutableStateOf("") }
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var offered by remember { mutableStateOf("") }; var consumed by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }; var content by remember { mutableStateOf(BottleContent.BreastMilk) }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text("Flaske") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        DateTimeFields(time) { time = it }
         ChoiceChips(BottleContent.entries.map { it to it.displayLabel() }, content) { it?.let { content = it } }
         if (content == BottleContent.Mixed) BottleRatioField(ratio) { ratio = it }
         AmountField(consumed, { consumed = it }, "Spist (ml)")
-        MoreDetails("tilbudt, noter") {
+        MoreDetails("tidspunkt, tilbudt, noter") {
+            DateTimeFields(time) { time = it }
             RegistrationTextField(offered, { offered = it.filter(Char::isDigit) }, label = { Text("Tilbudt (ml)") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
             RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
         }
@@ -726,9 +739,9 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
 @Composable internal fun DiaperDialog(onDismiss: () -> Unit, initialType: DiaperType = DiaperType.Wet, onSave: (Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String) -> Unit) {
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }; var type by remember { mutableStateOf(initialType) }; var color by remember { mutableStateOf<DiaperColor?>(null) }; var consistency by remember { mutableStateOf<DiaperConsistency?>(null) }; var observation by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Diaper, onDismissRequest = onDismiss, title = { Text("Ble") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        DateTimeFields(time) { time = it }
         ChoiceChips(DiaperType.entries.map { it to it.displayLabel() }, type) { it?.let { type = it } }
-        MoreDetails("farve, konsistens, observation, noter") {
+        MoreDetails("tidspunkt, farve, konsistens, observation, noter") {
+            DateTimeFields(time) { time = it }
             ChoiceChips(DiaperColor.entries.map { it to it.displayLabel() }, color, allowNone = true, label = "Farve") { color = it }
             ChoiceChips(DiaperConsistency.entries.map { it to it.displayLabel() }, consistency, allowNone = true, label = "Konsistens") { consistency = it }
             DiaperObservationField(observation) { observation = it }; RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
@@ -737,14 +750,20 @@ internal fun DateAndOptionalTimeFields(value: Long, timeSpecified: Boolean, onCh
 }
 
 @Composable internal fun ManualTimerDialog(type: CareEventType, onDismiss: () -> Unit, onSave: (CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit) {
-    var start by remember { mutableLongStateOf(System.currentTimeMillis() - 600_000) }; var end by remember { mutableLongStateOf(System.currentTimeMillis()) }; var side by remember { mutableStateOf(BreastSide.Left) }; var amount by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
+    val now = remember { System.currentTimeMillis() }
+    // Pumping is usually just "when"; nursing has a length. The end can be switched on or off either way.
+    var start by remember { mutableLongStateOf(if (type == CareEventType.Pumping) now else now - 600_000) }
+    var end by remember { mutableStateOf<Long?>(if (type == CareEventType.Pumping) null else now) }
+    var side by remember { mutableStateOf(BreastSide.Left) }; var amount by remember { mutableStateOf("") }; var notes by remember { mutableStateOf("") }
     FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = onDismiss, title = { Text(if (type == CareEventType.Breastfeeding) "Amning" else "Pumpning") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (type == CareEventType.Breastfeeding) ChoiceChips(BreastSide.entries.map { it to sideLabel(it).replaceFirstChar { c -> c.uppercase() } }, side) { it?.let { side = it } }
-        Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
-        Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
         if (type == CareEventType.Pumping) AmountField(amount, { amount = it }, "Mængde (ml)")
-        MoreDetails("noter", notes.isNotBlank()) { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
-    } }, confirmButton = { Button(enabled = end >= start, onClick = { onSave(type, start, end, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+        OptionalEndField(end, { end = it }) { maxOf(start + 600_000, now) }
+        MoreDetails("starttidspunkt, noter", notes.isNotBlank()) {
+            Text(if (end == null) "Tidspunkt" else "Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
+            RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+        }
+    } }, confirmButton = { Button(enabled = (end ?: start) >= start, onClick = { onSave(type, start, end ?: start, if (type == CareEventType.Breastfeeding) side else null, amount.toIntOrNull(), notes) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable
@@ -766,9 +785,9 @@ internal fun SleepDialog(
         title = { Text(if (existing == null) "Søvn" else "Rediger søvn") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChips(SleepType.entries.map { it to if (it == SleepType.Nap) "Lur" else "Nattesøvn" }, type) { it?.let { type = it } }
-            Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
             Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
-            MoreDetails("sted, puttemetode, opvågninger, kvalitet, noter", listOf(location, settling, awakenings, notes).any(String::isNotBlank) || quality != null) {
+            MoreDetails("start, sted, puttemetode, opvågninger, kvalitet, noter", existing != null || listOf(location, settling, awakenings, notes).any(String::isNotBlank) || quality != null) {
+                Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
                 SleepPlaceField(location) { location = it }
                 RegistrationTextField(settling, { settling = it }, label = { Text("Puttemetode") })
                 RegistrationTextField(awakenings, { awakenings = it.filter(Char::isDigit) }, label = { Text("Opvågninger") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
@@ -829,7 +848,7 @@ internal fun ActivityDialog(
     onSave: (Long, Long, ActivityType, String) -> Unit,
 ) {
     var start by remember { mutableLongStateOf(System.currentTimeMillis() - 300_000) }
-    var end by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var end by remember { mutableStateOf<Long?>(System.currentTimeMillis()) }
     var type by remember { mutableStateOf(initialType ?: ActivityType.TummyTime) }
     var notes by remember { mutableStateOf("") }
     val availableTypes = if (initialType == ActivityType.Medicine) listOf(ActivityType.Medicine) else ActivityType.entries.filter { it != ActivityType.Medicine }
@@ -838,11 +857,13 @@ internal fun ActivityDialog(
         title = { Text(if (availableTypes.size > 1) "Diverse" else type.displayLabel()) },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (availableTypes.size > 1) ChoiceChips(availableTypes.map { it to it.displayLabel() }, type) { it?.let { type = it } }
-            Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
-            Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
-            MoreDetails("noter") { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
+            OptionalEndField(end, { end = it }) { maxOf(start + 300_000, System.currentTimeMillis()) }
+            MoreDetails("starttidspunkt, noter") {
+                Text(if (end == null) "Tidspunkt" else "Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            }
         } },
-        confirmButton = { Button(enabled = end > start, onClick = { onSave(start, end, type, notes) }) { Text("Gem") } },
+        confirmButton = { Button(enabled = (end ?: start) >= start, onClick = { onSave(start, end ?: start, type, notes) }) { Text("Gem") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
@@ -873,7 +894,12 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Medicin" else "Rediger medicin") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (plans.isEmpty()) Text("Tilføj eller aktivér medicin på medicinkortet før registrering.")
+            // Nothing to log until the medicine card has a medicine; only a pointer to it.
+            if (plans.isEmpty() && existing == null) {
+                Text("Opret først medicinen på medicinkortet. Så kan du vælge den her.", style = MaterialTheme.typography.bodyLarge)
+                if (onOpenMedicineCard != null) Button(onClick = onOpenMedicineCard) { Icon(Icons.Outlined.Medication, null, Modifier.size(18.dp)); Text(" Åbn medicinkort") }
+                return@Column
+            }
             if (existing != null && selectedPlan == null) Text("Tidligere registrering: ${existing.medicationName}")
             // The medicine first, then the dose it fills in, which can be changed if something else was given.
             if (plans.isNotEmpty()) SelectionDropdown("Medicin *", selectedPlan?.let { listOf(it.name, it.dose).filter(String::isNotBlank).joinToString(" · ") } ?: "Vælg medicin", plans.map { it to listOf(it.name, it.dose).filter(String::isNotBlank).joinToString(" · ") }) { plan -> selectedPlan = plan; dose = plan.dose }

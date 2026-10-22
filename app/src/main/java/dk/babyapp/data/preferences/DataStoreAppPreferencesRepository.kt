@@ -47,9 +47,11 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             headSideStatistics = values[HEAD_SIDE_STATISTICS]?.let { Json.decodeFromString<HeadSideStatisticsSettings>(it) } ?: HeadSideStatisticsSettings(),
             measurementChartSettings = values[MEASUREMENT_CHART_SETTINGS]?.let { runCatching { Json.decodeFromString<MeasurementChartSettings>(it) }.getOrNull() } ?: MeasurementChartSettings(),
             lastPumpingMethod = values[LAST_PUMPING_METHOD] ?: "",
-            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize) ?: AppPreferences().journalQuickFilters,
+            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize)
+                // Medicin was added as a fifth quick filter; saved choices keep their four and get it at the end.
+                ?.let { saved -> if (saved.size == 4 && JournalFilterKeys.MEDICINE !in saved) saved + JournalFilterKeys.MEDICINE else saved } ?: AppPreferences().journalQuickFilters,
             insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } } ?: InsightCard.entries,
-            insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it == 7 || it == 30 } ?: 7,
+            insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it in setOf(7, 30, 90, 180, 365) } ?: 7,
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
             healthRemindersEnabled = values[HEALTH_REMINDERS_ENABLED] ?: true,
@@ -157,7 +159,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
     }
 
     override suspend fun updateJournalQuickFilters(filters: List<String>) {
-        require(filters.size == 4 && filters.distinct().size == 4)
+        require(filters.size in 4..5 && filters.distinct().size == filters.size)
         context.appPreferencesDataStore.edit { it[JOURNAL_QUICK_FILTERS] = filters.joinToString(",") }
     }
 

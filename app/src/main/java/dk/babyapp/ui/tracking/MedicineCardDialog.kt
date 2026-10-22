@@ -34,18 +34,35 @@ import java.time.LocalTime
 /** How often a medicine is given: as needed, or a number of times a day with that many reminder times. */
 private enum class MedicineFrequency(val label: String, val times: List<String>) {
     AsNeeded("Efter behov (PN)", emptyList()),
-    Once("1 gang dagligt", listOf("08:00")),
-    Twice("2 gange dagligt", listOf("08:00", "20:00")),
-    Three("3 gange dagligt", listOf("08:00", "14:00", "20:00")),
-    Four("4 gange dagligt", listOf("08:00", "12:00", "16:00", "20:00")),
+    Once("1 gang", listOf("08:00")),
+    Twice("2 gange", listOf("08:00", "20:00")),
+    Three("3 gange", listOf("08:00", "14:00", "20:00")),
+    Four("4 gange", listOf("08:00", "12:00", "16:00", "20:00")),
 }
+
+/** "dagligt", "hver uge", "hver 2. dag", "hver 3. måned" … */
+private fun MedicinePlan.repeatText() = when {
+    isDaily -> "dagligt"
+    repeatEvery <= 1 -> "hver ${repeatUnit.one}"
+    else -> "hver $repeatEvery. ${repeatUnit.one}"
+}
+
+/** Quick choices for how often; anything else via Andet. */
+private val repeatChoices = listOf(
+    Triple("Hver dag", 1, dk.babyapp.data.medicine.RepeatUnit.Day), Triple("Hver anden dag", 2, dk.babyapp.data.medicine.RepeatUnit.Day),
+    Triple("Hver uge", 1, dk.babyapp.data.medicine.RepeatUnit.Week), Triple("Hver måned", 1, dk.babyapp.data.medicine.RepeatUnit.Month),
+)
 
 private fun MedicinePlan.frequency(): MedicineFrequency? = when {
     asNeeded -> MedicineFrequency.AsNeeded
     else -> MedicineFrequency.entries.firstOrNull { it != MedicineFrequency.AsNeeded && it.times.size == validTimes().size }
 }
 
-private fun MedicinePlan.frequencyText() = frequency()?.label ?: if (validTimes().isEmpty()) "Hyppighed ikke angivet" else "${validTimes().size} gange dagligt"
+private fun MedicinePlan.frequencyText() = when {
+    asNeeded -> MedicineFrequency.AsNeeded.label
+    validTimes().isEmpty() -> "Hyppighed ikke angivet"
+    else -> "${validTimes().size} ${if (validTimes().size == 1) "gang" else "gange"} ${repeatText()}"
+}
 
 /** The medicine card: active and inactive medicines in two tabs, each one a short line that opens for details. */
 @Composable
@@ -88,10 +105,6 @@ internal fun MedicineCardDialog(childId: String, all: List<MedicinePlan>, onSave
                                     Text("Påmindelser slået til", style = MaterialTheme.typography.bodyMedium)
                                 }
                                 if (plan.instructions.isNotBlank()) Text(plan.instructions, style = MaterialTheme.typography.bodyMedium)
-                                dk.babyapp.domain.lastDose(plan, events)?.let { dose ->
-                                    Text("Sidste dosis ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(dose.startedAt))} · for ${dk.babyapp.domain.timeSinceLabel(dose.startedAt, System.currentTimeMillis())} siden",
-                                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                                }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text("Aktiv", style = MaterialTheme.typography.labelLarge)
                                     Switch(plan.active, { on -> onSave(all.map { if (it.id == plan.id) it.copy(active = on) else it }) }, modifier = Modifier.padding(start = 8.dp).scale(0.8f))
@@ -127,13 +140,36 @@ private fun MedicinePlanEditor(initial: MedicinePlan, onDismiss: () -> Unit, onS
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             RegistrationTextField(draft.name, { draft = draft.copy(name = it) }, label = { Text("Navn *") })
             RegistrationTextField(draft.dose, { draft = draft.copy(dose = it) }, label = { Text("Dosis, fx 2,5 ml") })
-            SelectionDropdown("Hvor ofte", frequency?.label ?: draft.frequencyText(), MedicineFrequency.entries.map { it to it.label }) { picked ->
+            SelectionDropdown("Doser pr. gang", frequency?.label ?: draft.frequencyText(), MedicineFrequency.entries.map { it to it.label }) { picked ->
                 // Keeps times already chosen and fills up or trims to the number of daily doses.
                 val kept = draft.validTimes().map { it.toString() }
                 val times = if (picked == MedicineFrequency.AsNeeded) emptyList() else (kept + picked.times.filterNot { it in kept }).take(picked.times.size).sorted()
                 draft = draft.copy(asNeeded = picked == MedicineFrequency.AsNeeded, times = times, reminders = if (picked == MedicineFrequency.AsNeeded) false else draft.reminders)
             }
             if (!draft.asNeeded && draft.validTimes().isNotEmpty()) {
+                // How often: every day by default; every other day, weekly, monthly or a custom interval from a first day.
+                val quick = repeatChoices.firstOrNull { it.second == draft.repeatEvery && it.third == draft.repeatUnit }
+                var custom by remember(draft.id) { mutableStateOf(quick == null) }
+                ChoiceChips(repeatChoices.map { it.first to it.first } + ("Andet" to "Andet …"), if (custom) "Andet" else quick?.first, label = "Hvor ofte") { picked ->
+                    val choice = repeatChoices.firstOrNull { it.first == picked }
+                    custom = choice == null
+                    if (choice != null) draft = draft.copy(repeatEvery = choice.second, repeatUnit = choice.third, repeatStart = if (choice.second == 1 && choice.third == dk.babyapp.data.medicine.RepeatUnit.Day) null else draft.repeatStart ?: java.time.LocalDate.now().toString())
+                    else if (draft.repeatStart == null) draft = draft.copy(repeatStart = java.time.LocalDate.now().toString())
+                }
+                if (custom) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Hver", style = MaterialTheme.typography.bodyLarge)
+                    RegistrationTextField(draft.repeatEvery.toString(), { value -> value.filter(Char::isDigit).toIntOrNull()?.coerceIn(1, 365)?.let { draft = draft.copy(repeatEvery = it) } },
+                        Modifier.width(80.dp), singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+                    Box(Modifier.weight(1f)) {
+                        SelectionDropdown("", if (draft.repeatEvery == 1) draft.repeatUnit.one else draft.repeatUnit.many, dk.babyapp.data.medicine.RepeatUnit.entries.map { it to if (draft.repeatEvery == 1) it.one else it.many }) { draft = draft.copy(repeatUnit = it) }
+                    }
+                }
+                if (!draft.isDaily) {
+                    val start = draft.repeatStart?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() } ?: java.time.LocalDate.now()
+                    OutlinedButton(onClick = { android.app.DatePickerDialog(context, { _, y, m, d -> draft = draft.copy(repeatStart = java.time.LocalDate.of(y, m + 1, d).toString()) }, start.year, start.monthValue - 1, start.dayOfMonth).show() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Første dag: ${start.format(java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy", java.util.Locale.forLanguageTag("da")))}")
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Påmindelser", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                     Switch(draft.reminders, { draft = draft.copy(reminders = it) })

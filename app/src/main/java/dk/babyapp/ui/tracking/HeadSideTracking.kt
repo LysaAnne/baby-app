@@ -20,9 +20,9 @@ internal fun HeadSideQuickButtons(events: List<CareEventEntity>, childId: String
     val counts = headSideTotals(eventsForDay(events.filter { it.childId == childId }, LocalDate.now()))
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = if (onOpenStatistics != null) 48.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Favoritside", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+            Text("Liggeside", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
             if (onOpenStatistics != null) IconButton(onClick = onOpenStatistics, enabled = childId != null) {
-                Icon(Icons.Outlined.AutoGraph, contentDescription = "Åbn favoritside")
+                Icon(Icons.Outlined.AutoGraph, contentDescription = "Åbn liggeside")
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

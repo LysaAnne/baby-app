@@ -36,7 +36,7 @@ object JournalFilterKeys {
     fun type(type: CareEventType) = "type:${type.name}"
     fun measurement(type: MeasurementType) = "measurement:${type.name}"
 
-    val defaults = listOf(FEEDING_ALL, type(CareEventType.Diaper), type(CareEventType.Sleep), HEALTH_ALL)
+    val defaults = listOf(FEEDING_ALL, type(CareEventType.Diaper), type(CareEventType.Sleep), HEALTH_ALL, MEDICINE)
 
     // Until October 2026 the Danish filter label itself was stored. Frozen so old values keep working after labels change.
     private val legacyLabels = mapOf(

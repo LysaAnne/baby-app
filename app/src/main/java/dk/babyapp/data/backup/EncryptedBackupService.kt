@@ -147,6 +147,7 @@ private fun JSONObject.toContentValues() = ContentValues().also { values ->
 private fun MedicinePlanEntity.toContentValues() = ContentValues().apply {
     put("id", id); put("childId", childId); put("name", name); put("dose", dose); put("instructions", instructions)
     put("asNeeded", asNeeded); put("timesJson", timesJson); put("reminders", reminders); put("active", active); put("sortOrder", sortOrder)
+    put("repeatEvery", repeatEvery); put("repeatUnit", repeatUnit); put("repeatStart", repeatStart)
 }
 
 private fun ToothRecordEntity.toContentValues() = ContentValues().apply {

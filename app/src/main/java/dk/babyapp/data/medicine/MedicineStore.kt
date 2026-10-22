@@ -35,13 +35,17 @@ data class MedicinePlanEntity(
     val reminders: Boolean,
     val active: Boolean,
     val sortOrder: Int,
+    @androidx.room.ColumnInfo(defaultValue = "1") val repeatEvery: Int = 1,
+    @androidx.room.ColumnInfo(defaultValue = "'Day'") val repeatUnit: String = "Day",
+    val repeatStart: String? = null,
 )
 
-fun MedicinePlan.toEntity(sortOrder: Int) = MedicinePlanEntity(id, childId, name, dose, instructions, asNeeded, Json.encodeToString(times), reminders, active, sortOrder)
+fun MedicinePlan.toEntity(sortOrder: Int) = MedicinePlanEntity(id, childId, name, dose, instructions, asNeeded, Json.encodeToString(times), reminders, active, sortOrder, repeatEvery, repeatUnit.name, repeatStart)
 
 fun MedicinePlanEntity.toPlan() = MedicinePlan(
     id = id, childId = childId, name = name, dose = dose, instructions = instructions, asNeeded = asNeeded,
     times = runCatching { Json.decodeFromString<List<String>>(timesJson) }.getOrDefault(emptyList()), reminders = reminders, active = active,
+    repeatEvery = repeatEvery.coerceAtLeast(1), repeatUnit = RepeatUnit.entries.firstOrNull { it.name == repeatUnit } ?: RepeatUnit.Day, repeatStart = repeatStart,
 )
 
 @Dao
