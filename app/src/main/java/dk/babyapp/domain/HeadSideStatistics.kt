@@ -3,7 +3,7 @@ package dk.babyapp.domain
 import dk.babyapp.data.tracking.*
 import java.time.*
 
-enum class StatisticsPeriod(val label: String) { Day("1D"), Week("1U"), Month("1M"), ThreeMonths("3M"), SixMonths("6M"), Year("1Å"), Custom("Dato") }
+enum class StatisticsPeriod(val label: String) { Day("1D"), Week("1U"), Month("1M"), ThreeMonths("3M"), SixMonths("6M"), Year("1Å"), All("Alt"), Custom("Dato") }
 
 data class StatisticsRange(val from: LocalDate, val through: LocalDate)
 
@@ -14,6 +14,8 @@ fun statisticsRange(period: StatisticsPeriod, today: LocalDate, customFrom: Loca
     StatisticsPeriod.ThreeMonths -> StatisticsRange(today.minusMonths(3).plusDays(1), today)
     StatisticsPeriod.SixMonths -> StatisticsRange(today.minusMonths(6).plusDays(1), today)
     StatisticsPeriod.Year -> StatisticsRange(today.minusYears(1).plusDays(1), today)
+    // Everything: from long before any registration; the screen shows the first registration's date.
+    StatisticsPeriod.All -> StatisticsRange(LocalDate.of(2000, 1, 1), today)
     StatisticsPeriod.Custom -> StatisticsRange(customFrom, customThrough)
 }
 

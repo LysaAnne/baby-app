@@ -1,5 +1,9 @@
 package dk.babyapp.ui.tracking
 
+import dk.babyapp.ui.theme.careCategory
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Button
 import dk.babyapp.ui.theme.babyColors
@@ -51,28 +55,64 @@ internal fun PumpingDialog(childId: String, initialMethod: String, onDismiss: ()
     }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
+/** The buttons a quick-registration category can show; nap and night are one Søvn button. */
+private fun buttonsOf(category: dk.babyapp.data.preferences.QuickActionCategory) =
+    QuickAction.entries.filter { it.category == category && it != QuickAction.HealthNote && it != QuickAction.Night }
+
+private fun QuickAction.names() = if (this == QuickAction.Nap) setOf(QuickAction.Nap.name, QuickAction.Night.name) else setOf(name)
+private fun QuickAction.shownLabel() = if (this == QuickAction.Nap) "Søvn" else label
+
 @Composable
-internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.data.preferences.QuickActionCategory>, onDismiss: () -> Unit, onSave: (Set<String>, List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit) {
+internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.data.preferences.QuickActionCategory>, onDismiss: () -> Unit, simple: Boolean = false, onSimpleChange: (Boolean) -> Unit = {}, onSave: (Set<String>, List<dk.babyapp.data.preferences.QuickActionCategory>) -> Unit) {
     var selectedHidden by remember { mutableStateOf(hidden) }
     var selectedOrder by remember { mutableStateOf(orderedQuickActionCategories(order)) }
+    var simpleView by remember { mutableStateOf(simple) }
+    var open by remember { mutableStateOf<dk.babyapp.data.preferences.QuickActionCategory?>(null) }
     FormDialog(onDismissRequest = onDismiss, title = { Text("Tilpas hurtig registrering") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Vælg kortene og knapperne, og flyt kortene op eller ned.", style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Simpel visning", style = MaterialTheme.typography.titleSmall)
+                    Text("Ikoner og knapper uden overskrifter", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(simpleView, { simpleView = it })
+            }
+            HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Text("Slå kort til og fra, og flyt dem. Fold et kort ud for at vælge dets knapper.", style = MaterialTheme.typography.bodyMedium)
             selectedOrder.forEachIndexed { index, category ->
-                // Nap and night are one Søvn button, so they are shown and hidden together.
-                val actions = QuickAction.entries.filter { it.category == category && it != QuickAction.HealthNote && it != QuickAction.Night }
+                val actions = buttonsOf(category)
                 val sectionShown = actions.any { it.name !in selectedHidden }
                 val (up, down) = selectedOrder.moveCallbacks(index) { selectedOrder = it }
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                CustomizeRow(category.label, sectionShown, { on -> selectedHidden = if (on) selectedHidden - actions.map { it.name }.toSet() else selectedHidden + actions.map { it.name } }, up, down)
-                // Single-button cards have no separate row for the button.
-                if (sectionShown && actions.size > 1) actions.forEach { action ->
-                    val names = if (action == QuickAction.Nap) setOf(QuickAction.Nap.name, QuickAction.Night.name) else setOf(action.name)
-                    CustomizeRow(if (action == QuickAction.Nap) "Søvn" else action.label, action.name !in selectedHidden, { on -> selectedHidden = if (on) selectedHidden - names else selectedHidden + names }, indent = true)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        CustomizeRow(category.label, sectionShown, { on -> selectedHidden = if (on) selectedHidden - actions.flatMap { it.names() }.toSet() else selectedHidden + actions.flatMap { it.names() } }, up, down)
+                    }
+                    // The card's buttons are folded away until asked for.
+                    if (actions.size > 1) IconButton(onClick = { open = if (open == category) null else category }) {
+                        Icon(if (open == category) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (open == category) "Skjul knapper for ${category.label}" else "Vis knapper for ${category.label}")
+                    }
+                }
+                if (open == category && sectionShown) actions.forEach { action ->
+                    CustomizeRow(action.shownLabel(), action.name !in selectedHidden, { on -> selectedHidden = if (on) selectedHidden - action.names() else selectedHidden + action.names() }, indent = true)
                 }
             }
         }
-    }, confirmButton = { Button(onClick = { onSave(selectedHidden, selectedOrder) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
+    }, confirmButton = { Button(onClick = { if (simpleView != simple) onSimpleChange(simpleView); onSave(selectedHidden, selectedOrder) }) { Text("Gem") } }, dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } })
+}
+
+/** The settings icon on a single quick card: just that card's buttons, on or off. */
+@Composable
+internal fun CardButtonsDialog(category: dk.babyapp.data.preferences.QuickActionCategory, hidden: Set<String>, onDismiss: () -> Unit, onSave: (Set<String>) -> Unit) {
+    var selectedHidden by remember { mutableStateOf(hidden) }
+    FormDialog(onDismissRequest = onDismiss, category = category.careCategory, title = { Text("Tilpas ${category.label.lowercase()}") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Vælg de knapper, kortet viser.", style = MaterialTheme.typography.bodyMedium)
+            buttonsOf(category).forEach { action ->
+                CustomizeRow(action.shownLabel(), action.name !in selectedHidden, { on -> selectedHidden = if (on) selectedHidden - action.names() else selectedHidden + action.names() })
+            }
+        }
+    }, confirmButton = { Button(onClick = { onSave(selectedHidden) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }
 
 @Composable

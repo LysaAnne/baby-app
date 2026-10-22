@@ -86,6 +86,8 @@ fun BabyApp(
                     onRestoreCareEvent = tracking::restoreCareEvent,
                     onUpdateInsightCards = settings::updateInsightCards,
                     onUpdateInsightPeriod = settings::updateInsightPeriod,
+                    onUpdateInsightRange = settings::updateInsightRange,
+                    onUpdateSimpleQuickRegistration = settings::updateSimpleQuickRegistration,
                     onBackupSaved = settings::markBackupSaved,
                     onUpdateHealthQuestions = settings::updateHealthQuestions,
                     onUpdateHealthReminders = settings::updateHealthReminders,

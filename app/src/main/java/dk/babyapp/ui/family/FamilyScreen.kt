@@ -63,7 +63,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -161,7 +160,6 @@ fun FamilyScreen(
     var editing by remember { mutableStateOf<ChildProfile?>(null) }
     var viewing by remember { mutableStateOf<ChildProfile?>(null) }
     var adding by remember { mutableStateOf(false) }
-    var addMenuOpen by remember { mutableStateOf(false) }
     var addingMemberRole by remember { mutableStateOf<FamilyMemberRole?>(null) }
     var editingMember by remember { mutableStateOf<ParentProfile?>(null) }
     var viewingMember by remember { mutableStateOf<ParentProfile?>(null) }
@@ -182,12 +180,15 @@ fun FamilyScreen(
     Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Familie", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                Text("Familie", style = MaterialTheme.typography.headlineSmall)
+                // Adding sits at the top: a child, or anyone else in the family (the role is chosen when adding).
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.FilledTonalButton(onClick = { adding = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.ChildCare, null, Modifier.size(18.dp)); Text(" Tilføj barn") }
+                    androidx.compose.material3.FilledTonalButton(onClick = { addingMemberRole = FamilyMemberRole.ParentNotSpecified }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.Groups, null, Modifier.size(18.dp)); Text(" Tilføj familie") }
                 }
             }
             item {
@@ -208,7 +209,7 @@ fun FamilyScreen(
             }
             if (profiles.isEmpty()) item { Text(stringResource(R.string.no_profiles)) }
             item {
-                FamilySectionHeader("Forældre og familie") {
+                FamilySectionHeader("Familiemedlemmer") {
                     IconButton(onClick = { reorderingFamily = true }, enabled = parents.size > 1) { Icon(Icons.Outlined.DragHandle, stringResource(R.string.reorder_family)) }
                 }
             }
@@ -244,14 +245,7 @@ fun FamilyScreen(
                 }
             }
         }
-        FloatingActionButton(onClick = { addMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add_profile)) }
     }
-    if (addMenuOpen) AddFamilyProfileSheet(
-        onDismiss = { addMenuOpen = false },
-        onAddChild = { addMenuOpen = false; adding = true },
-        onAddParent = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.ParentNotSpecified },
-        onAddOther = { addMenuOpen = false; addingMemberRole = FamilyMemberRole.OtherNotSpecified },
-    )
 
     viewing?.let { profile ->
         ProfileViewDialog(
@@ -566,25 +560,6 @@ private fun childDateLine(profile: ChildProfile): String {
     return when {
         profile.birthStatus == dk.babyapp.data.profile.BirthStatus.Expected -> profile.dueDate?.let { "Termin ${it.format(format)}" } ?: "Venter"
         else -> listOfNotNull(profile.ageLabel().takeIf { it.isNotBlank() }, profile.birthDate?.let { "født ${it.format(format)}" }).joinToString(" · ")
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddFamilyProfileSheet(onDismiss: () -> Unit, onAddChild: () -> Unit, onAddParent: () -> Unit, onAddOther: () -> Unit) {
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.add_profile), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 4.dp))
-            listOf(
-                Triple(Icons.Outlined.ChildCare, stringResource(R.string.add_child), onAddChild),
-                Triple(Icons.Outlined.FamilyRestroom, stringResource(R.string.add_parent), onAddParent),
-                Triple(Icons.Outlined.Groups, stringResource(R.string.add_family_member), onAddOther),
-            ).forEach { (icon, label, action) ->
-                androidx.compose.material3.FilledTonalButton(onClick = action, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
-                    Icon(icon, null, Modifier.size(20.dp)); Text("  $label", modifier = Modifier.weight(1f))
-                }
-            }
-        }
     }
 }
 
@@ -1019,8 +994,9 @@ private fun ParentEditorDialog(
 private fun FamilyRoleDropdown(value: FamilyMemberRole, parentProfile: Boolean, onChange: (FamilyMemberRole) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded, { expanded = it }) {
-        OutlinedTextField(value = roleLabel(value), onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable), label = { Text(stringResource(if (parentProfile) R.string.parent_role else R.string.family_role)) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) })
-        val options = FamilyMemberRole.entries.filter { it.isParent == parentProfile }
+        OutlinedTextField(value = roleLabel(value), onValueChange = {}, readOnly = true, modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable), label = { Text("Rolle") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) })
+        // Every role in one list: parents and other family alike.
+        val options = FamilyMemberRole.entries
         ExposedDropdownMenu(expanded, { expanded = false }) { options.forEach { role -> DropdownMenuItem(text = { Text(roleLabel(role)) }, onClick = { onChange(role); expanded = false }) } }
     }
 }

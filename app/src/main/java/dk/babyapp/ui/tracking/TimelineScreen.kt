@@ -247,11 +247,7 @@ fun TimelineScreen(
         }
     }, confirmButton = {}, dismissButton = { TextButton(enabled = !resuming, onClick = { resumeEvent = null }) { Text("Annuller") } }) }
     if (resumeError) AlertDialog(onDismissRequest = { resumeError = false }, title = { Text("Amningen kunne ikke fortsættes") }, text = { Text("Der kan højst være to tællere og én amning ad gangen. Afslut en tæller, og prøv igen.") }, confirmButton = { TextButton(onClick = { resumeError = false }) { Text("OK") } })
-    overviewDate?.let { date -> AlertDialog(onDismissRequest = { overviewDate = null }, title = { Text("Opsummering · ${date.format(DateTimeFormatter.ofPattern("d. MMM"))}") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            DaySummary(dk.babyapp.domain.eventsForDay(events.filter { it.childId == activeChildId }, date))
-        }
-    }, confirmButton = { TextButton(onClick = { overviewDate = null }) { Text("Luk") } }) }
+    overviewDate?.let { date -> DaySummaryDialog(history().filter { it.childId == activeChildId && !it.isDraft && it.deletedAt == null }, date) { overviewDate = null } }
     if (filtersOpen) AlertDialog(
         onDismissRequest = { filtersOpen = false },
         title = { Text("Filtrér journalen") },
@@ -271,7 +267,7 @@ fun TimelineScreen(
     if (editQuickFilters) JournalQuickFiltersDialog(quickFilters, { editQuickFilters = false; filtersOpen = true }) {
         onUpdateQuickFilters(it); editQuickFilters = false; filtersOpen = true
     }
-    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(history(), activeChildId, chartSettings, onUpdateMeasurementChartSettings, activeChild) { chartsOpen = false }
+    if (chartsOpen && activeChildId != null) MeasurementChartsDialog(history(), activeChildId, chartSettings, onUpdateMeasurementChartSettings, activeChild, types = MeasurementType.entries, title = "Målinger") { chartsOpen = false }
     if (addMenu) ManualRegistrationMenu(
         listOf("Amning" to AddKind.Breastfeeding, "Flaske" to AddKind.Bottle, "Pumpning" to AddKind.Pumping,
             "Ble" to AddKind.Diaper, "Søvn" to AddKind.Sleep, "Vægt" to AddKind.Measurement, "Højde" to AddKind.Measurement, "Hovedomkreds" to AddKind.Measurement, "Temperatur" to AddKind.Measurement, "Fast føde" to AddKind.SolidFood,

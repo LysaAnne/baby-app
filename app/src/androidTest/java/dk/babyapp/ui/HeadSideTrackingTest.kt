@@ -45,9 +45,9 @@ class HeadSideTrackingTest {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("V 0 % · H 100 %"))
         compose.onNodeWithText("V 0 % · H 100 %").assertIsDisplayed()
         compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
-        compose.onNodeWithText("1D").performClick()
-        compose.runOnIdle { assertEquals("Day", settings.period); assertEquals(today.toString(), settings.correctionDates["child"]) }
-        compose.onNodeWithText("Venstre: 0").assertIsDisplayed()
+        compose.onNodeWithText("1M").performClick()
+        compose.runOnIdle { assertEquals("Month", settings.period); assertEquals(today.toString(), settings.correctionDates["child"]) }
+        compose.onNodeWithText("Venstre: 1").assertIsDisplayed()
     }
 
     @Test fun journalEditorChangesSideWithoutCreatingTimer() {

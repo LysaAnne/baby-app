@@ -140,3 +140,23 @@ fun periodInsights(
         headRight = heads.count { it.headSide == HeadSide.Right },
     )
 }
+
+/**
+ * The dates a period covers: the last [days] days, everything since the child's first registration (0),
+ * or the chosen dates (-1). Chosen dates never reach past today.
+ */
+fun insightDates(days: Int, from: String?, through: String?, events: List<CareEventEntity>, childId: String, today: LocalDate = LocalDate.now(), zone: ZoneId = ZoneId.systemDefault()): Pair<LocalDate, LocalDate> = when (days) {
+    0 -> (events.filter { it.childId == childId && it.deletedAt == null && !it.isDraft }.minOfOrNull { it.startedAt }
+        ?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }?.coerceAtMost(today) ?: today) to today
+    -1 -> {
+        val end = through?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.coerceAtMost(today) ?: today
+        val start = from?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.coerceAtMost(end) ?: end.minusDays(29)
+        start to end
+    }
+    else -> today.minusDays(days - 1L) to today
+}
+
+fun periodInsightsFor(events: List<CareEventEntity>, childId: String, days: Int, from: String?, through: String?, today: LocalDate = LocalDate.now()): PeriodInsights {
+    val (start, end) = insightDates(days, from, through, events, childId, today)
+    return periodInsights(events, childId, (java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1).toInt(), end)
+}

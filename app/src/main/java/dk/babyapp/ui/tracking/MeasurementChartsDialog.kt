@@ -1,5 +1,7 @@
 package dk.babyapp.ui.tracking
 
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import dk.babyapp.ui.theme.babyColors
 import android.app.DatePickerDialog
 import android.content.Context
@@ -43,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class ChartPeriod(val label: String) { Week("1U"), Month("1M"), SixMonths("6M"), Year("1Å"), All("Alt"), Custom("Dato") }
+private enum class ChartPeriod(val label: String) { Week("1U"), Month("1M"), ThreeMonths("3M"), SixMonths("6M"), Year("1Å"), All("Alt"), Custom("Dato") }
 
 /** WHO tables from assets/growth, read once per file. */
 private object GrowthTables {
@@ -54,7 +56,9 @@ private object GrowthTables {
 }
 
 @Composable
-internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: String, settings: dk.babyapp.data.preferences.MeasurementChartSettings = dk.babyapp.data.preferences.MeasurementChartSettings(), onSettingsChange: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {}, child: ChildProfile? = null, onDismiss: () -> Unit) {
+internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: String, settings: dk.babyapp.data.preferences.MeasurementChartSettings = dk.babyapp.data.preferences.MeasurementChartSettings(), onSettingsChange: (dk.babyapp.data.preferences.MeasurementChartSettings) -> Unit = {}, child: ChildProfile? = null,
+    types: List<MeasurementType> = MeasurementType.entries.filter { it != MeasurementType.Temperature }, title: String = "Vækst", category: dk.babyapp.ui.theme.CareCategory = dk.babyapp.ui.theme.CareCategory.Measurement,
+    onDismiss: () -> Unit) {
     var period by remember { mutableStateOf(ChartPeriod.entries.firstOrNull { it.name == settings.period } ?: ChartPeriod.Month) }
     var showGrowth by remember { mutableStateOf(settings.showGrowthReferences) }
     val today = LocalDate.now()
@@ -64,6 +68,7 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
     val from = when (period) {
         ChartPeriod.Week -> today.minusDays(6)
         ChartPeriod.Month -> today.minusMonths(1).plusDays(1)
+        ChartPeriod.ThreeMonths -> today.minusMonths(3).plusDays(1)
         ChartPeriod.SixMonths -> today.minusMonths(6).plusDays(1)
         ChartPeriod.Year -> today.minusYears(1).plusDays(1)
         ChartPeriod.All -> null
@@ -73,18 +78,18 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
     val availability = child?.growthAvailability()
     val growth = (availability as? GrowthAvailability.Ready)?.takeIf { showGrowth }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        CategoryFormTheme(dk.babyapp.ui.theme.CareCategory.Measurement) {
-        Surface(Modifier.fillMaxSize(), color = formBody(dk.babyapp.ui.theme.CareCategory.Measurement)) {
+        CategoryFormTheme(category) {
+        Surface(Modifier.fillMaxSize(), color = formBody(category)) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = BabySpacing.xs, end = BabySpacing.l, top = BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Luk") }
                     Column(Modifier.weight(1f)) {
-                        Text("Vækst", style = MaterialTheme.typography.titleLarge)
+                        Text(title, style = MaterialTheme.typography.titleLarge)
                         if (child != null) Text(listOf(child.name, child.ageLabel(today)).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 LazyColumn(contentPadding = PaddingValues(start = BabySpacing.l, end = BabySpacing.l, top = BabySpacing.s, bottom = BabySpacing.xl), verticalArrangement = Arrangement.spacedBy(BabySpacing.m)) {
-                    if (child != null) item {
+                    if (child != null && types.any { it != MeasurementType.Temperature }) item {
                         Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = BabySpacing.l, vertical = BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
@@ -95,8 +100,10 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                             }
                         }
                     }
-                    item {
-                        PeriodBar(ChartPeriod.entries.map { it.name to it.label }, period.name) { picked -> period = ChartPeriod.valueOf(picked); saveSelection() }
+                    stickyHeader {
+                        Box(Modifier.fillMaxWidth().background(formBody(category)).padding(vertical = 4.dp)) {
+                            PeriodBar(ChartPeriod.entries.map { it.name to it.label }, period.name) { picked -> period = ChartPeriod.valueOf(picked); saveSelection() }
+                        }
                     }
                     if (period == ChartPeriod.Custom) item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -106,7 +113,7 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                     }
                     if (showGrowth && child != null) item { GrowthNotice(child, availability) }
                     if (from != null && from > through) item { Text("Fra-dato skal være før eller samme dag som til-dato.", color = MaterialTheme.colorScheme.error) }
-                    else items(MeasurementType.entries) { type ->
+                    else items(types) { type ->
                         val points = remember(events, childId, type, from, through) { measurementPoints(events, childId, type, from, through) }
                         MeasurementChartCard(type, points, from, through, child?.takeIf { growth != null }, growth)
                     }
@@ -219,7 +226,17 @@ private fun MeasurementChartCard(type: MeasurementType, points: List<Measurement
                 val high = maxValue + margin
                 val chartColors = MaterialTheme.babyColors
                 val description = "${type.displayLabel()}: ${shown.size} målinger, fra ${format(shown.first().value)} til ${format(shown.last().value)} $unit"
-                Canvas(Modifier.fillMaxWidth().height(if (curves) 220.dp else 190.dp).semantics { contentDescription = description }) {
+                // Tap near a point (or temperature bar) to see its date and value.
+                var picked by remember(shown) { mutableStateOf<MeasurementPoint?>(null) }
+                Text(picked?.let { point -> "${dateOf(point.at).format(DateTimeFormatter.ofPattern("d. MMM yyyy", Locale.forLanguageTag("da")))}${if (point.timeSpecified) " kl. " + Instant.ofEpochMilli(point.at).atZone(zone).format(DateTimeFormatter.ofPattern("HH.mm")) else ""} · ${format(point.value)} $unit" + if (point == birthPoint) " (ved fødslen)" else "" }
+                    ?: "Tryk på et punkt for at se tallet", style = MaterialTheme.typography.labelMedium, color = if (picked != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                Canvas(Modifier.fillMaxWidth().height(if (curves) 220.dp else 190.dp).semantics { contentDescription = description }.pointerInput(shown, start, end, curves) {
+                    detectTapGestures { tap ->
+                        val left = 46.dp.toPx(); val right = size.width - (if (curves) 30.dp else 8.dp).toPx()
+                        fun x(at: Long) = left + ((at - start).toDouble() / (end - start).coerceAtLeast(1)).toFloat() * (right - left)
+                        picked = shown.minByOrNull { kotlin.math.abs(x(it.at) - tap.x) }?.takeIf { kotlin.math.abs(x(it.at) - tap.x) < 32.dp.toPx() }
+                    }
+                }) {
                     val left = 46.dp.toPx(); val top = 8.dp.toPx(); val bottom = size.height - 26.dp.toPx(); val right = size.width - (if (curves) 30.dp else 8.dp).toPx()
                     fun x(at: Long) = left + ((at - start).toDouble() / (end - start).coerceAtLeast(1)).toFloat() * (right - left)
                     fun y(value: Double) = bottom - ((value - low) / (high - low)).toFloat() * (bottom - top)
@@ -255,6 +272,7 @@ private fun MeasurementChartCard(type: MeasurementType, points: List<Measurement
                         shown.forEach { drawCircle(primary, 3.dp.toPx(), Offset(x(it.at), y(it.value))) }
                         birthPoint?.let { drawCircle(Color.White, 1.5.dp.toPx(), Offset(x(it.at), y(it.value))) }
                     }
+                    picked?.let { point -> drawCircle(axis, 6.dp.toPx(), Offset(x(point.at), y(point.value)), style = Stroke(1.5.dp.toPx())) }
                     val startDate = dateOf(start)
                     drawContext.canvas.nativeCanvas.drawText((if (curves) axisAge(growth!!.birth, startDate) else null) ?: startDate.format(dateFormat), left, size.height, paint)
                     paint.textAlign = android.graphics.Paint.Align.RIGHT

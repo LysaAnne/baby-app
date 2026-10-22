@@ -53,6 +53,7 @@ import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -162,6 +163,8 @@ fun TodayScreen(
     onSaveTooth: (dk.babyapp.data.teeth.ToothRecord) -> Unit = {},
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
+    onOpenInsight: (dk.babyapp.data.preferences.InsightCard) -> Unit = {},
+    onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
     medicines: List<MedicinePlan> = emptyList(),
     teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
     recentFrom: LocalDate? = null,
@@ -185,6 +188,7 @@ fun TodayScreen(
     var customizeOpen by remember { mutableStateOf(false) }
     var dashboardCustomizeOpen by remember { mutableStateOf(false) }
     var summaryOpen by remember { mutableStateOf(false) }
+    var cardSettingsFor by remember { mutableStateOf<QuickActionCategory?>(null) }
     var questionsOpen by remember { mutableStateOf(false) }
     var teethOpen by remember(childId) { mutableStateOf(false) }
     var headSideOpen by remember(childId) { mutableStateOf(false) }
@@ -236,7 +240,8 @@ fun TodayScreen(
             val actions = QuickAction.entries.filter { visible(it) && it.category == category }
             if (actions.isEmpty()) return@forEach
             item {
-                QuickActionCard(category.careCategory.icon, category.label, MaterialTheme.babyColors.category(category.careCategory).accent, category = category.careCategory, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
+                val insightLinks = category.insightCards.map { card -> card.label to { onOpenInsight(card) } }
+                QuickCategory(preferences.simpleQuickRegistration, category.careCategory, category.label, insightLinks, onSettings = { cardSettingsFor = category }) {
                     fun canStart(type: CareEventType) = childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, type)
                     val buttons = actions.filterNot { it == QuickAction.HeadSide }.flatMap { action ->
                         when (action) {
@@ -344,12 +349,12 @@ fun TodayScreen(
         confirmButton = { Button(onClick = { onDelete(event); deleteTarget = null }) { Text("Slet") } },
         dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Annuller") } },
     ) }
-    if (customizeOpen) AllQuickActionsDialog(QuickAction.entries.filterNot(::visible).map { it.name }.toSet(), preferences.quickActionCategoryOrder, { customizeOpen = false }) { hidden, order -> onUpdateQuickActionCategoryOrder(order); onUpdateQuickActions(true, true, true, true); onUpdateHiddenQuickActions(hidden); customizeOpen = false }
+    if (customizeOpen) AllQuickActionsDialog(QuickAction.entries.filterNot(::visible).map { it.name }.toSet(), preferences.quickActionCategoryOrder, { customizeOpen = false }, preferences.simpleQuickRegistration, onUpdateSimpleQuickRegistration) { hidden, order -> onUpdateQuickActionCategoryOrder(order); onUpdateQuickActions(true, true, true, true); onUpdateHiddenQuickActions(hidden); customizeOpen = false }
     if (questionsOpen && childId != null) HealthQuestionsDialog(childId, preferences.healthQuestions, historyEvents ?: events, onUpdateHealthQuestions) { questionsOpen = false }
-    if (summaryOpen) androidx.compose.material3.AlertDialog(onDismissRequest = { summaryOpen = false },
-        title = { Text(if (overviewDate == today) "I dag" else "Opsummering · ${overviewDate.format(java.time.format.DateTimeFormatter.ofPattern("d. MMM", java.util.Locale.forLanguageTag("da")))}") },
-        text = { Column(Modifier.verticalScroll(rememberScrollState())) { DaySummary(dk.babyapp.domain.eventsForDay(allChildEvents, overviewDate)) } },
-        confirmButton = { TextButton(onClick = { summaryOpen = false }) { Text("Luk") } })
+    cardSettingsFor?.let { category ->
+        CardButtonsDialog(category, QuickAction.entries.filterNot(::visible).map { it.name }.toSet(), { cardSettingsFor = null }) { hidden -> onUpdateHiddenQuickActions(hidden); cardSettingsFor = null }
+    }
+    if (summaryOpen) DaySummaryDialog(allChildEvents, overviewDate) { summaryOpen = false }
     if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
     if (sleepError) AlertDialog(
         onDismissRequest = { sleepError = false },
@@ -516,7 +521,7 @@ internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: ()
 }
 
 @Composable
-private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx.compose.ui.graphics.Color, category: dk.babyapp.ui.theme.CareCategory? = null, onChart: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx.compose.ui.graphics.Color, category: dk.babyapp.ui.theme.CareCategory? = null, insights: List<Pair<String, () -> Unit>> = emptyList(), onSettings: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -527,12 +532,59 @@ private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx
             Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
                 Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, if (title == "Søvn") "Åbn liggeside" else "Vis målegrafer") }
+                InsightLinkButton(title, insights)
+                if (onSettings != null) IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, "Tilpas $title") }
             }
             // The buttons take the category's colours.
             CategoryFormTheme(category) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
         }
     }
+}
+
+/** The graph icon on a quick card: straight to its Indsigt page, or a small menu when there are several. */
+@Composable
+private fun InsightLinkButton(title: String, insights: List<Pair<String, () -> Unit>>) {
+    if (insights.isEmpty()) return
+    var menu by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { if (insights.size == 1) insights.single().second() else menu = true }) { Icon(Icons.Outlined.ShowChart, "Indsigt for $title") }
+        androidx.compose.material3.DropdownMenu(menu, { menu = false }) {
+            insights.forEach { (label, open) -> androidx.compose.material3.DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; open() }) }
+        }
+    }
+}
+
+/** A quick-registration category either as a card with a heading, or in the simple view as an icon and its buttons. */
+@Composable
+private fun QuickCategory(simple: Boolean, category: dk.babyapp.ui.theme.CareCategory, title: String, insights: List<Pair<String, () -> Unit>>, onSettings: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val colors = MaterialTheme.babyColors.category(category)
+    if (!simple) { QuickActionCard(category.icon, title, colors.accent, category, insights, onSettings, content); return }
+    // Simple view: like the manual menu, the coloured icon (tap for Indsigt) beside the buttons, no headings.
+    androidx.compose.material3.Surface(shape = MaterialTheme.shapes.large, color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            var menu by remember { mutableStateOf(false) }
+            Box {
+                androidx.compose.material3.Surface(onClick = { if (insights.size == 1) insights.single().second() else if (insights.isNotEmpty()) menu = true }, enabled = insights.isNotEmpty(), shape = androidx.compose.foundation.shape.CircleShape, color = colors.container, modifier = Modifier.padding(top = 2.dp).size(36.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Icon(category.icon, contentDescription = title, tint = colors.accent, modifier = Modifier.size(20.dp)) }
+                }
+                androidx.compose.material3.DropdownMenu(menu, { menu = false }) {
+                    insights.forEach { (label, open) -> androidx.compose.material3.DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; open() }) }
+                }
+            }
+            CategoryFormTheme(category) { Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
+        }
+    }
+}
+
+/** The Indsigt pages that belong to each quick-registration card. */
+private val QuickActionCategory.insightCards get() = when (this) {
+    QuickActionCategory.Feeding -> listOf(dk.babyapp.data.preferences.InsightCard.Feeding)
+    QuickActionCategory.Sleep -> listOf(dk.babyapp.data.preferences.InsightCard.Sleep, dk.babyapp.data.preferences.InsightCard.Rhythm, dk.babyapp.data.preferences.InsightCard.HeadSide)
+    QuickActionCategory.Diaper -> listOf(dk.babyapp.data.preferences.InsightCard.Diapers)
+    QuickActionCategory.Measurements -> listOf(dk.babyapp.data.preferences.InsightCard.Growth)
+    QuickActionCategory.Health -> listOf(dk.babyapp.data.preferences.InsightCard.Health)
+    QuickActionCategory.SolidFood -> listOf(dk.babyapp.data.preferences.InsightCard.Feeding)
+    QuickActionCategory.Misc -> listOf(dk.babyapp.data.preferences.InsightCard.Rhythm)
 }
 
 private class QuickButtonSpec(val label: String, val enabled: Boolean, val onClick: () -> Unit)
@@ -591,6 +643,8 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(formatDuration(elapsed) + if (running) "" else " · pause", style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f).padding(start = 30.dp))
+                    // Edit the intervals straight from the compact bar.
+                    IconButton(onClick = { onEdit(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Edit, "Ret intervaller") }
                     if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
                     // Screen on/off as an icon only; the expanded timer spells it out.
                     androidx.compose.material3.IconToggleButton(keepAwake, onKeepAwake, modifier = Modifier.size(40.dp)) {

@@ -49,7 +49,12 @@ internal fun HeadSideStatisticsDialog(childId: String, events: List<CareEventEnt
                         Text("Liggeside", style = MaterialTheme.typography.titleLarge)
                     }
                     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        item { PeriodBar(StatisticsPeriod.entries.map { it.name to it.label }, period.name) { save(selection.copy(period = it)) } }
+                        // The same periods as the rest of Indsigt, fixed at the top while scrolling.
+                        stickyHeader {
+                            Box(Modifier.fillMaxWidth().background(formBody(category)).padding(vertical = 4.dp)) {
+                                PeriodBar(StatisticsPeriod.entries.filter { it != StatisticsPeriod.Day }.map { it.name to it.label }, period.name) { save(selection.copy(period = it)) }
+                            }
+                        }
                         if (period == StatisticsPeriod.Custom) item {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 StatisticsDateButton("Fra", customFrom, Modifier.weight(1f)) { save(selection.copy(from = it.toString())) }
@@ -58,7 +63,10 @@ internal fun HeadSideStatisticsDialog(childId: String, events: List<CareEventEnt
                         }
                         if (!valid) item { Text("Vælg en fra-dato før eller på til-datoen. Perioden må ikke ligge i fremtiden.", color = MaterialTheme.colorScheme.error) }
                         stats?.let { result ->
-                            item { SideSplitCard("Liggeside · hele perioden", "${range.from.shortDate()} – ${range.through.shortDate()}", result.total) }
+                            item {
+                                val shownFrom = if (period == StatisticsPeriod.All) result.days.firstOrNull()?.date ?: range.through else range.from
+                                SideSplitCard("Liggeside · hele perioden", "${shownFrom.shortDate()} – ${range.through.shortDate()}", result.total)
+                            }
                             if (result.days.isNotEmpty()) item {
                                 WhiteCard {
                                     Text("Pr. dag", style = MaterialTheme.typography.titleSmall)

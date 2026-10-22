@@ -3,6 +3,7 @@ package dk.babyapp.ui.tracking
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,13 +57,8 @@ private fun summaryDetails(type: CareEventType, entries: List<CareEventEntity>, 
 @Composable
 internal fun DaySummary(events: List<CareEventEntity>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Type", Modifier.weight(1.3f), style = MaterialTheme.typography.labelMedium)
-            Text("Antal", Modifier.width(38.dp), style = MaterialTheme.typography.labelMedium)
-            Text("I alt / detaljer", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
-        }
-        daySummaryRows(events).forEach { row ->
-            if (!row.subordinate) HorizontalDivider()
+        daySummaryRows(events).forEachIndexed { index, row ->
+            if (!row.subordinate && index > 0) HorizontalDivider()
             val weight = if (row.subordinate) FontWeight.Normal else FontWeight.Bold
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(row.label, Modifier.weight(1.3f).padding(start = if (row.subordinate) 12.dp else 0.dp), style = MaterialTheme.typography.bodySmall, fontWeight = weight)
@@ -70,8 +66,25 @@ internal fun DaySummary(events: List<CareEventEntity>) {
                 Text(row.details, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, fontWeight = weight)
             }
         }
-        HorizontalDivider()
-        Text("${events.size} registreringer i alt", style = MaterialTheme.typography.labelMedium)
-        if (events.any { it.type == CareEventType.Breastfeeding }) Text("Antal pr. side er amninger med tid på siden. En amning med begge sider tæller én gang under hver side.", style = MaterialTheme.typography.bodySmall)
+        if (events.isEmpty()) Text("Ingen registreringer denne dag.", style = MaterialTheme.typography.bodyMedium)
+        else { HorizontalDivider(); Text("${events.size} registreringer i alt", style = MaterialTheme.typography.labelMedium) }
     }
+}
+
+/** The day's summary with the date as the only heading; swipe sideways to the day before or after. */
+@Composable
+internal fun DaySummaryDialog(childEvents: List<CareEventEntity>, initial: java.time.LocalDate, onDismiss: () -> Unit) {
+    val today = java.time.LocalDate.now()
+    val first = childEvents.minOfOrNull { it.startedAt }?.let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }?.coerceAtMost(initial) ?: initial
+    val days = (java.time.temporal.ChronoUnit.DAYS.between(first, today).toInt() + 1).coerceAtLeast(1)
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = (java.time.temporal.ChronoUnit.DAYS.between(first, initial).toInt()).coerceIn(0, days - 1)) { days }
+    val shown = first.plusDays(pager.currentPage.toLong())
+    val format = java.time.format.DateTimeFormatter.ofPattern("EEEE d. MMMM", java.util.Locale.forLanguageTag("da"))
+    FormDialog(onDismissRequest = onDismiss, title = { Text(if (shown == today) "I dag" else shown.format(format).replaceFirstChar { it.uppercase() }) }, text = {
+        androidx.compose.foundation.pager.HorizontalPager(pager, beyondViewportPageCount = 1, verticalAlignment = androidx.compose.ui.Alignment.Top) { page ->
+            Column(Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                DaySummary(dk.babyapp.domain.eventsForDay(childEvents, first.plusDays(page.toLong())))
+            }
+        }
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Luk") } })
 }

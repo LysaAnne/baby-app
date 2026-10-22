@@ -99,8 +99,10 @@ class RegistrationEditingTest {
         compose.onNodeWithText("Alt").performClick()
         compose.onNodeWithText("Dato").performClick()
         compose.onNodeWithText("Fra ", substring = true).assertIsDisplayed()
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Temperatur (°C)"))
-        compose.onNodeWithText("Temperatur (°C)").assertIsDisplayed()
+        // Temperature now has its own Sundhed page; growth ends with head circumference.
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Hovedomkreds (cm)"))
+        compose.onNodeWithText("Hovedomkreds (cm)").assertIsDisplayed()
+        compose.onNodeWithText("Temperatur (°C)").assertDoesNotExist()
     }
 
     @Test fun customizationCanHideWholeSectionAndReorderFields() {

@@ -28,7 +28,12 @@ data class AppPreferences(
     val lastPumpingMethod: String = "",
     /** Cards shown on Indsigt, in order; cards left out are hidden. */
     val insightCards: List<InsightCard> = InsightCard.entries,
+    /** Days shown in Indsigt; 0 means all time and -1 the chosen dates [insightFrom]–[insightThrough]. */
     val insightPeriodDays: Int = 7,
+    val insightFrom: String? = null,
+    val insightThrough: String? = null,
+    /** Today's quick registration as compact icon rows instead of cards. */
+    val simpleQuickRegistration: Boolean = false,
     /** When an encrypted backup was last saved to a file, or null if never. */
     val lastBackupAt: Long? = null,
     /** Questions for the next health visit, per child; attached to a visit when it is registered. */
@@ -41,7 +46,7 @@ data class AppPreferences(
 data class HealthQuestion(val id: String = java.util.UUID.randomUUID().toString(), val childId: String, val text: String, val createdAt: Long = System.currentTimeMillis())
 
 /** The cards on Indsigt. Stored by name, so names must not change. */
-enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Liggeside") }
+enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Liggeside"), Health("Sundhed") }
 
 @kotlinx.serialization.Serializable
 data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null, val showGrowthReferences: Boolean = false)

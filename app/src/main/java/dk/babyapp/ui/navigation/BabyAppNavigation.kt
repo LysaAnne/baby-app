@@ -110,6 +110,8 @@ fun BabyAppNavigation(
     onRestoreCareEvent: (CareEventEntity) -> Unit = {},
     onUpdateInsightCards: (List<dk.babyapp.data.preferences.InsightCard>) -> Unit = {},
     onUpdateInsightPeriod: (Int) -> Unit = {},
+    onUpdateInsightRange: (String, String) -> Unit = { _, _ -> },
+    onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
     onUpdateHealthReminders: (Boolean) -> Unit = {},
@@ -182,6 +184,7 @@ fun BabyAppNavigation(
     fun visible(events: List<CareEventEntity>) = events.filterNot { it.isDraft || it.deletedAt != null }
     var settingsOpen by remember { mutableStateOf(false) }
     var requestedEditChildId by remember { mutableStateOf<String?>(null) }
+    var requestedInsight by remember { mutableStateOf<dk.babyapp.data.preferences.InsightCard?>(null) }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -292,6 +295,8 @@ fun BabyAppNavigation(
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
+                    onOpenInsight = { card -> requestedInsight = card; navController.navigate(AppDestination.Overview) },
+                    onUpdateSimpleQuickRegistration = onUpdateSimpleQuickRegistration,
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
                     onStartActivity = onStartActivity,
                     onToggleTimer = onToggleTimer, onSwitchSide = onSwitchSide, onStopTimer = onStopTimer,
@@ -364,8 +369,11 @@ fun BabyAppNavigation(
                     events = visible(childHistory()),
                     contentPadding = contentPadding,
                     cards = preferences.insightCards,
-                    periodDays = preferences.insightPeriodDays,
-                    onPeriodChange = onUpdateInsightPeriod,
+                    period = dk.babyapp.ui.tracking.InsightPeriodState(preferences.insightPeriodDays, preferences.insightFrom, preferences.insightThrough),
+                    onPeriodDays = onUpdateInsightPeriod,
+                    onPeriodRange = { from, through -> onUpdateInsightRange(from, through); onUpdateInsightPeriod(-1) },
+                    requestedCard = requestedInsight,
+                    onRequestHandled = { requestedInsight = null },
                     onCardsChange = onUpdateInsightCards,
                     chartSettings = preferences.measurementChartSettings,
                     onChartSettingsChange = onUpdateMeasurementChartSettings,

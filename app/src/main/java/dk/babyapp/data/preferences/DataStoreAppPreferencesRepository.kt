@@ -50,8 +50,15 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize)
                 // Medicin was added as a fifth quick filter; saved choices keep their four and get it at the end.
                 ?.let { saved -> if (saved.size == 4 && JournalFilterKeys.MEDICINE !in saved) saved + JournalFilterKeys.MEDICINE else saved } ?: AppPreferences().journalQuickFilters,
-            insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } } ?: InsightCard.entries,
-            insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it in setOf(7, 30, 90, 180, 365) } ?: 7,
+            insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } }?.let { saved ->
+                // Cards added in a later version are shown; cards the user hid stay hidden.
+                val known = values[INSIGHT_CARDS_KNOWN]?.split(',')?.toSet() ?: (InsightCard.entries.map { it.name }.toSet() - InsightCard.Health.name)
+                saved + InsightCard.entries.filter { it.name !in known && it !in saved }
+            } ?: InsightCard.entries,
+            insightPeriodDays = values[INSIGHT_PERIOD]?.takeIf { it in setOf(7, 30, 90, 180, 365, 0, -1) } ?: 7,
+            insightFrom = values[INSIGHT_FROM],
+            insightThrough = values[INSIGHT_THROUGH],
+            simpleQuickRegistration = values[SIMPLE_QUICK] ?: false,
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
             healthRemindersEnabled = values[HEALTH_REMINDERS_ENABLED] ?: true,
@@ -164,7 +171,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
     }
 
     override suspend fun updateInsightCards(cards: List<InsightCard>) {
-        context.appPreferencesDataStore.edit { it[INSIGHT_CARDS] = cards.joinToString(",") { card -> card.name } }
+        context.appPreferencesDataStore.edit { it[INSIGHT_CARDS] = cards.joinToString(",") { card -> card.name }; it[INSIGHT_CARDS_KNOWN] = InsightCard.entries.joinToString(",") { card -> card.name } }
     }
 
     override suspend fun updateHealthQuestions(questions: List<HealthQuestion>) {
@@ -181,6 +188,14 @@ class DataStoreAppPreferencesRepository @Inject constructor(
 
     override suspend fun updateInsightPeriod(days: Int) {
         context.appPreferencesDataStore.edit { it[INSIGHT_PERIOD] = days }
+    }
+
+    override suspend fun updateInsightRange(from: String, through: String) {
+        context.appPreferencesDataStore.edit { it[INSIGHT_FROM] = from; it[INSIGHT_THROUGH] = through }
+    }
+
+    override suspend fun updateSimpleQuickRegistration(enabled: Boolean) {
+        context.appPreferencesDataStore.edit { it[SIMPLE_QUICK] = enabled }
     }
 
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) {
@@ -216,6 +231,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val HIDDEN_QUICK_ACTIONS = stringPreferencesKey("hidden_quick_actions")
         val INSIGHT_CARDS = stringPreferencesKey("insight_cards")
         val INSIGHT_PERIOD = intPreferencesKey("insight_period")
+        val INSIGHT_FROM = stringPreferencesKey("insight_from")
+        val INSIGHT_THROUGH = stringPreferencesKey("insight_through")
+        val INSIGHT_CARDS_KNOWN = stringPreferencesKey("insight_cards_known")
+        val SIMPLE_QUICK = booleanPreferencesKey("simple_quick_registration")
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
         val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")
         val HEALTH_REMINDERS_ENABLED = booleanPreferencesKey("health_reminders_enabled")

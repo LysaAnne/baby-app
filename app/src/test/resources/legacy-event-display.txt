@@ -35,7 +35,7 @@ title: Nattesøvn
 summary: 01:00:00
 details: 01:00:00 · Vugge · Vugget · 2 opvågninger · Rolig
 ## sleep before sleep types
-title: Lur
+title: Søvn
 summary: 00:30:00
 details: 00:30:00
 ## weight in kg

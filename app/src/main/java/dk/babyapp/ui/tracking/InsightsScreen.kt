@@ -65,6 +65,9 @@ import dk.babyapp.data.tracking.MeasurementType
 import dk.babyapp.domain.DayInsight
 import dk.babyapp.domain.PeriodInsights
 import dk.babyapp.domain.periodInsights
+import dk.babyapp.domain.periodInsightsFor
+import dk.babyapp.domain.insightDates
+import dk.babyapp.domain.measurementPoints
 import dk.babyapp.ui.theme.CareCategory
 import dk.babyapp.ui.theme.babyColors
 import java.time.LocalDate
@@ -80,13 +83,15 @@ private val InsightCard.icon: ImageVector get() = when (this) {
     InsightCard.Rhythm -> Icons.Outlined.Schedule
     InsightCard.Growth -> CareCategory.Measurement.icon
     InsightCard.HeadSide -> Icons.Outlined.SwapHoriz
+    InsightCard.Health -> CareCategory.Health.icon
 }
 
-private val InsightCard.category: CareCategory get() = when (this) {
+internal val InsightCard.category: CareCategory get() = when (this) {
     InsightCard.Sleep, InsightCard.Rhythm, InsightCard.HeadSide -> CareCategory.Sleep
     InsightCard.Feeding -> CareCategory.Feeding
     InsightCard.Diapers -> CareCategory.Diaper
     InsightCard.Growth -> CareCategory.Measurement
+    InsightCard.Health -> CareCategory.Health
 }
 
 /** The periods offered in Indsigt, as days with their short label. */
@@ -96,9 +101,10 @@ internal fun formatMinutesShort(minutes: Long) = if (minutes >= 60) "${minutes /
 private fun decimal(value: Double) = String.format(danish, "%.1f", value)
 
 /**
- * Indsigt: patterns in the child's registrations over the last 7 or 30 days, as cards the user
- * orders and switches on and off. Numbers only describe the registrations; nothing is graded.
+ * Indsigt: patterns in the child's registrations over a chosen period, as cards the user orders and switches on
+ * and off. The period bar stays at the top while scrolling. Numbers only describe the registrations.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun InsightsScreen(
     childId: String?,
@@ -106,20 +112,26 @@ internal fun InsightsScreen(
     events: List<CareEventEntity>,
     contentPadding: PaddingValues,
     cards: List<InsightCard>,
-    periodDays: Int,
-    onPeriodChange: (Int) -> Unit,
+    period: InsightPeriodState,
+    onPeriodDays: (Int) -> Unit,
+    onPeriodRange: (String, String) -> Unit,
     onCardsChange: (List<InsightCard>) -> Unit,
     chartSettings: MeasurementChartSettings = MeasurementChartSettings(),
     onChartSettingsChange: (MeasurementChartSettings) -> Unit = {},
     statisticsSettings: HeadSideStatisticsSettings = HeadSideStatisticsSettings(),
     onStatisticsSettingsChange: (HeadSideStatisticsSettings) -> Unit = {},
+    requestedCard: InsightCard? = null,
+    onRequestHandled: () -> Unit = {},
 ) {
     var detail by rememberSaveable(childId) { mutableStateOf<InsightCard?>(null) }
+    androidx.compose.runtime.LaunchedEffect(requestedCard) { if (requestedCard != null) { detail = requestedCard; onRequestHandled() } }
     var customizeOpen by remember { mutableStateOf(false) }
-    val insights = remember(events, childId, periodDays) { childId?.let { periodInsights(events, it, periodDays) } }
+    val range = remember(events, childId, period) { childId?.let { insightDates(period.days, period.from, period.through, events, it) } }
+    val insights = remember(events, childId, period) { childId?.let { periodInsightsFor(events, it, period.days, period.from, period.through) } }
+    val background = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primaryContainer, 0.45f)
     // A light tint of the child's colour behind white cards, so the cards stand out.
     LazyColumn(
-        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primaryContainer, 0.45f)),
+        Modifier.fillMaxSize().background(background),
         contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = contentPadding.calculateBottomPadding() + 24.dp, start = 16.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -129,11 +141,15 @@ internal fun InsightsScreen(
                 IconButton(onClick = { customizeOpen = true }) { Icon(Icons.Outlined.Tune, "Tilpas Indsigt") }
             }
         }
-        item { PeriodBar(insightPeriods.map { it.first.toString() to it.second }, periodDays.toString()) { onPeriodChange(it.toInt()) } }
+        if (range != null) stickyHeader {
+            Box(Modifier.fillMaxWidth().background(background).padding(vertical = 4.dp)) {
+                InsightPeriodBar(period, range, onPeriodDays) { from, through -> onPeriodRange(from.toString(), through.toString()) }
+            }
+        }
         if (insights == null) item { Text("Opret eller vælg et barn for at se indsigt.") }
         else items(cards.size, key = { cards[it].name }) { index ->
             val card = cards[index]
-            InsightCardFrame(card, onOpen = { detail = card }) { InsightCardContent(card, insights) }
+            InsightCardFrame(card, onOpen = { detail = card }) { InsightCardContent(card, insights, events, childId!!, range!!) }
         }
         if (insights != null) item {
             Text(
@@ -142,13 +158,30 @@ internal fun InsightsScreen(
             )
         }
     }
-    if (childId != null && insights != null) when (detail) {
-        InsightCard.Growth -> MeasurementChartsDialog(events, childId, chartSettings, onChartSettingsChange, child) { detail = null }
-        InsightCard.HeadSide -> HeadSideStatisticsDialog(childId, events, statisticsSettings, onStatisticsSettingsChange) { detail = null }
-        null -> Unit
-        else -> InsightDetail(detail!!, insights, periodDays, onPeriodChange) { detail = null }
-    }
+    if (childId != null && insights != null) InsightDetailFor(detail, childId, child, events, period, onPeriodDays, onPeriodRange, chartSettings, onChartSettingsChange, statisticsSettings, onStatisticsSettingsChange) { detail = null }
     if (customizeOpen) InsightCardsDialog(cards, { customizeOpen = false }) { onCardsChange(it); customizeOpen = false }
+}
+
+/** Opens the page for one insight card; also used from the cards on I dag. */
+@Composable
+internal fun InsightDetailFor(
+    card: InsightCard?, childId: String, child: dk.babyapp.data.profile.ChildProfile?, events: List<CareEventEntity>,
+    period: InsightPeriodState, onPeriodDays: (Int) -> Unit, onPeriodRange: (String, String) -> Unit,
+    chartSettings: MeasurementChartSettings, onChartSettingsChange: (MeasurementChartSettings) -> Unit,
+    statisticsSettings: HeadSideStatisticsSettings, onStatisticsSettingsChange: (HeadSideStatisticsSettings) -> Unit,
+    onClose: () -> Unit,
+) {
+    when (card) {
+        null -> Unit
+        InsightCard.Growth -> MeasurementChartsDialog(events, childId, chartSettings, onChartSettingsChange, child, onDismiss = onClose)
+        InsightCard.Health -> MeasurementChartsDialog(events, childId, chartSettings, onChartSettingsChange, child, types = listOf(MeasurementType.Temperature), title = "Sundhed", category = CareCategory.Health, onDismiss = onClose)
+        InsightCard.HeadSide -> HeadSideStatisticsDialog(childId, events, statisticsSettings, onStatisticsSettingsChange, onClose)
+        else -> {
+            val range = remember(events, childId, period) { insightDates(period.days, period.from, period.through, events, childId) }
+            val insights = remember(events, childId, period) { periodInsightsFor(events, childId, period.days, period.from, period.through) }
+            InsightDetail(card, insights, events, childId, period, range, onPeriodDays, { from, through -> onPeriodRange(from.toString(), through.toString()) }, onClose)
+        }
+    }
 }
 
 @Composable
@@ -181,7 +214,7 @@ private fun Headline(value: String, detail: String) {
 }
 
 @Composable
-private fun InsightCardContent(card: InsightCard, insights: PeriodInsights) {
+private fun InsightCardContent(card: InsightCard, insights: PeriodInsights, events: List<CareEventEntity>, childId: String, range: Pair<LocalDate, LocalDate>) {
     val accent = MaterialTheme.babyColors.category(card.category).accent
     val light = MaterialTheme.babyColors.category(card.category).container
     val empty = insights.days.all { it.sleepMinutes == 0L && it.feedings == 0 && it.diapers == 0 }
@@ -200,6 +233,10 @@ private fun InsightCardContent(card: InsightCard, insights: PeriodInsights) {
         }
         InsightCard.Rhythm -> if (empty) NoData() else RhythmStrips(insights.days.takeLast(3))
         InsightCard.Growth -> GrowthSummary(insights)
+        InsightCard.Health -> {
+            val temperatures = remember(events, childId, range) { measurementPoints(events, childId, MeasurementType.Temperature, range.first, range.second) }
+            if (temperatures.isEmpty()) NoData() else Headline("${String.format(danish, "%.1f", temperatures.last().value)} °C", "seneste temperatur · ${temperatures.size} målinger i perioden")
+        }
         InsightCard.HeadSide -> {
             val total = insights.headLeft + insights.headRight
             if (total == 0) NoData() else {
@@ -318,11 +355,11 @@ private fun StatGrid(stats: List<Pair<String, String>>) {
 }
 
 @Composable
-private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDays: Int, onPeriodChange: (Int) -> Unit, onClose: () -> Unit) {
+private fun InsightDetail(card: InsightCard, insights: PeriodInsights, events: List<CareEventEntity>, childId: String, period: InsightPeriodState, range: Pair<LocalDate, LocalDate>, onDays: (Int) -> Unit, onRange: (LocalDate, LocalDate) -> Unit, onClose: () -> Unit) {
     val accent = MaterialTheme.babyColors.category(card.category).accent
-    val light = MaterialTheme.babyColors.category(card.category).container
+    var grouping by rememberSaveable { mutableStateOf(Grouping.Day) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        // The card's category colour as background, white sections on top.
+        // The card's category colour as background, white sections on top; the period bar stays fixed at the top.
         CategoryFormTheme(card.category) {
         Surface(Modifier.fillMaxSize(), color = formBody(card.category)) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
@@ -330,16 +367,12 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
                     IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
                     Text(card.label, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 }
+                Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { InsightPeriodBar(period, range, onDays, onRange) }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PeriodBar(insightPeriods.map { it.first.toString() to it.second }, periodDays.toString()) { onPeriodChange(it.toInt()) }
                     @Composable fun Section(content: @Composable () -> Unit) = Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = Color.White) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
+                    @Composable fun Title(text: String) = Text(text, style = MaterialTheme.typography.titleSmall)
                     when (card) {
                         InsightCard.Sleep -> {
-                            Section {
-                                Text("Søvn pr. døgn", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                DayBars(insights.days, accent, light, height = 120.dp, lower = { it.nightMinutes.toFloat() }, upper = { it.napMinutes.toFloat() })
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { Legend(accent, "nat"); Legend(light, "lur") }
-                            }
                             Section {
                                 StatGrid(listOf(
                                     "Søvn i alt pr. døgn" to formatMinutesShort(insights.avgSleepMinutes),
@@ -351,6 +384,17 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
                                 ))
                             }
                             Section {
+                                Title("Søvn")
+                                GroupingBar(grouping) { grouping = it }
+                                TapBars(groupBars(insights.days, grouping, { it.sleepMinutes.toFloat() }) { formatMinutesShort(it.toLong()) }, accent)
+                            }
+                            Section {
+                                Title("Hvor sover barnet")
+                                val places = remember(events, childId, range) { sleepPlaces(events, childId, range) }
+                                if (places.isEmpty()) Text("Vælg sovested, når du registrerer søvn, så vises fordelingen her.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                else TapBars(places, accent, height = 100.dp)
+                            }
+                            Section {
                                 Text("Typisk sengetid", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 val clock = DateTimeFormatter.ofPattern("HH.mm")
                                 Text(insights.bedtime?.let { if (it.start == it.endInclusive) it.start.format(clock) else "${it.start.format(clock)}–${it.endInclusive.format(clock)}" } ?: "Registrér mindst 3 nætter for at se den", style = MaterialTheme.typography.titleMedium)
@@ -358,27 +402,23 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
                         }
                         InsightCard.Feeding -> {
                             Section {
-                                Text("Madninger pr. døgn", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                DayBars(insights.days, accent, light, height = 120.dp, lower = { it.feedings.toFloat() })
-                            }
-                            Section {
                                 StatGrid(listOf(
                                     "Madninger pr. døgn" to decimal(insights.avgFeedings),
                                     "Amning pr. døgn" to formatMinutesShort(insights.avgNursingMinutes),
                                     "Flaske pr. døgn" to "${insights.avgBottleMl} ml",
                                 ))
                             }
+                            Section { GroupingBar(grouping) { grouping = it } }
                             Section {
-                                Text("Flaske pr. døgn (ml)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                DayBars(insights.days, accent, light, height = 80.dp, lower = { it.bottleMl.toFloat() })
+                                Title("Madninger")
+                                TapBars(groupBars(insights.days, grouping, { it.feedings.toFloat() }) { "${decimal(it.toDouble())} madninger" }, accent)
+                            }
+                            Section {
+                                Title("Flaske (ml)")
+                                TapBars(groupBars(insights.days, grouping, { it.bottleMl.toFloat() }) { "${it.toInt()} ml" }, accent, height = 90.dp)
                             }
                         }
                         InsightCard.Diapers -> {
-                            Section {
-                                Text("Bleer pr. døgn", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                DayBars(insights.days, accent, light, height = 120.dp, lower = { it.wetDiapers.toFloat() }, upper = { it.dirtyDiapers.toFloat() })
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { Legend(accent, "våd"); Legend(light, "afføring") }
-                            }
                             Section {
                                 StatGrid(listOf(
                                     "Bleer pr. døgn" to decimal(insights.avgDiapers),
@@ -386,8 +426,20 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
                                     "Afføring pr. døgn" to decimal(insights.avgDirty),
                                 ))
                             }
+                            Section {
+                                Title("Bleer")
+                                GroupingBar(grouping) { grouping = it }
+                                TapBars(groupBars(insights.days, grouping, { it.diapers.toFloat() }) { "${decimal(it.toDouble())} bleer" }, accent)
+                            }
+                            Section {
+                                Title("Afføring")
+                                TapBars(groupBars(insights.days, grouping, { it.dirtyDiapers.toFloat() }) { "${decimal(it.toDouble())} med afføring" }, accent, height = 90.dp)
+                            }
                         }
-                        InsightCard.Rhythm -> Section { RhythmStrips(insights.days.reversed(), showDates = true) }
+                        InsightCard.Rhythm -> Section {
+                            RhythmZoom(insights.days.reversed(), MaterialTheme.babyColors.category(CareCategory.Sleep).accent, MaterialTheme.babyColors.category(CareCategory.Feeding).accent, MaterialTheme.babyColors.category(CareCategory.Sleep).container)
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { Legend(MaterialTheme.babyColors.category(CareCategory.Sleep).accent, "søvn"); Legend(MaterialTheme.babyColors.category(CareCategory.Feeding).accent, "madning") }
+                        }
                         else -> Unit
                     }
                     Text(
@@ -397,8 +449,22 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, periodDay
                 }
             }
         }
+        }
     }
-    }
+}
+
+/** Sleep in the period by place: total time and how many sleeps, largest first. */
+private fun sleepPlaces(events: List<CareEventEntity>, childId: String, range: Pair<LocalDate, LocalDate>): List<Bar> {
+    val zone = java.time.ZoneId.systemDefault()
+    val start = range.first.atStartOfDay(zone).toInstant().toEpochMilli()
+    val end = range.second.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    return events.filter { it.childId == childId && it.deletedAt == null && !it.isDraft && it.type == dk.babyapp.data.tracking.CareEventType.Sleep && it.startedAt in start until end }
+        .groupBy { it.sleepLocation.trim().ifBlank { "Ikke angivet" } }
+        .map { (place, sleeps) ->
+            val minutes = sleeps.sumOf { it.elapsedSeconds() } / 60
+            Bar(place.take(8), minutes.toFloat(), "$place: ${formatMinutesShort(minutes)} · ${sleeps.size} ${if (sleeps.size == 1) "gang" else "gange"}")
+        }
+        .sortedByDescending { it.value }
 }
 
 @Composable

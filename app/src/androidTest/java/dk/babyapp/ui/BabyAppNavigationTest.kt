@@ -146,15 +146,16 @@ class BabyAppNavigationTest {
         val event = dk.babyapp.data.tracking.CareEventEntity(childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Measurement, startedAt = System.currentTimeMillis(), endedAt = System.currentTimeMillis(), measurementType = dk.babyapp.data.tracking.MeasurementType.Weight, measurementValue = 4.5, measurementUnit = "kg")
         composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(event), preferences = AppPreferences(hasSeenGettingStarted = true)) }
         composeRule.onNodeWithContentDescription("Ammebrik ved ny amning").assertDoesNotExist()
-        composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Vis målegrafer"))
+        // The measurements card links to its Indsigt page, Vækst.
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Indsigt for Mål"))
         // Activated directly: after scrolling, the icon can sit under the floating + button.
-        composeRule.onNodeWithContentDescription("Vis målegrafer").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
-        composeRule.onNodeWithText("Vækst").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Indsigt for Mål").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
+        composeRule.onNodeWithText("Vis vækstkurver").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Luk").performClick()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.onAllNodesWithText(context.getString(R.string.nav_timeline)).filter(isSelectable()).onFirst().performClick()
         composeRule.onNodeWithContentDescription("Vis målegrafer").performClick()
-        composeRule.onNodeWithText("Vækst").assertIsDisplayed()
+        composeRule.onNodeWithText("Målinger").assertIsDisplayed()
     }
 
     @Test fun bookNotificationOpensExactChildAndPage() {
