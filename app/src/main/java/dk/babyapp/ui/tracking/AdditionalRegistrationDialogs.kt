@@ -57,14 +57,16 @@ internal fun AllQuickActionsDialog(hidden: Set<String>, order: List<dk.babyapp.d
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("Vælg kortene og knapperne, og flyt kortene op eller ned.", style = MaterialTheme.typography.bodyMedium)
             selectedOrder.forEachIndexed { index, category ->
-                val actions = QuickAction.entries.filter { it.category == category && it != QuickAction.HealthNote }
+                // Nap and night are one Søvn button, so they are shown and hidden together.
+                val actions = QuickAction.entries.filter { it.category == category && it != QuickAction.HealthNote && it != QuickAction.Night }
                 val sectionShown = actions.any { it.name !in selectedHidden }
                 val (up, down) = selectedOrder.moveCallbacks(index) { selectedOrder = it }
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 CustomizeRow(category.label, sectionShown, { on -> selectedHidden = if (on) selectedHidden - actions.map { it.name }.toSet() else selectedHidden + actions.map { it.name } }, up, down)
                 // Single-button cards have no separate row for the button.
                 if (sectionShown && actions.size > 1) actions.forEach { action ->
-                    CustomizeRow(action.label, action.name !in selectedHidden, { on -> selectedHidden = if (on) selectedHidden - action.name else selectedHidden + action.name }, indent = true)
+                    val names = if (action == QuickAction.Nap) setOf(QuickAction.Nap.name, QuickAction.Night.name) else setOf(action.name)
+                    CustomizeRow(if (action == QuickAction.Nap) "Søvn" else action.label, action.name !in selectedHidden, { on -> selectedHidden = if (on) selectedHidden - names else selectedHidden + names }, indent = true)
                 }
             }
         }

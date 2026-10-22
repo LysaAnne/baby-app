@@ -7,6 +7,7 @@ import dk.babyapp.data.tracking.closeSegment
 import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.SleepType
 
 fun CareEventEntity.accrueUntil(now: Long): CareEventEntity {
     val seconds = runningSince?.let { ((now - it).coerceAtLeast(0) / 1_000) } ?: 0
@@ -62,3 +63,6 @@ fun canStartTimer(events: List<CareEventEntity>, childId: String, type: CareEven
     val active = events.filter { it.childId == childId && it.endedAt == null && it.deletedAt == null && !it.isDraft }
     return active.size < 2 && active.none { it.type == type }
 }
+
+/** A sleep started in the evening or at night is night sleep; otherwise a nap. It can be changed afterwards. */
+fun sleepTypeAt(time: java.time.LocalTime): SleepType = if (time.hour >= 19 || time.hour < 6) SleepType.Night else SleepType.Nap

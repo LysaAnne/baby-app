@@ -102,13 +102,14 @@ private val sharedColors = BabyColors(
 
 internal val LightBabyColors = sharedColors.copy(
     categories = mapOf(
-        CareCategory.Feeding to CategoryColors(Color(0xFFA85F24), Color(0xFFFBE3D0)),
-        CareCategory.Sleep to CategoryColors(Color(0xFF4F59A0), Color(0xFFE1E3F7)),
-        CareCategory.Diaper to CategoryColors(Color(0xFF237571), Color(0xFFD3EFEC)),
-        CareCategory.Measurement to CategoryColors(Color(0xFF316C9A), Color(0xFFD8E8F5)),
-        CareCategory.Health to CategoryColors(Color(0xFFA6405A), Color(0xFFF7DCE3)),
-        CareCategory.SolidFood to CategoryColors(Color(0xFF52782C), Color(0xFFE2EFD3)),
-        CareCategory.Misc to CategoryColors(Color(0xFF7A4F9C), Color(0xFFEADDF5)),
+        // Soft pastels that still stand out on white; the accent is dark enough for white text.
+        CareCategory.Feeding to CategoryColors(Color(0xFF3F7D4E), Color(0xFFD9EEDD)),
+        CareCategory.Sleep to CategoryColors(Color(0xFF3E66A6), Color(0xFFD9E6F7)),
+        CareCategory.Diaper to CategoryColors(Color(0xFF1F7F7C), Color(0xFFCFEEEC)),
+        CareCategory.Measurement to CategoryColors(Color(0xFFB45A12), Color(0xFFFBE2CC)),
+        CareCategory.Health to CategoryColors(Color(0xFFB23A47), Color(0xFFF8D9DC)),
+        CareCategory.SolidFood to CategoryColors(Color(0xFF8C6D00), Color(0xFFFAEDB8)),
+        CareCategory.Misc to CategoryColors(Color(0xFF74519E), Color(0xFFE8DDF5)),
     ),
 )
 

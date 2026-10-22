@@ -235,13 +235,16 @@ fun TodayScreen(
             val actions = QuickAction.entries.filter { visible(it) && it.category == category }
             if (actions.isEmpty()) return@forEach
             item {
-                QuickActionCard(category.careCategory.icon, category.label, MaterialTheme.babyColors.category(category.careCategory).accent, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
+                QuickActionCard(category.careCategory.icon, category.label, MaterialTheme.babyColors.category(category.careCategory).accent, category = category.careCategory, onChart = when (category) { QuickActionCategory.Measurements -> ({ chartsOpen = true }); QuickActionCategory.Sleep -> ({ headSideOpen = true }); else -> null }) {
                     fun canStart(type: CareEventType) = childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, type)
                     val buttons = actions.filterNot { it == QuickAction.HeadSide }.flatMap { action ->
                         when (action) {
                             QuickAction.Breastfeeding -> BreastSide.entries.map { side ->
                                 QuickButtonSpec(sideLabel(side).replaceFirstChar { it.uppercase() }, canStart(CareEventType.Breastfeeding)) { childId?.let { onStartBreastfeeding(it, side) } }
                             }
+                            // Nap and night sleep are one Søvn button; the type follows the clock and can be changed afterwards.
+                            QuickAction.Night -> if (QuickAction.Nap in actions) emptyList() else listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, dk.babyapp.domain.sleepTypeAt(java.time.LocalTime.now())) { sleepError = !it } } })
+                            QuickAction.Nap -> listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, dk.babyapp.domain.sleepTypeAt(java.time.LocalTime.now())) { sleepError = !it } } })
                             QuickAction.Diaper -> DiaperType.entries.map { type ->
                                 QuickButtonSpec(type.displayLabel(), childId != null) { selectedDiaperType = type; dialog = EditorKind.Diaper }
                             }
@@ -269,7 +272,6 @@ fun TodayScreen(
                         }
                     }
                     if (QuickAction.HeadSide in actions) HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord)
-                    if (category == QuickActionCategory.Sleep && buttons.isNotEmpty()) Text("Søvn", style = MaterialTheme.typography.labelMedium)
                     // Teeth and questions sit in the same grid as the other health buttons; status lines follow below.
                     val healthExtras = if (category == QuickActionCategory.Health) {
                         val toothCount = teeth.count { it.childId == childId && it.lost == null }
@@ -514,7 +516,7 @@ internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: ()
 }
 
 @Composable
-private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx.compose.ui.graphics.Color, onChart: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx.compose.ui.graphics.Color, category: dk.babyapp.ui.theme.CareCategory? = null, onChart: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -527,7 +529,8 @@ private fun QuickActionCard(icon: ImageVector, title: String, iconTint: androidx
                 Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 if (onChart != null) IconButton(onClick = onChart) { Icon(Icons.Outlined.ShowChart, if (title == "Søvn") "Åbn favoritside" else "Vis målegrafer") }
             }
-            content()
+            // The buttons take the category's colours.
+            CategoryFormTheme(category) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { content() } }
         }
     }
 }
@@ -560,7 +563,7 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.runningSince) { while (event.runningSince != null) { now = System.currentTimeMillis(); delay(1_000) } }
     val elapsed = event.elapsedSeconds(now)
-    val title = listOfNotNull(childLabel, when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> if (event.sleepType == SleepType.Night) "Nattesøvn" else "Lur"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }).joinToString(" · ")
+    val title = listOfNotNull(childLabel, when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> "Søvn"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }).joinToString(" · ")
     val running = event.runningSince != null
     val category = MaterialTheme.babyColors.category(event.careCategory)
     val toggle: @Composable () -> Unit = {
@@ -569,29 +572,34 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
     val expandButton: @Composable () -> Unit = {
         IconButton(onClick = { onMinimizedChange(!minimized) }) { Icon(if (minimized) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (minimized) "Udvid tæller" else "Minimer tæller") }
     }
+    // The timer takes its category's colours, like the rest of that category.
+    CategoryFormTheme(event.careCategory) {
     Card(
         modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = formBody(event.careCategory)),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         if (minimized) {
-            // Compact: one line with the essentials, so the timer never covers much of the screen.
-            Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 2.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(32.dp).background(category.container, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(event.careCategory.icon, contentDescription = null, tint = category.accent, modifier = Modifier.size(18.dp))
+            // Compact: the full title on top, the time and the buttons below, so nothing gets cut off.
+            Column(Modifier.fillMaxWidth().padding(start = 10.dp, end = 2.dp, top = 4.dp, bottom = 2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(24.dp).background(category.container, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(event.careCategory.icon, contentDescription = null, tint = category.accent, modifier = Modifier.size(14.dp))
+                    }
+                    Text(title, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                    expandButton()
                 }
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    Text(formatDuration(elapsed) + if (running) "" else " · pause", style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(formatDuration(elapsed) + if (running) "" else " · pause", style = MaterialTheme.typography.titleMedium, maxLines = 1, modifier = Modifier.weight(1f).padding(start = 30.dp))
+                    if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
+                    // Screen on/off as an icon only; the expanded timer spells it out.
+                    androidx.compose.material3.IconToggleButton(keepAwake, onKeepAwake, modifier = Modifier.size(40.dp)) {
+                        Icon(if (keepAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb, if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt", tint = if (keepAwake) androidx.compose.ui.graphics.Color(0xFFE0A100) else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    toggle()
+                    androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Stop, "Stop") }
+                    androidx.compose.foundation.layout.Spacer(Modifier.size(4.dp))
                 }
-                if (event.type == CareEventType.Breastfeeding) IconButton(onClick = { onSwitch(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.SwapHoriz, "Skift side") }
-                // Screen on/off as an icon only; the expanded timer spells it out.
-                androidx.compose.material3.IconToggleButton(keepAwake, onKeepAwake, modifier = Modifier.size(40.dp)) {
-                    Icon(if (keepAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb, if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt", tint = if (keepAwake) androidx.compose.ui.graphics.Color(0xFFE0A100) else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                toggle()
-                androidx.compose.material3.FilledIconButton(onClick = { onStop(event) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Stop, "Stop") }
-                expandButton()
             }
         } else Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             // Expanded: the same heading as the compact bar, then time, sides, settings and actions.
@@ -637,13 +645,16 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                         Icon(Icons.Outlined.Stop, null, Modifier.size(18.dp)); Text(" Stop")
                     }
                 }
+                // Same text whether on or off, so the bulb never moves; it lights up yellow like in the compact bar.
                 val awakeColors = if (keepAwake) androidx.compose.material3.ButtonDefaults.filledTonalButtonColors() else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                 androidx.compose.material3.FilledTonalButton(onClick = { onKeepAwake(!keepAwake) }, colors = awakeColors, modifier = Modifier.fillMaxWidth().semantics { contentDescription = if (keepAwake) "Skærmen holdes tændt" else "Hold skærmen tændt" },
                     border = if (keepAwake) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Icon(if (keepAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb, null, Modifier.size(18.dp)); Text(if (keepAwake) " Skærmen holdes tændt" else " Hold skærmen tændt")
+                    Icon(if (keepAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb, null, Modifier.size(18.dp), tint = if (keepAwake) androidx.compose.ui.graphics.Color(0xFFE0A100) else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(" Hold skærmen tændt")
                 }
             }
         }
+    }
     }
 }
 
@@ -773,7 +784,7 @@ internal fun SleepDialog(
 /** Common sleeping places as chips; anything else can still be written. */
 @Composable
 internal fun SleepPlaceField(value: String, onChange: (String) -> Unit) {
-    val places = listOf("Seng", "Barnevogn", "På arm", "Bil", "Bæresele")
+    val places = listOf("Seng", "Barnevogn", "Kontaktlur", "På arm", "Bil", "Bæresele")
     var other by remember { mutableStateOf(value.isNotBlank() && value !in places) }
     ChoiceChips(places.map { it to it } + ("" to "Andet"), if (other) "" else value.takeIf { it in places }, allowNone = true, label = "Sovested") { picked ->
         other = picked == ""
@@ -864,17 +875,13 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (plans.isEmpty()) Text("Tilføj eller aktivér medicin på medicinkortet før registrering.")
             if (existing != null && selectedPlan == null) Text("Tidligere registrering: ${existing.medicationName}")
-            // Few medicines as chips, many in a list.
-            if (plans.size in 1..4) ChoiceChips(plans.map { it to it.name }, selectedPlan) { plan -> plan?.let { selectedPlan = it; dose = it.dose } }
-            else if (plans.isNotEmpty()) SelectionDropdown("Fra medicinkort *", selectedPlan?.name ?: "Vælg medicin", plans.map { it to "${it.name} · ${it.dose}" }) { plan -> selectedPlan = plan; dose = plan.dose }
-            // The medicine card is reached from here rather than from the Today card.
-            if (onOpenMedicineCard != null) TextButton(onClick = onOpenMedicineCard, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                Icon(Icons.Outlined.Medication, null, Modifier.size(18.dp)); Text(" Åbn medicinkort")
-            }
+            // The medicine first, then the dose it fills in, which can be changed if something else was given.
+            if (plans.isNotEmpty()) SelectionDropdown("Medicin *", selectedPlan?.let { listOf(it.name, it.dose).filter(String::isNotBlank).joinToString(" · ") } ?: "Vælg medicin", plans.map { it to listOf(it.name, it.dose).filter(String::isNotBlank).joinToString(" · ") }) { plan -> selectedPlan = plan; dose = plan.dose }
             RegistrationTextField(dose, { dose = it }, label = { Text("Dosis") })
-            DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
-            MoreDetails("noter", notes.isNotBlank()) { RegistrationTextField(notes, { notes = it }, label = { Text("Noter") }) }
-            Text("Registrér kun medicin, som barnet faktisk har fået.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MoreDetails("dato, tidspunkt, noter", notes.isNotBlank()) {
+                DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })
+                RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
+            }
         } },
         confirmButton = { Button(enabled = name.isNotBlank() && (selectedPlan != null || existing != null), onClick = {
             onSave((existing ?: CareEventEntity(childId = childId, type = CareEventType.Activity, startedAt = time)).copy(
@@ -882,7 +889,12 @@ internal fun MedicineDialog(childId: String, existing: CareEventEntity?, onDismi
                 activityDurationSeconds = null, medicineId = selectedPlan?.id ?: existing?.medicineId.orEmpty(), timeSpecified = timeSpecified, medicationName = name, medicationDose = dose, notes = notes,
             ))
         }) { Text("Gem") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        dismissButton = {
+            // The medicine card sits in the footer, on the same line as Annuller and Gem.
+            if (onOpenMedicineCard != null) TextButton(onClick = onOpenMedicineCard, contentPadding = PaddingValues(horizontal = 4.dp)) { Icon(Icons.Outlined.Medication, null, Modifier.size(18.dp)); Text(" Medicinkort") }
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDismiss) { Text("Annuller") }
+        },
     )
 }
 

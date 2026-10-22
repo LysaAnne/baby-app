@@ -84,7 +84,9 @@ internal fun TeethDialog(childId: String, records: List<ToothRecord>, onSave: (T
     val teeth = records.filter { it.childId == childId }.associateBy { it.tooth }
     val emergedCount = teeth.values.count { it.lost == null }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        // Teeth belong to Sundhed, so the screen uses its colours.
+        CategoryFormTheme(dk.babyapp.ui.theme.CareCategory.Health) {
+        Surface(Modifier.fillMaxSize(), color = formBody(dk.babyapp.ui.theme.CareCategory.Health)) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = BabySpacing.xs, end = BabySpacing.l, top = BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Luk") }
@@ -142,9 +144,10 @@ internal fun TeethDialog(childId: String, records: List<ToothRecord>, onSave: (T
             }
         }
     }
-    if (picking) ToothPicker(teeth, onDismiss = { picking = false }) { picking = false; selected = it }
+    }
+    if (picking) CategoryFormTheme(dk.babyapp.ui.theme.CareCategory.Health) { ToothPicker(teeth, onDismiss = { picking = false }) { picking = false; selected = it } }
     selected?.let { number ->
-        ToothSheet(teeth[number] ?: ToothRecord(childId, number), exists = teeth[number] != null, onDismiss = { selected = null }, onSave = { onSave(it); selected = null })
+        CategoryFormTheme(dk.babyapp.ui.theme.CareCategory.Health) { ToothSheet(teeth[number] ?: ToothRecord(childId, number), exists = teeth[number] != null, onDismiss = { selected = null }, onSave = { onSave(it); selected = null }) }
     }
 }
 

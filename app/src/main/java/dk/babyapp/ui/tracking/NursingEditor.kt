@@ -62,7 +62,7 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
     var error by remember { mutableStateOf<String?>(null) }
     val what = when (event.type) {
         CareEventType.Breastfeeding -> "Amning"
-        CareEventType.Sleep -> if (sleepType == SleepType.Night) "Nattesøvn" else "Lur"
+        CareEventType.Sleep -> "Søvn"
         CareEventType.Pumping -> "Pumpning"
         else -> activityType.displayLabel()
     }

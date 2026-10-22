@@ -68,9 +68,13 @@ internal fun ManualRegistrationMenu(options: List<Pair<String, () -> Unit>>, onD
                         Icon(group.careCategory.icon, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items.chunked(2).forEach { row ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                row.forEach { (label, select) -> QuickButton(label, Modifier.weight(1f), onClick = select) }
+                        CategoryFormTheme(group.careCategory) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                items.chunked(2).forEach { row ->
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        row.forEach { (label, select) -> QuickButton(label, Modifier.weight(1f), onClick = select) }
+                                    }
+                                }
                             }
                         }
                     }

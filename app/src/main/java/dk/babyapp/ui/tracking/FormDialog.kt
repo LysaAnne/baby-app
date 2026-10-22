@@ -64,8 +64,8 @@ internal fun CategoryFormTheme(category: CareCategory?, content: @Composable () 
     MaterialTheme(
         colorScheme = scheme.copy(
             primary = colors.accent, onPrimary = Color.White,
-            primaryContainer = colors.container, onPrimaryContainer = scheme.onSurface,
-            secondaryContainer = colors.container, onSecondaryContainer = scheme.onSurface,
+            primaryContainer = colors.container, onPrimaryContainer = lerp(colors.accent, Color.Black, 0.45f),
+            secondaryContainer = colors.container, onSecondaryContainer = lerp(colors.accent, Color.Black, 0.45f),
         ),
         typography = MaterialTheme.typography, shapes = MaterialTheme.shapes, content = content,
     )

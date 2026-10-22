@@ -111,7 +111,7 @@ class TimerNotificationService : Service() {
     private fun notification(event: CareEventEntity): android.app.Notification {
         val what = when (event.type) {
             CareEventType.Breastfeeding -> "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"} side"
-            CareEventType.Sleep -> if (event.sleepType == dk.babyapp.data.tracking.SleepType.Night) "Nattesøvn" else "Lur"
+            CareEventType.Sleep -> "Søvn"
             CareEventType.Activity -> event.activityType?.let { type -> when (type) {
                 dk.babyapp.data.tracking.ActivityType.TummyTime -> "Mavetid"
                 dk.babyapp.data.tracking.ActivityType.Bath -> "Bad"

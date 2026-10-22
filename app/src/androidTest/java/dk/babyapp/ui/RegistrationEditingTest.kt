@@ -242,9 +242,9 @@ class RegistrationEditingTest {
         compose.onNodeWithContentDescription("Hold skærmen tændt").performClick()
         compose.runOnIdle { assertTrue(awake) }
         compose.onNodeWithContentDescription("Udvid tæller").performClick()
-        compose.onNodeWithText("Skærmen holdes tændt", substring = true).assertExists()
+        compose.onNodeWithText("Hold skærmen tændt", substring = true).assertExists()
         compose.onNodeWithText("Ret intervaller", substring = true).assertExists()
         compose.onNodeWithContentDescription("Minimer tæller").performClick()
-        compose.onNodeWithText("Skærmen holdes tændt", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Hold skærmen tændt", substring = true).assertDoesNotExist()
     }
 }
