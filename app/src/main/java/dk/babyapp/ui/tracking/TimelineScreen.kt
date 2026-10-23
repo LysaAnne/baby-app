@@ -276,7 +276,7 @@ fun TimelineScreen(
         { addMenu = false })
     fun saveAdded(event: CareEventEntity) { onUpdate(event) { success -> if (success) addKind = null else overlapError = true } }
     activeChildId?.let { id ->
-        if (addKind == AddKind.SolidFood) SolidFoodDialog(id, null, { addKind = null }, ::saveAdded)
+        if (addKind == AddKind.SolidFood) SolidFoodDialog(id, null, { addKind = null }, history(), onSave = ::saveAdded)
         if (addKind == AddKind.Medicine) MedicineDialog(id, null, { addKind = null }, medicines, onSave = ::saveAdded)
         if (addKind == AddKind.HealthVisit || addKind == AddKind.Vaccination) HealthRecordDialog(id, addKind == AddKind.Vaccination, careProviders, onDismiss = { addKind = null }, onSave = ::saveAdded)
     }

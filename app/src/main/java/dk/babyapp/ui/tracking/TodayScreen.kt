@@ -203,7 +203,7 @@ fun TodayScreen(
     var insightOpen by remember { mutableStateOf<dk.babyapp.data.preferences.InsightCard?>(null) }
     var hundredFoodsOpen by remember { mutableStateOf(false) }
     // [events] only covers recent days; the whole history is loaded while an older day or a chart is shown.
-    val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen || insightOpen != null || hundredFoodsOpen)) history() else null
+    val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen || insightOpen != null || hundredFoodsOpen || dialog == EditorKind.SolidFood)) history() else null
     val allChildEvents = historyEvents?.let { all -> all.filter { it.childId == childId && !it.isDraft && it.deletedAt == null } } ?: childEvents
 
     Box(Modifier.fillMaxSize()) {
@@ -297,7 +297,7 @@ fun TodayScreen(
                         val all = (buttons + healthExtras).filterNot { it.label == QuickAction.HealthNote.label }
                         val order = listOf(QuickAction.HealthVisit.label, healthExtras[1].label, QuickAction.Medicine.label, QuickAction.Vaccination.label, healthExtras[0].label)
                         order.mapNotNull { label -> all.firstOrNull { it.label == label } } + all.filter { it.label !in order }
-                    } else if (QuickAction.SolidFood in actions) buttons + QuickButtonSpec("100 før 1", childId != null) { hundredFoodsOpen = true } else buttons
+                    } else buttons
                     QuickButtonRows(shown, columns = 2)
                 }
             }
@@ -307,7 +307,6 @@ fun TodayScreen(
         if (childId != null) FloatingActionButton(onClick = { manualMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = contentPadding.calculateBottomPadding() + 16.dp)) { Icon(Icons.Outlined.Add, "Manuel registrering") }
     }
 
-    if (hundredFoodsOpen && childId != null) HundredFoodsDialog(childId, child, historyEvents ?: events, onSaveHealthRecord) { hundredFoodsOpen = false }
     if (childId != null) InsightDetailFor(
         insightOpen, childId, child, historyEvents ?: events,
         InsightPeriodState(preferences.insightPeriodDays, preferences.insightFrom, preferences.insightThrough), onUpdateInsightPeriod,
@@ -348,9 +347,11 @@ fun TodayScreen(
         EditorKind.HealthNote -> childId?.let { id -> HealthNoteDialog(id, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartActivity -> StartActivityDialog({ dialog = null }) { type -> childId?.let { onStartActivity(it, type) { success -> sleepError = !success } }; dialog = null }
         EditorKind.Activity -> childId?.let { id -> ActivityDialog(manualActivityType, { dialog = null }) { start, end, type, notes -> onAddActivity(id, start, end, type, notes); dialog = null } }
-        EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
+        EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }, historyEvents ?: events, onOpenList = { hundredFoodsOpen = true }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
+    // The whole 100 før 1 list opens from the Fast føde form, on top of it.
+    if (hundredFoodsOpen && childId != null) HundredFoodsDialog(childId, child, historyEvents ?: events, onSaveHealthRecord) { hundredFoodsOpen = false }
     if (teethOpen && childId != null) TeethDialog(childId, teeth, onSaveTooth, child) { teethOpen = false }
     if (medicineCardOpen && childId != null) MedicineCardDialog(childId, medicines, onUpdateMedicines, { medicineCardOpen = false }, childEvents)
     deleteTarget?.let { event -> AlertDialog(
@@ -1001,7 +1002,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 @Composable internal fun EditEventDialog(event: CareEventEntity, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
     if (event.type == CareEventType.HeadSide) { HeadSideEditor(event, onDismiss, onSave); return }
     if (event.type == CareEventType.Breastfeeding) { NursingEditor(event, onDismiss, onSave, openDetails = event.endedAt == null); return }
-    if (event.type == CareEventType.SolidFood) { SolidFoodDialog(event.childId, event, onDismiss, onSave); return }
+    if (event.type == CareEventType.SolidFood) { SolidFoodDialog(event.childId, event, onDismiss, onSave = onSave); return }
     if (event.type == CareEventType.Activity && event.activityType == ActivityType.Medicine) {
         MedicineDialog(event.childId, event, onDismiss, onSave = onSave); return
     }

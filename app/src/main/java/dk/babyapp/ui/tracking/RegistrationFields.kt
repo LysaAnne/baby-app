@@ -27,11 +27,12 @@ internal fun RegistrationTextField(value: String, onValueChange: (String) -> Uni
     label: @Composable (() -> Unit)? = null, placeholder: @Composable (() -> Unit)? = null,
     readOnly: Boolean = false, enabled: Boolean = true, singleLine: Boolean = false,
     isError: Boolean = false, minLines: Int = 1, maxLines: Int = Int.MAX_VALUE,
-    trailingIcon: @Composable (() -> Unit)? = null, keyboardOptions: KeyboardOptions = KeyboardOptions.Default) {
+    trailingIcon: @Composable (() -> Unit)? = null, keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    leadingIcon: @Composable (() -> Unit)? = null, keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default) {
     // Full width by default, so every form lines up; a weight or width from the caller still applies first.
     OutlinedTextField(value, onValueChange, modifier.fillMaxWidth(), label = label, placeholder = placeholder, readOnly = readOnly,
         enabled = enabled, singleLine = singleLine, isError = isError, minLines = minLines, maxLines = maxLines,
-        trailingIcon = trailingIcon, keyboardOptions = keyboardOptions, shape = MaterialTheme.shapes.small,
+        trailingIcon = trailingIcon, leadingIcon = leadingIcon, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, shape = MaterialTheme.shapes.small,
         colors = MaterialTheme.babyColors.let { field ->
             OutlinedTextFieldDefaults.colors(focusedContainerColor = field.fieldContainer, unfocusedContainerColor = field.fieldContainer,
                 disabledContainerColor = field.fieldContainer, errorContainerColor = field.fieldContainer,

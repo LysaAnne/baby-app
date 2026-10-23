@@ -116,26 +116,6 @@ internal fun CardButtonsDialog(category: dk.babyapp.data.preferences.QuickAction
 }
 
 @Composable
-internal fun SolidFoodDialog(childId: String, existing: CareEventEntity?, onDismiss: () -> Unit, onSave: (CareEventEntity) -> Unit) {
-    val now = remember { System.currentTimeMillis() }
-    var draft by remember { mutableStateOf(existing ?: CareEventEntity(childId = childId, type = CareEventType.SolidFood, startedAt = now, endedAt = now)) }
-    FormDialog(category = dk.babyapp.ui.theme.CareCategory.SolidFood, onDismissRequest = onDismiss, title = { Text(if (existing == null) "Fast føde" else "Rediger fast føde") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            RegistrationTextField(draft.foodName, { draft = draft.copy(foodName = it) }, label = { Text("Mad / ingredienser *") })
-            val textures = listOf("Smagsprøve", "Grød", "Fin mos", "Grov mos", "Bløde stykker / fingermad", "Familiemad", "Andet")
-            ChoiceChips((textures + listOfNotNull(draft.foodTexture.takeIf { it.isNotBlank() && it !in textures })).map { it to it }, draft.foodTexture.ifBlank { null }, allowNone = true, label = "Konsistens") { draft = draft.copy(foodTexture = it.orEmpty()) }
-            DateAndOptionalTimeFields(draft.startedAt, draft.timeSpecified, { draft = draft.copy(startedAt = it, endedAt = it) }, { draft = draft.copy(timeSpecified = it) })
-            MoreDetails("mængde, reaktion, noter", listOf(draft.foodAmount, draft.foodReaction, draft.notes).any(String::isNotBlank)) {
-                RegistrationTextField(draft.foodAmount, { draft = draft.copy(foodAmount = it) }, label = { Text("Spist mængde, fx 3 tsk eller 40 g") })
-                val reactions = listOf("Spiste med appetit", "Smagte lidt", "Afviste maden", "Gylp / opkast", "Hudreaktion", "Andet")
-                ChoiceChips((reactions + listOfNotNull(draft.foodReaction.takeIf { it.isNotBlank() && it != "Ikke angivet" && it !in reactions })).map { it to it }, draft.foodReaction.takeIf { it.isNotBlank() && it != "Ikke angivet" }, allowNone = true, label = "Oplevelse / reaktion") { draft = draft.copy(foodReaction = it.orEmpty()) }
-                RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter, fx nye ingredienser") })
-            }
-        }
-    }, confirmButton = { Button(enabled = draft.foodName.isNotBlank(), onClick = { onSave(draft.copy(foodName = draft.foodName.trim())) }) { Text("Gem") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
-}
-
-@Composable
 internal fun BottleRatioField(value: String, onChange: (String) -> Unit) {
     val amounts = remember { Regex("^(\\d+) ml \\+ (\\d+) ml").find(value) }
     var breastMilk by remember { mutableStateOf(amounts?.groupValues?.get(1).orEmpty()) }
