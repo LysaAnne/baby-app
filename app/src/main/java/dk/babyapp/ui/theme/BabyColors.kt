@@ -108,7 +108,8 @@ internal val LightBabyColors = sharedColors.copy(
         CareCategory.Diaper to CategoryColors(Color(0xFF1F7F7C), Color(0xFFCFEEEC)),
         CareCategory.Measurement to CategoryColors(Color(0xFFB45A12), Color(0xFFFBE2CC)),
         CareCategory.Health to CategoryColors(Color(0xFFB23A47), Color(0xFFF8D9DC)),
-        CareCategory.SolidFood to CategoryColors(Color(0xFF8C6D00), Color(0xFFFAEDB8)),
+        // Fast føde is part of Madning, so it has the same green.
+        CareCategory.SolidFood to CategoryColors(Color(0xFF3F7D4E), Color(0xFFD9EEDD)),
         CareCategory.Misc to CategoryColors(Color(0xFF74519E), Color(0xFFE8DDF5)),
     ),
 )
