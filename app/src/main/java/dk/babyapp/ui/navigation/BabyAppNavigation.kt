@@ -114,6 +114,7 @@ fun BabyAppNavigation(
     onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
+    onUpdateBoardNotes: (List<dk.babyapp.data.preferences.BoardNote>) -> Unit = {},
     onUpdateHealthReminders: (Boolean) -> Unit = {},
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
@@ -121,7 +122,7 @@ fun BabyAppNavigation(
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
     onResumeBreastfeeding: (CareEventEntity, BreastSide, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onStartPumping: (String, String) -> Unit = { _, _ -> },
-    onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
+    onStartSleep: (String, SleepType?, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onStartActivity: (String, ActivityType, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
     onToggleTimer: (CareEventEntity) -> Unit = {},
     onSwitchSide: (CareEventEntity) -> Unit = {},
@@ -129,7 +130,7 @@ fun BabyAppNavigation(
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
-    onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
+    onAddSleep: (String, Long, Long, SleepType?, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
     onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddActivity: (String, Long, Long, ActivityType, String) -> Unit = { _, _, _, _, _ -> },
     onSaveHealthRecord: (CareEventEntity) -> Unit = {},
@@ -184,8 +185,6 @@ fun BabyAppNavigation(
     fun visible(events: List<CareEventEntity>) = events.filterNot { it.isDraft || it.deletedAt != null }
     var settingsOpen by remember { mutableStateOf(false) }
     var requestedEditChildId by remember { mutableStateOf<String?>(null) }
-    var requestedInsight by remember { mutableStateOf<dk.babyapp.data.preferences.InsightCard?>(null) }
-
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -295,7 +294,7 @@ fun BabyAppNavigation(
                     careProviders = activeChild?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
                     overdueDueDate = activeChild?.dueDate?.takeIf { shouldShowDueDateReminder(activeChild.birthStatus, it, LocalDate.now()) },
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
-                    onOpenInsight = { card -> requestedInsight = card; navController.navigate(AppDestination.Overview) },
+                    onUpdateInsightPeriod = onUpdateInsightPeriod, onUpdateInsightRange = onUpdateInsightRange,
                     onUpdateSimpleQuickRegistration = onUpdateSimpleQuickRegistration,
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
                     onStartActivity = onStartActivity,
@@ -313,6 +312,7 @@ fun BabyAppNavigation(
                     onSaveTooth = onSaveTooth,
                     onUpdateMedicines = onUpdateMedicines,
                     onUpdateHealthQuestions = onUpdateHealthQuestions,
+                    onUpdateBoardNotes = onUpdateBoardNotes,
                     medicines = medicines,
                     teeth = teeth,
                     onOpenTimeline = { navController.navigate(AppDestination.Timeline) },
@@ -372,8 +372,6 @@ fun BabyAppNavigation(
                     period = dk.babyapp.ui.tracking.InsightPeriodState(preferences.insightPeriodDays, preferences.insightFrom, preferences.insightThrough),
                     onPeriodDays = onUpdateInsightPeriod,
                     onPeriodRange = { from, through -> onUpdateInsightRange(from, through); onUpdateInsightPeriod(-1) },
-                    requestedCard = requestedInsight,
-                    onRequestHandled = { requestedInsight = null },
                     onCardsChange = onUpdateInsightCards,
                     chartSettings = preferences.measurementChartSettings,
                     onChartSettingsChange = onUpdateMeasurementChartSettings,

@@ -89,17 +89,6 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                     }
                 }
                 LazyColumn(contentPadding = PaddingValues(start = BabySpacing.l, end = BabySpacing.l, top = BabySpacing.s, bottom = BabySpacing.xl), verticalArrangement = Arrangement.spacedBy(BabySpacing.m)) {
-                    if (child != null && types.any { it != MeasurementType.Temperature }) item {
-                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = BabySpacing.l, vertical = BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Vis vækstkurver", style = MaterialTheme.typography.titleSmall)
-                                    Text("WHO for vægt, længde og hovedomkreds", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Switch(showGrowth, { showGrowth = it; saveSelection() }, modifier = Modifier.semantics { contentDescription = "Vis vækstkurver" })
-                            }
-                        }
-                    }
                     stickyHeader {
                         Box(Modifier.fillMaxWidth().background(formBody(category)).padding(vertical = 4.dp)) {
                             PeriodBar(ChartPeriod.entries.map { it.name to it.label }, period.name) { picked -> period = ChartPeriod.valueOf(picked); saveSelection() }
@@ -109,6 +98,18 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ChartDateButton("Fra", customFrom) { customFrom = it; saveSelection() }
                             ChartDateButton("Til", customThrough) { customThrough = it; saveSelection() }
+                        }
+                    }
+                    // The WHO switch sits under the period bar.
+                    if (child != null && types.any { it != MeasurementType.Temperature }) item {
+                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = BabySpacing.l, vertical = BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Vis vækstkurver", style = MaterialTheme.typography.titleSmall)
+                                    Text("WHO for vægt, længde og hovedomkreds", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(showGrowth, { showGrowth = it; saveSelection() }, modifier = Modifier.semantics { contentDescription = "Vis vækstkurver" })
+                            }
                         }
                     }
                     if (showGrowth && child != null) item { GrowthNotice(child, availability) }

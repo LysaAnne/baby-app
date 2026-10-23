@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Live Update (Android 16): the running timer as a chip in the status bar. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Opt-in floating timer over other apps; granted by the user in Android settings. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application
         android:name=".BabyApplication"
         android:allowBackup="false"

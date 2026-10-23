@@ -90,6 +90,7 @@ fun BabyApp(
                     onUpdateSimpleQuickRegistration = settings::updateSimpleQuickRegistration,
                     onBackupSaved = settings::markBackupSaved,
                     onUpdateHealthQuestions = settings::updateHealthQuestions,
+                    onUpdateBoardNotes = settings::updateBoardNotes,
                     onUpdateHealthReminders = settings::updateHealthReminders,
                     bookPages = state.bookPages,
                     onSaveBookPage = book::saveBookPage,

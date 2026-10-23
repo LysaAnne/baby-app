@@ -41,6 +41,8 @@ object JournalFilterKeys {
     // Until October 2026 the Danish filter label itself was stored. Frozen so old values keep working after labels change.
     private val legacyLabels = mapOf(
         "Madning · alle" to FEEDING_ALL, "Sundhed · alle" to HEALTH_ALL, "Lur" to NAP, "Nattesøvn" to NIGHT_SLEEP,
+        // Nap and night sleep became one Søvn in October 2026; their saved filters now show all sleep.
+        NAP to type(CareEventType.Sleep), NIGHT_SLEEP to type(CareEventType.Sleep),
         "Medicin" to MEDICINE, "Mavetid" to TUMMY_TIME,
         "Favoritside" to type(CareEventType.HeadSide), "Fast føde" to type(CareEventType.SolidFood), "Amning" to type(CareEventType.Breastfeeding),
         "Flaske" to type(CareEventType.Bottle), "Pumpning" to type(CareEventType.Pumping), "Ble" to type(CareEventType.Diaper),
@@ -50,5 +52,5 @@ object JournalFilterKeys {
         "Hovedomkreds" to measurement(MeasurementType.HeadCircumference), "Temperatur" to measurement(MeasurementType.Temperature),
     )
 
-    fun normalize(stored: String): String = legacyLabels[stored] ?: stored
+    fun normalize(stored: String): String = legacyLabels[stored]?.let { legacyLabels[it] ?: it } ?: stored
 }

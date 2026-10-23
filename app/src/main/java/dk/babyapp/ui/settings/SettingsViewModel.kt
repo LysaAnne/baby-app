@@ -51,6 +51,7 @@ class SettingsViewModel @Inject constructor(
     fun updateInsightRange(from: String, through: String) = viewModelScope.launch { preferencesRepository.updateInsightRange(from, through) }
     fun updateSimpleQuickRegistration(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateSimpleQuickRegistration(enabled) }
     fun updateHealthQuestions(questions: List<dk.babyapp.data.preferences.HealthQuestion>) = viewModelScope.launch { preferencesRepository.updateHealthQuestions(questions) }
+    fun updateBoardNotes(notes: List<dk.babyapp.data.preferences.BoardNote>) = viewModelScope.launch { preferencesRepository.updateBoardNotes(notes) }
     fun updateHealthReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateHealthReminders(enabled) }
 
     fun updateQuickActions(showBreastfeeding: Boolean, showBottle: Boolean, showPumping: Boolean, showDiaper: Boolean) = viewModelScope.launch {

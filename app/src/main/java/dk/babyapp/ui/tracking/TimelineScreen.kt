@@ -83,7 +83,7 @@ fun TimelineScreen(
     events: List<CareEventEntity>,
     careProviders: List<CareProvider>,
     contentPadding: PaddingValues,
-    onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
+    onAddSleep: (String, Long, Long, SleepType?, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
     onAddBottle: (String, Long, BottleContent, Int?, Int?, String, String) -> Unit,
     onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit,
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit,

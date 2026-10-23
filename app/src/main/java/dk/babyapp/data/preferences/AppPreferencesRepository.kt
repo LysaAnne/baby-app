@@ -30,6 +30,7 @@ interface AppPreferencesRepository {
     suspend fun updateSimpleQuickRegistration(enabled: Boolean)
     suspend fun markBackupSaved(at: Long)
     suspend fun updateHealthQuestions(questions: List<HealthQuestion>)
+    suspend fun updateBoardNotes(notes: List<BoardNote>)
     suspend fun updateHealthReminders(enabled: Boolean)
     suspend fun updateQuickActionCategoryOrder(order: List<QuickActionCategory>)
     suspend fun updateDefaultNippleShield(enabled: Boolean)

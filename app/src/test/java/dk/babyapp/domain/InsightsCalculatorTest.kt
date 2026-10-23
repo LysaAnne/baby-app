@@ -30,6 +30,6 @@ class InsightsCalculatorTest {
         assertEquals(1, result.wetDiapers)
         assertEquals(1, result.dirtyDiapers)
         assertEquals(120, result.sleepMinutes)
-        assertEquals(1, result.napCount)
+        assertEquals(1, result.sleepCount)
     }
 }

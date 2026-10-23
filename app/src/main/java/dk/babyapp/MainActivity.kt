@@ -26,6 +26,8 @@ class MainActivity : androidx.appcompat.app.AppCompatActivity() {
             BabyApp(bookTarget = bookTarget, onBookTargetHandled = { bookTarget = null; intent.data = null })
         }
     }
+    override fun onStart() { super.onStart(); dk.babyapp.tracking.AppVisibility.started() }
+    override fun onStop() { dk.babyapp.tracking.AppVisibility.stopped(); super.onStop() }
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)

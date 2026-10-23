@@ -137,7 +137,7 @@ fun TodayScreen(
     onOpenFamily: () -> Unit = {},
     onStartBreastfeeding: (String, BreastSide) -> Unit,
     onStartPumping: (String, String) -> Unit,
-    onStartSleep: (String, SleepType, (Boolean) -> Unit) -> Unit,
+    onStartSleep: (String, SleepType?, (Boolean) -> Unit) -> Unit,
     onStartActivity: (String, ActivityType, (Boolean) -> Unit) -> Unit,
     onToggleTimer: (CareEventEntity) -> Unit,
     onSwitchSide: (CareEventEntity) -> Unit,
@@ -147,7 +147,7 @@ fun TodayScreen(
     onOpenTimeline: () -> Unit,
     onSaveHealthRecord: (CareEventEntity) -> Unit,
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit,
-    onAddSleep: (String, Long, Long, SleepType, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
+    onAddSleep: (String, Long, Long, SleepType?, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
     onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit,
     onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
@@ -163,7 +163,9 @@ fun TodayScreen(
     onSaveTooth: (dk.babyapp.data.teeth.ToothRecord) -> Unit = {},
     onUpdateMedicines: (List<MedicinePlan>) -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
-    onOpenInsight: (dk.babyapp.data.preferences.InsightCard) -> Unit = {},
+    onUpdateBoardNotes: (List<dk.babyapp.data.preferences.BoardNote>) -> Unit = {},
+    onUpdateInsightPeriod: (Int) -> Unit = {},
+    onUpdateInsightRange: (String, String) -> Unit = { _, _ -> },
     onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
     medicines: List<MedicinePlan> = emptyList(),
     teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
@@ -197,8 +199,11 @@ fun TodayScreen(
     var manualMenuOpen by remember { mutableStateOf(false) }
     var sleepError by remember { mutableStateOf(false) }
     var medicineCardOpen by remember { mutableStateOf(false) }
+    // A graph opened from a card is shown over I dag, so back returns here.
+    var insightOpen by remember { mutableStateOf<dk.babyapp.data.preferences.InsightCard?>(null) }
+    var hundredFoodsOpen by remember { mutableStateOf(false) }
     // [events] only covers recent days; the whole history is loaded while an older day or a chart is shown.
-    val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen)) history() else null
+    val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen || insightOpen != null || hundredFoodsOpen)) history() else null
     val allChildEvents = historyEvents?.let { all -> all.filter { it.childId == childId && !it.isDraft && it.deletedAt == null } } ?: childEvents
 
     Box(Modifier.fillMaxSize()) {
@@ -233,6 +238,7 @@ fun TodayScreen(
                 onOpenSummary = { summaryOpen = true },
             )
         }
+        if (childId != null) item { BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes) }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
         }
@@ -240,17 +246,16 @@ fun TodayScreen(
             val actions = QuickAction.entries.filter { visible(it) && it.category == category }
             if (actions.isEmpty()) return@forEach
             item {
-                val insightLinks = category.insightCards.map { card -> card.label to { onOpenInsight(card) } }
+                val insightLinks = category.insightCards.map { (label, card) -> label to { insightOpen = card } }
                 QuickCategory(preferences.simpleQuickRegistration, category.careCategory, category.label, insightLinks, onSettings = { cardSettingsFor = category }) {
                     fun canStart(type: CareEventType) = childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, type)
                     val buttons = actions.filterNot { it == QuickAction.HeadSide }.flatMap { action ->
                         when (action) {
-                            QuickAction.Breastfeeding -> BreastSide.entries.map { side ->
-                                QuickButtonSpec(sideLabel(side).replaceFirstChar { it.uppercase() }, canStart(CareEventType.Breastfeeding)) { childId?.let { onStartBreastfeeding(it, side) } }
-                            }
-                            // Nap and night sleep are one Søvn button; the type follows the clock and can be changed afterwards.
-                            QuickAction.Night -> if (QuickAction.Nap in actions) emptyList() else listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, dk.babyapp.domain.sleepTypeAt(java.time.LocalTime.now())) { sleepError = !it } } })
-                            QuickAction.Nap -> listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, dk.babyapp.domain.sleepTypeAt(java.time.LocalTime.now())) { sleepError = !it } } })
+                            // One Amning button; the side is picked in a small window.
+                            QuickAction.Breastfeeding -> listOf(QuickButtonSpec("Amning", canStart(CareEventType.Breastfeeding)) { dialog = EditorKind.StartBreast })
+                            // Nap and night sleep are one Søvn button.
+                            QuickAction.Night -> if (QuickAction.Nap in actions) emptyList() else listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, null) { sleepError = !it } } })
+                            QuickAction.Nap -> listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, null) { sleepError = !it } } })
                             QuickAction.Diaper -> DiaperType.entries.map { type ->
                                 QuickButtonSpec(type.displayLabel(), childId != null) { selectedDiaperType = type; dialog = EditorKind.Diaper }
                             }
@@ -264,8 +269,8 @@ fun TodayScreen(
                                     val id = childId ?: return@QuickButtonSpec
                                     when (action) {
                                         QuickAction.Pumping -> dialog = EditorKind.ManualPumping
-                                        QuickAction.Nap -> onStartSleep(id, SleepType.Nap) { sleepError = !it }
-                                        QuickAction.Night -> onStartSleep(id, SleepType.Night) { sleepError = !it }
+                                        QuickAction.Nap -> onStartSleep(id, null) { sleepError = !it }
+                                        QuickAction.Night -> onStartSleep(id, null) { sleepError = !it }
                                         QuickAction.TummyTime -> onStartActivity(id, ActivityType.TummyTime) { sleepError = !it }
                                         QuickAction.Bath -> onStartActivity(id, ActivityType.Bath) { sleepError = !it }
                                         QuickAction.Play -> onStartActivity(id, ActivityType.Play) { sleepError = !it }
@@ -292,9 +297,8 @@ fun TodayScreen(
                         val all = (buttons + healthExtras).filterNot { it.label == QuickAction.HealthNote.label }
                         val order = listOf(QuickAction.HealthVisit.label, healthExtras[1].label, QuickAction.Medicine.label, QuickAction.Vaccination.label, healthExtras[0].label)
                         order.mapNotNull { label -> all.firstOrNull { it.label == label } } + all.filter { it.label !in order }
-                    } else buttons
+                    } else if (QuickAction.SolidFood in actions) buttons + QuickButtonSpec("100 før 1", childId != null) { hundredFoodsOpen = true } else buttons
                     QuickButtonRows(shown, columns = 2)
-                    if (category == QuickActionCategory.Health && child != null) HealthProgrammeStatus(dk.babyapp.domain.upcomingProgramme(child, historyEvents ?: events, today).take(3), today)
                 }
             }
         }
@@ -303,6 +307,13 @@ fun TodayScreen(
         if (childId != null) FloatingActionButton(onClick = { manualMenuOpen = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = contentPadding.calculateBottomPadding() + 16.dp)) { Icon(Icons.Outlined.Add, "Manuel registrering") }
     }
 
+    if (hundredFoodsOpen && childId != null) HundredFoodsDialog(childId, child, historyEvents ?: events, onSaveHealthRecord) { hundredFoodsOpen = false }
+    if (childId != null) InsightDetailFor(
+        insightOpen, childId, child, historyEvents ?: events,
+        InsightPeriodState(preferences.insightPeriodDays, preferences.insightFrom, preferences.insightThrough), onUpdateInsightPeriod,
+        { from, through -> onUpdateInsightRange(from, through); onUpdateInsightPeriod(-1) },
+        preferences.measurementChartSettings, onUpdateMeasurementChartSettings, preferences.headSideStatistics, onUpdateHeadSideStatistics,
+    ) { insightOpen = null }
     if (headSideOpen && childId != null) HeadSideStatisticsDialog(childId, historyEvents ?: events, preferences.headSideStatistics, onUpdateHeadSideStatistics) { headSideOpen = false }
     if (chartsOpen && childId != null) MeasurementChartsDialog(historyEvents ?: events, childId, preferences.measurementChartSettings, onUpdateMeasurementChartSettings, child) { chartsOpen = false }
     if (manualMenuOpen) ManualRegistrationMenu(
@@ -313,7 +324,7 @@ fun TodayScreen(
         { manualMenuOpen = false })
     when (dialog) {
         EditorKind.StartBreast -> FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = { dialog = null }, title = { Text("Start amning") },
-            text = { Row { BreastSide.entries.forEach { side -> TextButton(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }) { Text(sideLabel(side).replaceFirstChar { it.uppercase() }) } } } },
+            text = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { BreastSide.entries.forEach { side -> Button(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }, Modifier.weight(1f)) { Text(sideLabel(side).replaceFirstChar { it.uppercase() }) } } } },
             confirmButton = {}, dismissButton = { TextButton(onClick = { dialog = null }) { Text("Annuller") } })
         EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes, ratio -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes, ratio) }; dialog = null }
         EditorKind.Diaper -> DiaperDialog(initialType = selectedDiaperType, onDismiss = { dialog = null; selectedDiaperType = DiaperType.Wet }) { time, type, color, consistency, observation, notes -> childId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; dialog = null; selectedDiaperType = DiaperType.Wet }
@@ -443,21 +454,6 @@ private fun DashboardMetric.measurementType() = when (this) {
     else -> null
 }
 
-/** The next examinations and vaccinations in the Danish programme that are not registered as done. */
-@Composable
-private fun HealthProgrammeStatus(items: List<dk.babyapp.domain.ProgrammeItem>, today: LocalDate) {
-    if (items.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        items.forEach { item ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(item.template.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(if (item.scheduled != null) "Planlagt ${DateFormat.getDateInstance(DateFormat.SHORT).format(Date(item.scheduled.startedAt))}" else dk.babyapp.domain.dueLabel(item.due, today),
-                    style = MaterialTheme.typography.bodySmall, color = if (item.due < today && item.scheduled == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
 /** Questions to bring to the next health visit. They are attached to the visit when it is registered. */
 @Composable
 private fun HealthQuestionsDialog(childId: String, all: List<dk.babyapp.data.preferences.HealthQuestion>, events: List<CareEventEntity>, onUpdate: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit, onDismiss: () -> Unit) {
@@ -576,15 +572,18 @@ private fun QuickCategory(simple: Boolean, category: dk.babyapp.ui.theme.CareCat
     }
 }
 
-/** The Indsigt pages that belong to each quick-registration card. */
-private val QuickActionCategory.insightCards get() = when (this) {
-    QuickActionCategory.Feeding -> listOf(dk.babyapp.data.preferences.InsightCard.Feeding)
-    QuickActionCategory.Sleep -> listOf(dk.babyapp.data.preferences.InsightCard.Sleep, dk.babyapp.data.preferences.InsightCard.Rhythm, dk.babyapp.data.preferences.InsightCard.HeadSide)
-    QuickActionCategory.Diaper -> listOf(dk.babyapp.data.preferences.InsightCard.Diapers)
-    QuickActionCategory.Measurements -> listOf(dk.babyapp.data.preferences.InsightCard.Growth)
-    QuickActionCategory.Health -> listOf(dk.babyapp.data.preferences.InsightCard.Health)
-    QuickActionCategory.SolidFood -> listOf(dk.babyapp.data.preferences.InsightCard.Feeding)
-    QuickActionCategory.Misc -> listOf(dk.babyapp.data.preferences.InsightCard.Rhythm)
+/** The graphs that belong to each quick-registration card, named as in its menu when there are several. */
+private val QuickActionCategory.insightCards: List<Pair<String, dk.babyapp.data.preferences.InsightCard>> get() {
+    fun page(card: dk.babyapp.data.preferences.InsightCard, label: String = card.label) = label to card
+    return when (this) {
+        QuickActionCategory.Feeding, QuickActionCategory.SolidFood -> listOf(page(dk.babyapp.data.preferences.InsightCard.Feeding))
+        QuickActionCategory.Sleep -> listOf(page(dk.babyapp.data.preferences.InsightCard.Sleep), page(dk.babyapp.data.preferences.InsightCard.Rhythm), page(dk.babyapp.data.preferences.InsightCard.HeadSide))
+        QuickActionCategory.Diaper -> listOf(page(dk.babyapp.data.preferences.InsightCard.Diapers))
+        // The temperature graph is the Sundhed page.
+        QuickActionCategory.Measurements -> listOf(page(dk.babyapp.data.preferences.InsightCard.Growth), page(dk.babyapp.data.preferences.InsightCard.Health, "Temperatur"))
+        QuickActionCategory.Health -> listOf(page(dk.babyapp.data.preferences.InsightCard.Health, "Temperatur"))
+        QuickActionCategory.Misc -> listOf(page(dk.babyapp.data.preferences.InsightCard.Misc))
+    }
 }
 
 private class QuickButtonSpec(val label: String, val enabled: Boolean, val onClick: () -> Unit)
@@ -824,11 +823,12 @@ internal fun OptionalEndField(end: Long?, onChange: (Long?) -> Unit, defaultEnd:
 internal fun SleepDialog(
     existing: CareEventEntity? = null,
     onDismiss: () -> Unit,
-    onSave: (Long, Long, SleepType, String, String, Int?, SleepQuality?, String) -> Unit,
+    onSave: (Long, Long, SleepType?, String, String, Int?, SleepQuality?, String) -> Unit,
 ) {
     var start by remember { mutableLongStateOf(existing?.startedAt ?: System.currentTimeMillis() - 3_600_000) }
     var end by remember { mutableLongStateOf(existing?.endedAt ?: System.currentTimeMillis()) }
-    var type by remember { mutableStateOf(existing?.sleepType ?: SleepType.Nap) }
+    // Søvn is one kind; an old nap/night value is kept untouched when editing.
+    val type = existing?.sleepType
     var location by remember { mutableStateOf(existing?.sleepLocation.orEmpty()) }
     var settling by remember { mutableStateOf(existing?.settlingMethod.orEmpty()) }
     var awakenings by remember { mutableStateOf(existing?.awakenings?.toString().orEmpty()) }
@@ -838,7 +838,6 @@ internal fun SleepDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Søvn" else "Rediger søvn") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChoiceChips(SleepType.entries.map { it to if (it == SleepType.Nap) "Lur" else "Nattesøvn" }, type) { it?.let { type = it } }
             Text("Slut", style = MaterialTheme.typography.labelMedium); DateTimeFields(end) { end = it }
             MoreDetails("start, sted, puttemetode, opvågninger, kvalitet, noter", existing != null || listOf(location, settling, awakenings, notes).any(String::isNotBlank) || quality != null) {
                 Text("Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }

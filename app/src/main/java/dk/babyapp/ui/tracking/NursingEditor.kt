@@ -51,7 +51,6 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
     var intervals by remember(event.id) { mutableStateOf(event.timerIntervals()) }
     var notes by remember(event.id) { mutableStateOf(event.notes) }
     var issue by remember(event.id) { mutableStateOf(event.breastfeedingIssue) }
-    var sleepType by remember(event.id) { mutableStateOf(event.sleepType ?: SleepType.Nap) }
     var location by remember(event.id) { mutableStateOf(event.sleepLocation) }
     var settling by remember(event.id) { mutableStateOf(event.settlingMethod) }
     var awakenings by remember(event.id) { mutableStateOf(event.awakenings?.toString().orEmpty()) }
@@ -78,7 +77,7 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
             CareEventType.Breastfeeding -> edited.copy(breastfeedingIssue = issue)
             CareEventType.Activity -> edited.copy(activityType = activityType)
             CareEventType.Pumping -> edited.copy(pumpingMethod = pumpingMethod, pumpedAmountMl = pumped.toIntOrNull())
-            else -> edited.copy(sleepType = sleepType, sleepLocation = location, settlingMethod = settling, awakenings = awakenings.toIntOrNull(), sleepQuality = quality)
+            else -> edited.copy(sleepLocation = location, settlingMethod = settling, awakenings = awakenings.toIntOrNull(), sleepQuality = quality)
         }
     }
     fun save() = result().onSuccess(onSave).onFailure { error = it.message ?: "Kontrollér intervallerne." }
@@ -101,7 +100,6 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                 ChoiceChips(BreastfeedingIssue.entries.map { it to it.displayLabel() }, issue, allowNone = true, label = "Gener") { issue = it }
             }
             CareEventType.Sleep -> {
-                ChoiceChips(SleepType.entries.map { it to if (it == SleepType.Nap) "Lur" else "Nattesøvn" }, sleepType) { it?.let { sleepType = it } }
                 ChoiceChips(SleepQuality.entries.map { it to it.displayLabel() }, quality, allowNone = true, label = "Hvordan gik det?") { quality = it }
                 SleepPlaceField(location) { location = it }
             }

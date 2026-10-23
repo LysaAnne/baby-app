@@ -58,12 +58,25 @@ class TimerNotificationService : Service() {
     private var updateJob: Job? = null
     private var eventId: String? = null
     private var secondaryIds = emptySet<Int>()
+    private var overlay: TimerOverlay? = null
+    // The floating timer stays hidden after × until another timer starts.
+    private var currentActive = emptySet<String>()
+    private var overlayHiddenFor = emptySet<String>()
 
     override fun onCreate() {
         super.onCreate()
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(
-            NotificationChannel(CHANNEL, "Aktive registreringer", NotificationManager.IMPORTANCE_LOW).apply { lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC },
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        // Silent ("low") notifications are hidden on the lock screen and in the status bar on most phones, so the
+        // timer has its own default-importance channel without sound. The old low channel is removed.
+        manager.deleteNotificationChannel(OLD_CHANNEL)
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL, "Aktive tællere", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+                setSound(null, null); enableVibration(false); setShowBadge(false)
+                description = "Tælleren mens amning, søvn eller en aktivitet kører. Vises på låseskærmen og i statuslinjen."
+            },
         )
+        overlay = TimerOverlay(this) { overlayHiddenFor = currentActive }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -92,8 +105,15 @@ class TimerNotificationService : Service() {
     private fun beginUpdates() {
         updateJob?.cancel()
         updateJob = scope.launch {
-            repository.unfinishedEvents.combine(profiles.profiles) { active, children -> active to children }.collect { (active, children) ->
+            combine(repository.unfinishedEvents, profiles.profiles, AppVisibility.visible) { active, children, visible -> Triple(active, children, visible > 0) }.collect { (active, children, appVisible) ->
                 names = children.associate { it.id to it.name }
+                currentActive = active.map { it.id }.toSet()
+                if (!currentActive.all { it in overlayHiddenFor }) overlayHiddenFor = emptySet()
+                val first = active.firstOrNull()
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    if (first == null || appVisible || overlayHiddenFor.isNotEmpty()) overlay?.hide()
+                    else overlay?.show(OverlayTimer(label(first) + if (active.size > 1) " +${active.size - 1}" else "", first.elapsedSeconds(), first.runningSince != null, accent(first)))
+                }
                 val manager = getSystemService(NotificationManager::class.java)
                 val nextIds = active.drop(1).map { 0x40000000 or (it.id.hashCode() and 0x3fffffff) }.toSet()
                 (secondaryIds - nextIds).forEach(manager::cancel)
@@ -108,8 +128,16 @@ class TimerNotificationService : Service() {
 
     private var names: Map<String, String> = emptyMap()
 
-    private fun notification(event: CareEventEntity): android.app.Notification {
-        val what = when (event.type) {
+    private fun accent(event: CareEventEntity) = when (event.type) {
+        CareEventType.Sleep -> 0xFF3E66A6.toInt()
+        CareEventType.Activity -> 0xFF74519E.toInt()
+        else -> 0xFF3F7D4E.toInt()
+    }
+
+    /** Short name for the floating timer: the child's name and what is running. */
+    private fun label(event: CareEventEntity) = listOfNotNull(names[event.childId], what(event).substringBefore(" ·")).joinToString(" · ")
+
+    private fun what(event: CareEventEntity) = when (event.type) {
             CareEventType.Breastfeeding -> "Amning · ${if (event.activeSide == BreastSide.Right) "højre" else "venstre"} side"
             CareEventType.Sleep -> "Søvn"
             CareEventType.Activity -> event.activityType?.let { type -> when (type) {
@@ -122,6 +150,9 @@ class TimerNotificationService : Service() {
             } } ?: "Aktivitet"
             else -> "Pumpning"
         }
+
+    private fun notification(event: CareEventEntity): android.app.Notification {
+        val what = what(event)
         val title = listOfNotNull(names[event.childId], what).joinToString(" · ")
         val elapsed = event.elapsedSeconds()
         val text = "%02d:%02d:%02d".format(elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60)
@@ -143,8 +174,11 @@ class TimerNotificationService : Service() {
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setWhen(System.currentTimeMillis() - elapsed * 1_000).setUsesChronometer(event.runningSince != null)
-            .setShowWhen(true)
+            .setShowWhen(true).setSilent(true)
+            // Android 16 Live Update: kept at the top, on the lock screen and as a clock chip in the status bar.
+            .setRequestPromotedOngoing(true)
             .addAction(0, toggleLabel, servicePendingIntent(toggleAction, event.id, 1))
+        if (event.runningSince == null) builder.setShortCriticalText("Pause")
         if (event.type == CareEventType.Breastfeeding) builder.addAction(0, "Skift side", servicePendingIntent(ACTION_SWITCH, event.id, 2))
         return builder.addAction(0, "Stop", servicePendingIntent(ACTION_STOP, event.id, 3)).build()
     }
@@ -154,12 +188,12 @@ class TimerNotificationService : Service() {
         val now = System.currentTimeMillis(); val seconds = event.runningSince?.let { (now - it).coerceAtLeast(0) / 1_000 } ?: 0
         return when { event.type != CareEventType.Breastfeeding -> event.copy(leftSeconds = event.leftSeconds + seconds); event.activeSide == BreastSide.Right -> event.copy(rightSeconds = event.rightSeconds + seconds); else -> event.copy(leftSeconds = event.leftSeconds + seconds) }
     }
-    override fun onDestroy() { updateJob?.cancel(); scope.cancel(); secondaryIds.forEach { getSystemService(NotificationManager::class.java).cancel(it) }; super.onDestroy() }
+    override fun onDestroy() { overlay?.hide(); updateJob?.cancel(); scope.cancel(); secondaryIds.forEach { getSystemService(NotificationManager::class.java).cancel(it) }; super.onDestroy() }
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
         const val ACTION_SHOW = "dk.babyapp.timer.SHOW"; const val ACTION_PAUSE = "dk.babyapp.timer.PAUSE"; const val ACTION_RESUME = "dk.babyapp.timer.RESUME"; const val ACTION_SWITCH = "dk.babyapp.timer.SWITCH"; const val ACTION_STOP = "dk.babyapp.timer.STOP"
-        private const val EXTRA_EVENT_ID = "event_id"; private const val CHANNEL = "active_timer"; private const val NOTIFICATION_ID = 4103
+        private const val EXTRA_EVENT_ID = "event_id"; private const val CHANNEL = "active_timer_live"; private const val OLD_CHANNEL = "active_timer"; private const val NOTIFICATION_ID = 4103
         fun intent(context: Context, action: String, eventId: String) = Intent(context, TimerNotificationService::class.java).setAction(action).setData(android.net.Uri.parse("babyapp://timer/$eventId/$action")).putExtra(EXTRA_EVENT_ID, eventId)
     }
 }

@@ -9,7 +9,7 @@ import org.junit.Test
 class StoredKeysTest {
     // Every value the app could store before October 2026, with the filter it meant.
     private val legacyJournalLabels = mapOf(
-        "Madning · alle" to "Madning", "Sundhed · alle" to "Sundhed", "Lur" to "Lur", "Nattesøvn" to "Nattesøvn", "Medicin" to "Medicin",
+        "Madning · alle" to "Madning", "Sundhed · alle" to "Sundhed", "Medicin" to "Medicin",
         "Mavetid" to "Mavetid", "Favoritside" to "Liggeside", "Fast føde" to "Fast føde", "Amning" to "Amning", "Flaske" to "Flaske",
         "Pumpning" to "Pumpning", "Ble" to "Bleer", "Søvn" to "Søvn", "Mål" to "Mål", "Diverse" to "Diverse", "Sundhedsbesøg" to "Sundhedsbesøg",
         "Vaccination" to "Vaccination", "Vægt" to "Vægt", "Højde/længde" to "Højde/længde", "Hovedomkreds" to "Hovedomkreds", "Temperatur" to "Temperatur",
@@ -17,6 +17,8 @@ class StoredKeysTest {
 
     @Test fun everyOldJournalLabelBecomesAnIdShowingTheSameFilter() {
         assertEquals(journalFilters.size, legacyJournalLabels.size)
+        // Lur and Nattesøvn became plain Søvn.
+        listOf("Lur", "Nattesøvn", "nap", "night-sleep").forEach { assertEquals("Søvn", journalFilterLabel(JournalFilterKeys.normalize(it))) }
         legacyJournalLabels.forEach { (stored, shown) ->
             val id = JournalFilterKeys.normalize(stored)
             assertEquals(stored, shown, journalFilterLabel(id))
@@ -37,6 +39,7 @@ class StoredKeysTest {
         assertEquals(QuickActionCategory.entries, old.map(QuickActionCategory::fromStored))
         assertEquals(QuickActionCategory.entries, QuickActionCategory.entries.map { QuickActionCategory.fromStored(it.name) })
         assertEquals(null, QuickActionCategory.fromStored("ukendt"))
-        assertEquals(old, orderedQuickActionCategories(emptyList()).map { it.label })
+        // Fast føde moved into the Madning card in October 2026.
+        assertEquals(old - "Fast føde", orderedQuickActionCategories(emptyList()).map { it.label })
     }
 }

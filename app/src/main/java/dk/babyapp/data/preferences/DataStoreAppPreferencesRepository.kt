@@ -47,7 +47,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             headSideStatistics = values[HEAD_SIDE_STATISTICS]?.let { Json.decodeFromString<HeadSideStatisticsSettings>(it) } ?: HeadSideStatisticsSettings(),
             measurementChartSettings = values[MEASUREMENT_CHART_SETTINGS]?.let { runCatching { Json.decodeFromString<MeasurementChartSettings>(it) }.getOrNull() } ?: MeasurementChartSettings(),
             lastPumpingMethod = values[LAST_PUMPING_METHOD] ?: "",
-            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize)
+            journalQuickFilters = values[JOURNAL_QUICK_FILTERS]?.split(',')?.map(JournalFilterKeys::normalize)?.distinct()
                 // Medicin was added as a fifth quick filter; saved choices keep their four and get it at the end.
                 ?.let { saved -> if (saved.size == 4 && JournalFilterKeys.MEDICINE !in saved) saved + JournalFilterKeys.MEDICINE else saved } ?: AppPreferences().journalQuickFilters,
             insightCards = values[INSIGHT_CARDS]?.split(',')?.mapNotNull { name -> InsightCard.entries.firstOrNull { it.name == name } }?.let { saved ->
@@ -61,6 +61,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             simpleQuickRegistration = values[SIMPLE_QUICK] ?: false,
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
+            boardNotes = values[BOARD_NOTES]?.let { runCatching { Json.decodeFromString<List<BoardNote>>(it) }.getOrNull() } ?: emptyList(),
             healthRemindersEnabled = values[HEALTH_REMINDERS_ENABLED] ?: true,
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
         )
@@ -178,6 +179,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[HEALTH_QUESTIONS] = Json.encodeToString(questions) }
     }
 
+    override suspend fun updateBoardNotes(notes: List<BoardNote>) {
+        context.appPreferencesDataStore.edit { it[BOARD_NOTES] = Json.encodeToString(notes) }
+    }
+
     override suspend fun updateHealthReminders(enabled: Boolean) {
         context.appPreferencesDataStore.edit { it[HEALTH_REMINDERS_ENABLED] = enabled }
     }
@@ -237,6 +242,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val SIMPLE_QUICK = booleanPreferencesKey("simple_quick_registration")
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
         val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")
+        val BOARD_NOTES = stringPreferencesKey("board_notes")
         val HEALTH_REMINDERS_ENABLED = booleanPreferencesKey("health_reminders_enabled")
     }
 }

@@ -30,7 +30,7 @@ fun ComponentGallery() {
         }
         TimerBar("Amning · venstre", CareCategory.Feeding, running = true, elapsedSeconds = { 754 }, onToggle = {}, onStop = {}, subtitle = "Startet 14.05")
         EventRow("Flaske", "14.20", CareCategory.Feeding, summary = "90 ml modermælk", onClick = {})
-        EventRow("Lur", "12.50", CareCategory.Sleep, summary = "1 t 5 min", onClick = {})
+        EventRow("Søvn", "12.50", CareCategory.Sleep, summary = "1 t 5 min", onClick = {})
         var content by remember { mutableStateOf<String?>("Modermælk") }
         ChipSelector(listOf("Modermælk", "Erstatning", "Blanding", "Vand"), content, { content = it }, { it }, title = "Indhold")
         var amount by remember { mutableStateOf<Int?>(90) }

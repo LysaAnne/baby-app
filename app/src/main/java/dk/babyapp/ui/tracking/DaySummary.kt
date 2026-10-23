@@ -30,7 +30,6 @@ internal fun daySummaryRows(events: List<CareEventEntity>): List<SummaryRow> = b
             val subgroups = when (type) {
                 CareEventType.Diaper -> entries.groupBy { it.diaperType?.displayLabel() ?: "Ikke angivet" }
                 CareEventType.Bottle -> entries.groupBy { it.bottleContent.displayLabel() }
-                CareEventType.Sleep -> entries.groupBy { when (it.sleepType) { SleepType.Nap -> "Lur"; SleepType.Night -> "Nattesøvn"; null -> "Ikke angivet" } }
                 CareEventType.Pumping -> entries.groupBy { it.pumpingMethod.ifBlank { "Ikke angivet" } }
                 CareEventType.Measurement -> entries.groupBy { it.measurementType?.displayLabel() ?: "Ikke angivet" }
                 CareEventType.Activity -> entries.groupBy { it.activityType?.displayLabel() ?: "Ikke angivet" }

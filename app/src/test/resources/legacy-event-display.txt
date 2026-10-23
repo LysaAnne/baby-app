@@ -31,7 +31,7 @@ title: Ble
 summary: Type ikke angivet
 details: Registreret
 ## night sleep full
-title: Nattesøvn
+title: Søvn
 summary: 01:00:00
 details: 01:00:00 · Vugge · Vugget · 2 opvågninger · Rolig
 ## sleep before sleep types
@@ -100,8 +100,6 @@ Bleer | 2 | –
   Begge | 1 | –
   Ikke angivet | 1 | –
 Søvn | 2 | 90 min
-  Nattesøvn | 1 | 60 min
-  Ikke angivet | 1 | 30 min
 Mål | 3 | –
   Vægt | 2 | 5,2 kg · 5200 g
   Temperatur | 1 | 37,4 °C

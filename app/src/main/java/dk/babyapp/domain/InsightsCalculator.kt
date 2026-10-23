@@ -16,7 +16,7 @@ data class CareInsights(
     val dirtyDiapers: Int,
     val diaperObservations: Int,
     val sleepMinutes: Long,
-    val napCount: Int,
+    val sleepCount: Int,
     val longestSleepMinutes: Long,
     val commonSleepPeriod: String,
 )
@@ -39,7 +39,7 @@ fun calculateInsights(events: List<CareEventEntity>, childId: String, from: Loca
         dirtyDiapers = diapers.count { it.diaperType?.name in setOf("Dirty", "Both") },
         diaperObservations = diapers.count { it.observation.isNotBlank() || it.diaperColor != null || it.diaperConsistency != null },
         sleepMinutes = sleep.sumOf { it.elapsedSeconds() } / 60,
-        napCount = sleep.count { it.sleepType == SleepType.Nap },
+        sleepCount = sleep.size,
         longestSleepMinutes = (sleep.maxOfOrNull { it.elapsedSeconds() } ?: 0) / 60,
         commonSleepPeriod = commonPeriod,
     )

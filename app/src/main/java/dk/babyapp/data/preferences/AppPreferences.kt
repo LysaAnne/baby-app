@@ -38,25 +38,30 @@ data class AppPreferences(
     val lastBackupAt: Long? = null,
     /** Questions for the next health visit, per child; attached to a visit when it is registered. */
     val healthQuestions: List<HealthQuestion> = emptyList(),
+    /** Own messages on the I dag opslagstavle. */
+    val boardNotes: List<BoardNote> = emptyList(),
     /** Reminders a week before and on the day of examinations and vaccinations in the Danish programme. */
     val healthRemindersEnabled: Boolean = true,
 )
 
 @kotlinx.serialization.Serializable
+data class BoardNote(val id: String = java.util.UUID.randomUUID().toString(), val childId: String, val text: String, val createdAt: Long = System.currentTimeMillis())
+
+@kotlinx.serialization.Serializable
 data class HealthQuestion(val id: String = java.util.UUID.randomUUID().toString(), val childId: String, val text: String, val createdAt: Long = System.currentTimeMillis())
 
 /** The cards on Indsigt. Stored by name, so names must not change. */
-enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Liggeside"), Health("Sundhed") }
+enum class InsightCard(val label: String) { Sleep("Søvn"), Feeding("Madning"), Diapers("Bleer"), Rhythm("Døgnrytme"), Growth("Vækst"), HeadSide("Liggeside"), Health("Sundhed"), Misc("Diverse") }
 
 @kotlinx.serialization.Serializable
 data class MeasurementChartSettings(val period: String = "Month", val from: String? = null, val through: String? = null, val showGrowthReferences: Boolean = false)
 
 enum class QuickAction(val label: String, val category: QuickActionCategory) {
     Breastfeeding("Amning", QuickActionCategory.Feeding), Bottle("Flaske", QuickActionCategory.Feeding), Pumping("Pumpning", QuickActionCategory.Feeding),
-    HeadSide("Liggeside", QuickActionCategory.Sleep), Diaper("Ble", QuickActionCategory.Diaper), Nap("Lur", QuickActionCategory.Sleep), Night("Nattesøvn", QuickActionCategory.Sleep),
+    HeadSide("Liggeside", QuickActionCategory.Sleep), Diaper("Ble", QuickActionCategory.Diaper), Nap("Søvn", QuickActionCategory.Sleep), Night("Nattesøvn", QuickActionCategory.Sleep),
     Weight("Vægt", QuickActionCategory.Measurements), Height("Højde", QuickActionCategory.Measurements), HeadCircumference("Hovedomkreds", QuickActionCategory.Measurements), Temperature("Temperatur", QuickActionCategory.Measurements),
     HealthVisit("Sundhedsbesøg", QuickActionCategory.Health), Vaccination("Vaccination", QuickActionCategory.Health), Medicine("Medicin", QuickActionCategory.Health), HealthNote("Helbredsnotat", QuickActionCategory.Health),
-    SolidFood("Måltid / smagsprøve", QuickActionCategory.SolidFood), TummyTime("Mavetid", QuickActionCategory.Misc), Bath("Bad", QuickActionCategory.Misc), Play("Leg", QuickActionCategory.Misc), OutdoorTime("Udetid", QuickActionCategory.Misc), Activity("Andet", QuickActionCategory.Misc),
+    SolidFood("Fast føde", QuickActionCategory.Feeding), TummyTime("Mavetid", QuickActionCategory.Misc), Bath("Bad", QuickActionCategory.Misc), Play("Leg", QuickActionCategory.Misc), OutdoorTime("Udetid", QuickActionCategory.Misc), Activity("Andet", QuickActionCategory.Misc),
 }
 
 fun orderedQuickActionCategories(saved: List<QuickActionCategory>): List<QuickActionCategory> {

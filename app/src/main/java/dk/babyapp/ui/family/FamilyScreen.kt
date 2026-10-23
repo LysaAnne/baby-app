@@ -75,6 +75,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -403,6 +404,12 @@ fun SettingsDialog(
                         SettingsRow(Icons.Outlined.NotificationsActive, "Daglig påmindelse", value = if (preferences.dailyReminderEnabled) "Kl. %02d.%02d".format(preferences.dailyReminderHour, preferences.dailyReminderMinute) else "Fra") { reminderSettingsOpen = true }
                         SettingsRow(Icons.AutoMirrored.Outlined.MenuBook, "Barnets bog", value = if (preferences.bookRemindersEnabled) preferences.bookReminderFrequency.label else "Fra") { reminderSettingsOpen = true }
                         SettingsRow(Icons.Outlined.Vaccines, "Vaccinationer og undersøgelser", subtitle = "En uge før og på dagen", value = if (preferences.healthRemindersEnabled) "Til" else "Fra") { onUpdateHealthReminders(!preferences.healthRemindersEnabled) }
+                        // The Android permission is the opt-in; this row opens it, so it is also where it is turned off.
+                        var overlayAllowed by remember { mutableStateOf(android.provider.Settings.canDrawOverlays(context)) }
+                        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { overlayAllowed = android.provider.Settings.canDrawOverlays(context); onPauseOrDispose {} }
+                        SettingsRow(Icons.Outlined.Timer, "Tæller over andre apps", subtitle = "Flydende tæller, når appen er lukket", value = if (overlayAllowed) "Til" else "Fra") {
+                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
+                        }
                         SettingsRow(Icons.Outlined.PhoneAndroid, "Notifikationer i Android", divider = false) {
                             context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
                         }

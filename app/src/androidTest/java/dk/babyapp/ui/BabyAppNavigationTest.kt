@@ -146,10 +146,11 @@ class BabyAppNavigationTest {
         val event = dk.babyapp.data.tracking.CareEventEntity(childId = child.id, type = dk.babyapp.data.tracking.CareEventType.Measurement, startedAt = System.currentTimeMillis(), endedAt = System.currentTimeMillis(), measurementType = dk.babyapp.data.tracking.MeasurementType.Weight, measurementValue = 4.5, measurementUnit = "kg")
         composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, careEvents = listOf(event), preferences = AppPreferences(hasSeenGettingStarted = true)) }
         composeRule.onNodeWithContentDescription("Ammebrik ved ny amning").assertDoesNotExist()
-        // The measurements card links to its Indsigt page, Vækst.
+        // The measurements card has two graphs, Vækst and Temperatur, in a small menu.
         composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Indsigt for Mål"))
         // Activated directly: after scrolling, the icon can sit under the floating + button.
         composeRule.onNodeWithContentDescription("Indsigt for Mål").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
+        composeRule.onAllNodesWithText("Vækst").onLast().performClick()
         composeRule.onNodeWithText("Vis vækstkurver").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Luk").performClick()
         val context = InstrumentationRegistry.getInstrumentation().targetContext

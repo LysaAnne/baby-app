@@ -1,5 +1,7 @@
 package dk.babyapp.domain
 
+import dk.babyapp.data.tracking.ActivityType
+import dk.babyapp.data.tracking.BreastSide
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.DiaperType
@@ -27,6 +29,11 @@ data class DayInsight(
     val sleepBlocks: List<ClosedFloatingPointRange<Float>>,
     /** Start of each feeding as a fraction of the day. */
     val feedingMarks: List<Float>,
+    /** Nursing by side for feedings started this day; sides that were never recorded are left out. */
+    val nursingLeftMinutes: Long = 0,
+    val nursingRightMinutes: Long = 0,
+    /** Diverse activities with a duration (not medicine), by the time that falls inside this day. */
+    val activityMinutes: Long = 0,
 ) {
     val sleepMinutes get() = napMinutes + nightMinutes
 }
@@ -39,15 +46,14 @@ data class PeriodInsights(
     /** Days the averages are taken over: finished days since the first registration. */
     val averagedDays: Int,
     val avgSleepMinutes: Long,
-    val avgNapMinutes: Long,
-    val avgNightMinutes: Long,
-    val napsPerDay: Double,
+    val sleepsPerDay: Double,
     val longestSleepMinutes: Long,
     val avgAwakenings: Double?,
     val bedtime: ClosedRange<LocalTime>?,
     val avgFeedings: Double,
     val avgNursingMinutes: Long,
     val avgBottleMl: Long,
+    val avgActivityMinutes: Long = 0,
     val avgDiapers: Double,
     val avgWet: Double,
     val avgDirty: Double,
@@ -97,6 +103,9 @@ fun periodInsights(
             dirtyDiapers = diapers.count { it.diaperType == DiaperType.Dirty || it.diaperType == DiaperType.Both },
             sleepBlocks = sleeps.flatMap { clipped(it) }.map { (s, e) -> ((s - from) / length)..((e - from) / length) }.sortedBy { it.start },
             feedingMarks = started.filter { it.type == CareEventType.Breastfeeding || it.type == CareEventType.Bottle }.map { (it.startedAt - from) / length }.sorted(),
+            nursingLeftMinutes = started.filter { it.type == CareEventType.Breastfeeding }.sumOf { nursingSideSeconds(it, BreastSide.Left) } / 60,
+            nursingRightMinutes = started.filter { it.type == CareEventType.Breastfeeding }.sumOf { nursingSideSeconds(it, BreastSide.Right) } / 60,
+            activityMinutes = own.filter { it.type == CareEventType.Activity && it.activityType != ActivityType.Medicine && (it.endedAt != null || it.runningSince != null) }.sumOf { event -> clipped(event).sumOf { (s, e) -> e - s } } / 60_000,
         )
     }.toList()
 
@@ -109,8 +118,8 @@ fun periodInsights(
     val periodStart = start(first)
     val inPeriod = own.filter { it.startedAt >= periodStart }
     val periodSleeps = inPeriod.filter { it.type == CareEventType.Sleep }
-    val nights = periodSleeps.filter { it.sleepType == SleepType.Night }
-    val bedtimes = nights.map { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalTime() }.filter { it.hour >= 15 }.sorted()
+    // Søvn is one kind: the bedtime is any sleep started in the evening.
+    val bedtimes = periodSleeps.map { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalTime() }.filter { it.hour >= 18 }.sorted()
     val measurements = own.filter { it.type == CareEventType.Measurement && it.measurementType != null && it.measurementValue != null }
     val latest = measurements.groupBy { it.measurementType!! }.mapValues { (_, list) -> list.maxBy { it.startedAt }.let { Measurement(it.measurementValue!!, it.measurementUnit, it.startedAt) } }
     val weightBefore = measurements.filter { it.measurementType == MeasurementType.Weight && it.startedAt < periodStart }.maxByOrNull { it.startedAt }
@@ -121,16 +130,15 @@ fun periodInsights(
         days = perDay,
         averagedDays = averaged.size,
         avgSleepMinutes = avg { it.sleepMinutes }.toLong(),
-        avgNapMinutes = avg { it.napMinutes }.toLong(),
-        avgNightMinutes = avg { it.nightMinutes }.toLong(),
-        napsPerDay = if (averaged.isEmpty()) 0.0 else periodSleeps.count { it.sleepType != SleepType.Night && dayOf(it.startedAt) in averaged.map(DayInsight::date) }.toDouble() / averaged.size,
+        sleepsPerDay = if (averaged.isEmpty()) 0.0 else periodSleeps.count { dayOf(it.startedAt) in averaged.map(DayInsight::date) }.toDouble() / averaged.size,
         longestSleepMinutes = (periodSleeps.maxOfOrNull { it.elapsedSeconds(now) } ?: 0) / 60,
-        avgAwakenings = nights.mapNotNull { it.awakenings }.takeIf { it.isNotEmpty() }?.average(),
+        avgAwakenings = periodSleeps.mapNotNull { it.awakenings }.takeIf { it.isNotEmpty() }?.average(),
         // The middle half of the evening bedtimes, so one late night doesn't move it.
         bedtime = bedtimes.takeIf { it.size >= 3 }?.let { it[it.size / 4]..it[(it.size * 3 / 4).coerceAtMost(it.size - 1)] },
         avgFeedings = avg { it.feedings },
         avgNursingMinutes = avg { it.nursingMinutes }.toLong(),
         avgBottleMl = avg { it.bottleMl }.toLong(),
+        avgActivityMinutes = avg { it.activityMinutes }.toLong(),
         avgDiapers = avg { it.diapers },
         avgWet = avg { it.wetDiapers },
         avgDirty = avg { it.dirtyDiapers },

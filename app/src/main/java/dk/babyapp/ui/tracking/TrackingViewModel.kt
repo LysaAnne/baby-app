@@ -59,7 +59,7 @@ class TrackingViewModel @Inject constructor(
         careEventRepository.save(event); timerNotifications.show(event.id)
     } }
 
-    fun startSleep(childId: String, sleepType: SleepType, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch { timerStartMutex.withLock {
+    fun startSleep(childId: String, sleepType: SleepType? = null, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch { timerStartMutex.withLock {
         if (!canStartTimer(childId, CareEventType.Sleep)) {
             onResult(false)
         } else {
@@ -151,7 +151,7 @@ class TrackingViewModel @Inject constructor(
         childId: String,
         start: Long,
         end: Long,
-        sleepType: SleepType,
+        sleepType: SleepType?,
         location: String,
         settlingMethod: String,
         awakenings: Int?,
