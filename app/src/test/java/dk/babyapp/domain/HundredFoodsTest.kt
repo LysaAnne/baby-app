@@ -8,9 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HundredFoodsTest {
-    @Test fun theListHasAHundredDifferentFoodsWithAllergensMarked() {
-        assertEquals(100, hundredFoods.size)
-        assertEquals(100, hundredFoods.map { it.name }.distinct().size)
+    @Test fun theListHasMoreThanAHundredDifferentFoodsWithAllergensMarked() {
+        // The goal is 100; our own list plus the extra foods from the TikTok list.
+        assertEquals(125, hundredFoods.size)
+        assertEquals(125, hundredFoods.map { it.name }.distinct().size)
         assertTrue(Allergen.entries.all { allergen -> hundredFoods.any { it.allergen == allergen } })
     }
 
@@ -25,5 +26,12 @@ class HundredFoodsTest {
         assertEquals(1, progress.getValue("Æg").count)
         // "Hytteost" is not Ost, another child's meal and a deleted one do not count.
         assertFalse("Ost" in progress); assertFalse("Broccoli" in progress); assertFalse("Laks" in progress)
+    }
+
+    @Test fun wholeWordStemsKeepSimilarFoodsApart() {
+        fun meal(name: String) = CareEventEntity(childId = "a", type = CareEventType.SolidFood, startedAt = 1, endedAt = 1, foodName = name)
+        val progress = hundredFoodsProgress(listOf(meal("Leverpostej"), meal("smørbønner"), meal("græskarkerner"), meal("fuldkornspasta")), "a").keys.map { it.name }.toSet()
+        assertEquals(setOf("Leverpostej", "Smørbønner", "Græskarkerner", "Fuldkornspasta"), progress)
+        assertEquals(setOf("Lever", "Smør", "Hokkaido"), hundredFoodsProgress(listOf(meal("lever"), meal("smør på brød"), meal("græskar")), "a").keys.map { it.name }.toSet())
     }
 }

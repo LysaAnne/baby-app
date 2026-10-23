@@ -96,9 +96,10 @@ internal fun HundredFoodsDialog(childId: String, child: ChildProfile?, events: L
                     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         item {
                             WhiteCard {
-                                Text("${progress.size} af ${hundredFoods.size} smagt", style = MaterialTheme.typography.titleLarge)
-                                LinearProgressIndicator(progress = { progress.size / hundredFoods.size.toFloat() }, modifier = Modifier.fillMaxWidth(), color = colors.accent, trackColor = colors.container)
-                                Text("Allergener: ${allergenFoods.count { it in progress }} af ${allergenFoods.size}", style = MaterialTheme.typography.bodyMedium)
+                                // The goal is 100; the list has more to choose from.
+                                Text("${progress.size} af 100 smagt", style = MaterialTheme.typography.titleLarge)
+                                LinearProgressIndicator(progress = { (progress.size / 100f).coerceAtMost(1f) }, modifier = Modifier.fillMaxWidth(), color = colors.accent, trackColor = colors.container)
+                                Text("Allergener: ${allergenFoods.count { it in progress }} af ${allergenFoods.size} · ${hundredFoods.size} forslag på listen", style = MaterialTheme.typography.bodyMedium)
                                 val birthday = child?.birthDate?.plusYears(1)
                                 if (birthday != null) {
                                     val days = ChronoUnit.DAYS.between(LocalDate.now(), birthday)
