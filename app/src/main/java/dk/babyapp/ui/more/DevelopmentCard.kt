@@ -49,6 +49,9 @@ internal fun DevelopmentStripCard(child: ChildProfile, collapsed: Boolean, onCol
                     is LeapPhase.Calm -> phase.next?.let { "rolig periode · spring ${it.number} om ca. ${Math.ceil(phase.weeksToNext ?: 0.0).toInt()} uger" } ?: "alle spring er overstået"
                 }, style = MaterialTheme.typography.bodyMedium)
                 LeapStrip(weeks, colors.accent, colors.container)
+                val psych = dk.babyapp.domain.psychNow(weeks * 7 / 30.44)
+                if (psych.isNotEmpty()) Text("Psykologi: ${psych.first().title.lowercase()}" + if (psych.size > 1) " og ${psych.size - 1} andre" else "",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

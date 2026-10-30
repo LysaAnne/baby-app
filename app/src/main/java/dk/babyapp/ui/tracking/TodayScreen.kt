@@ -170,6 +170,7 @@ fun TodayScreen(
     onUpdateShowBulletinBoard: (Boolean) -> Unit = {},
     onUpdateShowDevelopmentStrip: (Boolean) -> Unit = {},
     onUpdateCollapsedCards: (Set<String>) -> Unit = {},
+    onUpdateTodayCardOrder: (List<String>) -> Unit = {},
     onUpdateDevelopmentChecks: (List<dk.babyapp.data.preferences.DevelopmentCheck>) -> Unit = {},
     onUpdateChild: (dk.babyapp.data.profile.ChildProfile) -> Unit = {},
     medicines: List<MedicinePlan> = emptyList(),
@@ -239,20 +240,25 @@ fun TodayScreen(
                 }
             }
         }
-        item {
-            DailyOverview(
-                dk.babyapp.domain.eventsForDay(allChildEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true },
-                onPrevious = { overviewDate = overviewDate.minusDays(1) },
-                onNext = { overviewDate = overviewDate.plusDays(1) }.takeIf { overviewDate < today },
-                onOpenSummary = { summaryOpen = true },
-                collapsed = "today" in preferences.collapsedCards, onCollapse = { collapse("today", it) },
-            )
-        }
-        if (childId != null && preferences.showBulletinBoard) item {
-            BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes, onSaveHealthRecord, "events" in preferences.collapsedCards) { collapse("events", it) }
-        }
-        if (child != null && preferences.showDevelopmentStrip) item {
-            dk.babyapp.ui.more.DevelopmentStripCard(child, "development" in preferences.collapsedCards, { collapse("development", it) }) { developmentOpen = true }
+        // Udvikling, I dag and Begivenheder in the order chosen under Tilpas overblikket.
+        preferences.todayCardOrder.forEach { card ->
+            when (card) {
+                "today" -> item(key = "card-today") {
+                    DailyOverview(
+                        dk.babyapp.domain.eventsForDay(allChildEvents, overviewDate), preferences.dashboardMetrics, overviewDate, onCustomize = { dashboardCustomizeOpen = true },
+                        onPrevious = { overviewDate = overviewDate.minusDays(1) },
+                        onNext = { overviewDate = overviewDate.plusDays(1) }.takeIf { overviewDate < today },
+                        onOpenSummary = { summaryOpen = true },
+                        collapsed = "today" in preferences.collapsedCards, onCollapse = { collapse("today", it) },
+                    )
+                }
+                "events" -> if (childId != null && preferences.showBulletinBoard) item(key = "card-events") {
+                    BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes, onSaveHealthRecord, "events" in preferences.collapsedCards) { collapse("events", it) }
+                }
+                "development" -> if (child != null && preferences.showDevelopmentStrip) item(key = "card-development") {
+                    dk.babyapp.ui.more.DevelopmentStripCard(child, "development" in preferences.collapsedCards, { collapse("development", it) }) { developmentOpen = true }
+                }
+            }
         }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
@@ -389,7 +395,7 @@ fun TodayScreen(
         CardButtonsDialog(category, QuickAction.entries.filterNot(::visible).map { it.name }.toSet(), { cardSettingsFor = null }) { hidden -> onUpdateHiddenQuickActions(hidden); cardSettingsFor = null }
     }
     if (summaryOpen) DaySummaryDialog(allChildEvents, overviewDate) { summaryOpen = false }
-    if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }, preferences.showBulletinBoard, onUpdateShowBulletinBoard, preferences.showDevelopmentStrip, onUpdateShowDevelopmentStrip) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
+    if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }, preferences.showBulletinBoard, onUpdateShowBulletinBoard, preferences.showDevelopmentStrip, onUpdateShowDevelopmentStrip, preferences.todayCardOrder, onUpdateTodayCardOrder) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
     if (sleepError) AlertDialog(
         onDismissRequest = { sleepError = false },
         title = { Text("Registreringen kan ikke startes") },
@@ -518,10 +524,11 @@ internal fun MedicineStatus(plans: List<MedicinePlan>, events: List<CareEventEnt
 }
 
 @Composable
-internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, board: Boolean = true, onBoardChange: (Boolean) -> Unit = {}, strip: Boolean = true, onStripChange: (Boolean) -> Unit = {}, onSave: (List<DashboardMetric>) -> Unit) {
+internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, board: Boolean = true, onBoardChange: (Boolean) -> Unit = {}, strip: Boolean = true, onStripChange: (Boolean) -> Unit = {}, cardOrder: List<String> = dk.babyapp.data.preferences.TODAY_CARDS, onCardOrderChange: (List<String>) -> Unit = {}, onSave: (List<DashboardMetric>) -> Unit) {
     // Shown fields first in their order, then the hidden ones.
     var showBoard by remember { mutableStateOf(board) }
     var showStrip by remember { mutableStateOf(strip) }
+    var cards by remember { mutableStateOf(cardOrder) }
     var order by remember { mutableStateOf(current + DashboardMetric.entries.filterNot { it in current }) }
     var shown by remember { mutableStateOf(current.toSet()) }
     FormDialog(
@@ -530,16 +537,24 @@ internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: ()
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Vælg felterne, og flyt dem op eller ned.", style = MaterialTheme.typography.bodyMedium)
-                // The cards under I dag can only be shown or hidden.
-                CustomizeRow("Begivenheder", showBoard, { showBoard = it })
-                CustomizeRow("Udvikling", showStrip, { showStrip = it })
+                // The cards at the top: their order, and Udvikling and Begivenheder can be hidden; I dag is always there.
+                Text("Kort øverst på I dag", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
+                cards.forEachIndexed { index, card ->
+                    val (up, down) = cards.moveCallbacks(index) { cards = it }
+                    when (card) {
+                        "events" -> CustomizeRow("Begivenheder", showBoard, { showBoard = it }, up, down)
+                        "development" -> CustomizeRow("Udvikling", showStrip, { showStrip = it }, up, down)
+                        else -> CustomizeRow("I dag", null, {}, up, down)
+                    }
+                }
+                Text("Felter i I dag", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
                 order.forEachIndexed { index, metric ->
                     val (up, down) = order.moveCallbacks(index) { order = it }
                     CustomizeRow(metric.displayLabel(), metric in shown, { on -> shown = if (on) shown + metric else shown - metric }, up, down)
                 }
             }
         },
-        confirmButton = { Button(enabled = shown.isNotEmpty(), onClick = { if (showBoard != board) onBoardChange(showBoard); if (showStrip != strip) onStripChange(showStrip); onSave(order.filter { it in shown }) }) { Text("Gem") } },
+        confirmButton = { Button(enabled = shown.isNotEmpty(), onClick = { if (showBoard != board) onBoardChange(showBoard); if (showStrip != strip) onStripChange(showStrip); if (cards != cardOrder) onCardOrderChange(cards); onSave(order.filter { it in shown }) }) { Text("Gem") } },
         dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }

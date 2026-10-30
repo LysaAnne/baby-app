@@ -60,6 +60,7 @@ class SettingsViewModel @Inject constructor(
         if (enabled) appContext?.let { dk.babyapp.reminders.DevelopmentReminderScheduler.ensureScheduled(it) }
     }
     fun updateShowDevelopmentStrip(shown: Boolean) = viewModelScope.launch { preferencesRepository.updateShowDevelopmentStrip(shown) }
+    fun updateTodayCardOrder(order: List<String>) = viewModelScope.launch { preferencesRepository.updateTodayCardOrder(order) }
     fun updateCollapsedCards(cards: Set<String>) = viewModelScope.launch { preferencesRepository.updateCollapsedCards(cards) }
     fun updateShowBulletinBoard(shown: Boolean) = viewModelScope.launch { preferencesRepository.updateShowBulletinBoard(shown) }
     fun updateHealthQuestions(questions: List<dk.babyapp.data.preferences.HealthQuestion>) = viewModelScope.launch { preferencesRepository.updateHealthQuestions(questions) }

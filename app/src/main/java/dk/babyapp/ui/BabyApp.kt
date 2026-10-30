@@ -94,6 +94,7 @@ fun BabyApp(
                     onUpdateCustomReminders = settings::updateCustomReminders,
                     onUpdateDevelopmentReminders = settings::updateDevelopmentReminders,
                     onUpdateCollapsedCards = settings::updateCollapsedCards,
+                    onUpdateTodayCardOrder = settings::updateTodayCardOrder,
                     onBackupSaved = settings::markBackupSaved,
                     onUpdateHealthQuestions = settings::updateHealthQuestions,
                     onUpdateBoardNotes = settings::updateBoardNotes,

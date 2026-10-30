@@ -64,6 +64,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             developmentRemindersEnabled = values[DEVELOPMENT_REMINDERS] ?: false,
             customReminders = values[CUSTOM_REMINDERS]?.let { runCatching { Json.decodeFromString<List<CustomReminder>>(it) }.getOrNull() } ?: emptyList(),
             collapsedCards = values[COLLAPSED_CARDS] ?: emptySet(),
+            // Unknown ids are dropped and missing cards added at the end, so a new card always shows up.
+            todayCardOrder = values[TODAY_CARD_ORDER]?.split(',')?.filter { it in TODAY_CARDS }?.let { saved -> (saved + TODAY_CARDS).distinct() } ?: TODAY_CARDS,
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
             developmentChecks = values[DEVELOPMENT_CHECKS]?.let { runCatching { Json.decodeFromString<List<DevelopmentCheck>>(it) }.getOrNull() } ?: emptyList(),
@@ -230,6 +232,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[SHOW_DEVELOPMENT_STRIP] = shown }
     }
 
+    override suspend fun updateTodayCardOrder(order: List<String>) {
+        context.appPreferencesDataStore.edit { it[TODAY_CARD_ORDER] = order.joinToString(",") }
+    }
+
     override suspend fun updateCollapsedCards(cards: Set<String>) {
         context.appPreferencesDataStore.edit { it[COLLAPSED_CARDS] = cards }
     }
@@ -279,6 +285,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val SHOW_DEVELOPMENT_STRIP = booleanPreferencesKey("show_development_strip")
         val DEVELOPMENT_REMINDERS = booleanPreferencesKey("development_reminders")
         val CUSTOM_REMINDERS = stringPreferencesKey("custom_reminders")
+        val TODAY_CARD_ORDER = stringPreferencesKey("today_card_order")
         val COLLAPSED_CARDS = androidx.datastore.preferences.core.stringSetPreferencesKey("collapsed_cards")
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
         val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")

@@ -44,6 +44,8 @@ data class AppPreferences(
     val customReminders: List<CustomReminder> = emptyList(),
     /** Cards on I dag that are folded together: "today", "events", "development". */
     val collapsedCards: Set<String> = emptySet(),
+    /** The order of the cards at the top of I dag; ids as in [collapsedCards]. */
+    val todayCardOrder: List<String> = TODAY_CARDS,
     /** When an encrypted backup was last saved to a file, or null if never. */
     val lastBackupAt: Long? = null,
     /** Questions for the next health visit, per child; attached to a visit when it is registered. */
@@ -57,6 +59,9 @@ data class AppPreferences(
     /** Reminders a week before and on the day of examinations and vaccinations in the Danish programme. */
     val healthRemindersEnabled: Boolean = true,
 )
+
+/** The cards at the top of I dag, in their default order. */
+val TODAY_CARDS = listOf("development", "today", "events")
 
 /** An own reminder: [title] on the chosen weekdays ([days], 1 = Monday) at [hour]:[minute]. */
 @kotlinx.serialization.Serializable

@@ -109,6 +109,7 @@ internal class FakePreferencesRepository(initial: AppPreferences = AppPreference
     override suspend fun updateDevelopmentReminders(enabled: Boolean) { items.value = items.value.copy(developmentRemindersEnabled = enabled) }
     override suspend fun updateCustomReminders(reminders: List<dk.babyapp.data.preferences.CustomReminder>) { items.value = items.value.copy(customReminders = reminders) }
     override suspend fun updateShowDevelopmentStrip(shown: Boolean) { items.value = items.value.copy(showDevelopmentStrip = shown) }
+    override suspend fun updateTodayCardOrder(order: List<String>) { items.value = items.value.copy(todayCardOrder = order) }
     override suspend fun updateCollapsedCards(cards: Set<String>) { items.value = items.value.copy(collapsedCards = cards) }
     override suspend fun updateShowBulletinBoard(shown: Boolean) { items.value = items.value.copy(showBulletinBoard = shown) }
     override suspend fun markBackupSaved(at: Long) { items.value = items.value.copy(lastBackupAt = at) }

@@ -64,7 +64,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class DevelopmentTab(val label: String) { Now("Nu"), Timeline("Tidslinje"), Milestones("Milepæle") }
+private enum class DevelopmentTab(val label: String) { Now("Nu"), Timeline("Tidslinje"), Milestones("Milepæle"), Psychology("Psykologi") }
 
 private val dateFormat = DateTimeFormatter.ofPattern("d. MMM yyyy", Locale.forLanguageTag("da"))
 
@@ -112,7 +112,17 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                 val leap = (phase as? LeapPhase.InLeap)?.leap ?: (phase as LeapPhase.Calm).next ?: leaps.last()
                                 item { Text(if (phase is LeapPhase.InLeap) "Spring ${leap.number} lige nu" else "Næste spring: ${leap.number}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp)) }
                                 item { LeapDetails(leap, mine, colors.accent, ::toggle) }
+                                // What developmental psychology describes at this age, with a way into the Psykologi tab.
+                                val current = dk.babyapp.domain.psychNow(weeks * 7 / 30.44)
+                                if (current.isNotEmpty()) item {
+                                    WhiteCard {
+                                        Text("Psykologisk udvikling lige nu", style = MaterialTheme.typography.titleSmall)
+                                        current.forEach { Text("• ${it.title}", style = MaterialTheme.typography.bodyMedium) }
+                                        androidx.compose.material3.TextButton(onClick = { tab = DevelopmentTab.Psychology }) { Text("Læs om forskningen") }
+                                    }
+                                }
                             }
+                            DevelopmentTab.Psychology -> psychologyItems(this, weeks * 7 / 30.44, mine, colors.accent, ::toggle)
                             DevelopmentTab.Timeline -> items(leaps, key = { it.number }) { leap ->
                                 var open by rememberSaveable(leap.number) { mutableStateOf(false) }
                                 val status = when {

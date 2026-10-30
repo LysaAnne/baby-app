@@ -87,7 +87,7 @@ fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int,
         }
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("Udvikling"); Text("Når et nyt spring begynder, og når en milepæl typisk kommer. Kl. 9.", style = MaterialTheme.typography.bodySmall) }
+            Column(Modifier.weight(1f)) { Text("Udvikling"); Text("Når et nyt spring begynder, når en milepæl typisk kommer, og når et nyt emne i psykologisk udvikling begynder. Kl. 9.", style = MaterialTheme.typography.bodySmall) }
             Switch(preferences.developmentRemindersEnabled, { enabled -> if (enabled) askPermission(); onUpdateDevelopmentReminders(enabled) }, modifier = Modifier.semantics { contentDescription = "Udviklingspåmindelser" })
         }
         HorizontalDivider()

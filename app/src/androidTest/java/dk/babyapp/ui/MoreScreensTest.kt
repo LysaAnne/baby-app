@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import dk.babyapp.data.preferences.DevelopmentCheck
@@ -123,5 +124,16 @@ class MoreScreensTest {
         compose.onNodeWithText("Søg sang").performTextReplacement("Mester Jakob")
         compose.onNode(androidx.compose.ui.test.hasText("Mester Jakob") and !hasSetTextAction()).performClick()
         compose.onNodeWithText("Søg efter teksten", substring = true).assertExists()
+    }
+
+    @Test fun psychologyTabShowsWhatIsUnderWayAndOpensAPhenomenon() {
+        val child = ChildProfile(id = "c", name = "Freja", birthDate = LocalDate.now().minusMonths(10), dueDate = LocalDate.now().minusMonths(10))
+        var checks by mutableStateOf(emptyList<DevelopmentCheck>())
+        compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
+        compose.onNodeWithText("Psykologi").performClick()
+        compose.onNodeWithText("Lige nu").assertExists()
+        compose.onNodeWithContentDescription("Læs om Fælles opmærksomhed").performClick()
+        compose.onNodeWithText("Markér som læst", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
+        compose.runOnIdle { assertEquals(listOf("psych-10"), checks.map { it.key }) }
     }
 }

@@ -119,6 +119,7 @@ fun BabyAppNavigation(
     onUpdateCustomReminders: (List<dk.babyapp.data.preferences.CustomReminder>) -> Unit = {},
     onUpdateDevelopmentReminders: (Boolean) -> Unit = {},
     onUpdateCollapsedCards: (Set<String>) -> Unit = {},
+    onUpdateTodayCardOrder: (List<String>) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
     onUpdateBoardNotes: (List<dk.babyapp.data.preferences.BoardNote>) -> Unit = {},
@@ -211,7 +212,35 @@ fun BabyAppNavigation(
             onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
         )
     }
-    androidx.compose.runtime.CompositionLocalProvider(dk.babyapp.ui.tracking.LocalTimerBar provides timerBar) {
+    // The menu bar; full-screen pages show it too, without its own bottom inset as the page already has one.
+    val navigationBar: @Composable (inPage: Boolean) -> Unit = { inPage ->
+        NavigationBar(windowInsets = if (inPage) androidx.compose.foundation.layout.WindowInsets(0) else androidx.compose.material3.NavigationBarDefaults.windowInsets) {
+            AppDestination.topLevel.forEach { destination ->
+                val selected = currentDestination?.hasRoute(destination::class) == true || (destination == AppDestination.Guide && (currentDestination?.hasRoute<BookPageDestination>() == true || currentDestination?.hasRoute<BookDestination>() == true))
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = {
+                        if (destination == AppDestination.Today) todayScrollRequest++
+                        navController.navigate(destination) {
+                            popUpTo(AppDestination.Today) {
+                                saveState = false
+                            }
+                            launchSingleTop = true
+                            restoreState = false
+                        }
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = destination.icon,
+                            contentDescription = null,
+                        )
+                    },
+                    label = { Text(stringResource(destination.labelRes)) },
+                )
+            }
+        }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(dk.babyapp.ui.tracking.LocalTimerBar provides { timerBar(); navigationBar(true) }) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -266,31 +295,7 @@ fun BabyAppNavigation(
         bottomBar = {
             Column {
             timerBar()
-            NavigationBar {
-                AppDestination.topLevel.forEach { destination ->
-                    val selected = currentDestination?.hasRoute(destination::class) == true || (destination == AppDestination.Guide && (currentDestination?.hasRoute<BookPageDestination>() == true || currentDestination?.hasRoute<BookDestination>() == true))
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            if (destination == AppDestination.Today) todayScrollRequest++
-                            navController.navigate(destination) {
-                                popUpTo(AppDestination.Today) {
-                                    saveState = false
-                                }
-                                launchSingleTop = true
-                                restoreState = false
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = destination.icon,
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(stringResource(destination.labelRes)) },
-                    )
-                }
-            }
+            navigationBar(false)
             }
         },
     ) { contentPadding ->
@@ -311,6 +316,7 @@ fun BabyAppNavigation(
                     onUpdateShowBulletinBoard = onUpdateShowBulletinBoard,
                     onUpdateShowDevelopmentStrip = onUpdateShowDevelopmentStrip,
                     onUpdateCollapsedCards = onUpdateCollapsedCards,
+                    onUpdateTodayCardOrder = onUpdateTodayCardOrder,
                     onUpdateDevelopmentChecks = onUpdateDevelopmentChecks,
                     onUpdateChild = onUpdateChild,
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,

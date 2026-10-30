@@ -96,7 +96,8 @@ object DevelopmentReminderScheduler {
     /** What begins on [today] for a child counted from [start]: spurts on their first day, milestones when their window opens. */
     fun newsFor(start: LocalDate, today: LocalDate): List<String> =
         leaps.filter { start.plusWeekFraction(it.fussyFromWeek) == today }.map { "Spring ${it.number} begynder nu: ${it.title.lowercase()}." } +
-            milestones.filter { start.plusDays(Math.round(it.fromMonths * 30.44)) == today }.map { "Nu begynder den typiske tid for: ${it.title.lowercase()}." }
+            milestones.filter { start.plusDays(Math.round(it.fromMonths * 30.44)) == today }.map { "Nu begynder den typiske tid for: ${it.title.lowercase()}." } +
+            dk.babyapp.domain.psychPhenomena.filter { it.fromMonths > 0 && start.plusDays(Math.round(it.fromMonths * 30.44)) == today }.map { "Nyt i psykologisk udvikling: ${it.title.lowercase()}." }
 }
 
 @AndroidEntryPoint

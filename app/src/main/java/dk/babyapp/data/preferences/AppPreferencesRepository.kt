@@ -33,6 +33,7 @@ interface AppPreferencesRepository {
     suspend fun updateDevelopmentReminders(enabled: Boolean)
     suspend fun updateCustomReminders(reminders: List<CustomReminder>)
     suspend fun updateCollapsedCards(cards: Set<String>)
+    suspend fun updateTodayCardOrder(order: List<String>)
     suspend fun markBackupSaved(at: Long)
     suspend fun updateHealthQuestions(questions: List<HealthQuestion>)
     suspend fun updateBoardNotes(notes: List<BoardNote>)
