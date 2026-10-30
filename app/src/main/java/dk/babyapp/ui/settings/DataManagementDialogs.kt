@@ -60,7 +60,7 @@ import kotlinx.coroutines.launch
 private enum class DataAction { Csv, Pdf, Backup, Restore }
 
 @Composable
-fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int, Int) -> Unit, onUpdateBookReminders: (Boolean) -> Unit, onFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit = {}, onUpdateCustomReminders: (List<dk.babyapp.data.preferences.CustomReminder>) -> Unit = {}, onUpdateDevelopmentReminders: (Boolean) -> Unit = {}, onDismiss: () -> Unit) {
+fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int, Int) -> Unit, onUpdateBookReminders: (Boolean) -> Unit, onFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit = {}, onUpdateCustomReminders: (List<dk.babyapp.data.preferences.CustomReminder>) -> Unit = {}, onUpdateDevelopmentReminders: (Boolean) -> Unit = {}, onUpdateHealthReminders: ((Boolean) -> Unit)? = null, onDismiss: () -> Unit) {
     val context = LocalContext.current; var message by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<dk.babyapp.data.preferences.CustomReminder?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -78,6 +78,13 @@ fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int,
         }
         if (preferences.bookRemindersEnabled) dk.babyapp.ui.tracking.SelectionDropdown("Hyppighed", preferences.bookReminderFrequency.label, dk.babyapp.data.preferences.BookReminderFrequency.entries.map { it to it.label }, onFrequency)
         Text("Ugentligt: mandag. Månedligt: den 1. Tre gange: mandag, onsdag og fredag. Android kan forsinke leveringen.", style = MaterialTheme.typography.bodySmall)
+        if (onUpdateHealthReminders != null) {
+            HorizontalDivider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Vaccinationer og undersøgelser"); Text("En uge før og på dagen, kl. 10.", style = MaterialTheme.typography.bodySmall) }
+                Switch(preferences.healthRemindersEnabled, { enabled -> if (enabled) askPermission(); onUpdateHealthReminders(enabled) }, modifier = Modifier.semantics { contentDescription = "Påmindelser om vaccinationer og undersøgelser" })
+            }
+        }
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Udvikling"); Text("Når et nyt spring begynder, og når en milepæl typisk kommer. Kl. 9.", style = MaterialTheme.typography.bodySmall) }

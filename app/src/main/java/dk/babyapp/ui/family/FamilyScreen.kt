@@ -391,7 +391,8 @@ fun SettingsDialog(
                     Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleLarge)
                 }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SettingsGroup("Generelt") {
+                    SettingsGroup("Udseende og enheder") {
+                        SettingsRow(Icons.Outlined.Palette, "Farveprofiler", subtitle = "Farverne for hvert barn") { palettePreviewOpen = true }
                         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 Icon(Icons.Outlined.Straighten, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -404,29 +405,29 @@ fun SettingsDialog(
                             }
                         }
                     }
-                    SettingsGroup("Påmindelser") {
-                        SettingsRow(Icons.Outlined.NotificationsActive, "Daglig påmindelse", value = if (preferences.dailyReminderEnabled) "Kl. %02d.%02d".format(preferences.dailyReminderHour, preferences.dailyReminderMinute) else "Fra") { reminderSettingsOpen = true }
-                        SettingsRow(Icons.AutoMirrored.Outlined.MenuBook, "Barnets bog", value = if (preferences.bookRemindersEnabled) preferences.bookReminderFrequency.label else "Fra") { reminderSettingsOpen = true }
-                        SettingsRow(Icons.Outlined.Vaccines, "Vaccinationer og undersøgelser", subtitle = "En uge før og på dagen", value = if (preferences.healthRemindersEnabled) "Til" else "Fra") { onUpdateHealthReminders(!preferences.healthRemindersEnabled) }
-                        // The Android permission is the opt-in; this row opens it, so it is also where it is turned off.
-                        var overlayAllowed by remember { mutableStateOf(android.provider.Settings.canDrawOverlays(context)) }
-                        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { overlayAllowed = android.provider.Settings.canDrawOverlays(context); onPauseOrDispose {} }
-                        SettingsRow(Icons.Outlined.Timer, "Tæller over andre apps", subtitle = "Flydende tæller, når appen er lukket", value = if (overlayAllowed) "Til" else "Fra") {
-                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
-                        }
+                    SettingsGroup("Notifikationer") {
+                        // Every reminder lives in one window; the row says how many are on.
+                        val on = listOf(preferences.bookRemindersEnabled, preferences.developmentRemindersEnabled, preferences.healthRemindersEnabled).count { it } + preferences.customReminders.count { it.enabled }
+                        SettingsRow(Icons.Outlined.NotificationsActive, "Påmindelser", subtitle = "Barnets bog, udvikling, vaccinationer og egne", value = if (on == 0) "Fra" else "$on til") { reminderSettingsOpen = true }
                         SettingsRow(Icons.Outlined.PhoneAndroid, "Notifikationer i Android", divider = false) {
                             context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
                         }
                     }
+                    SettingsGroup("Tæller") {
+                        // The Android permission is the opt-in; this row opens it, so it is also where it is turned off.
+                        var overlayAllowed by remember { mutableStateOf(android.provider.Settings.canDrawOverlays(context)) }
+                        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { overlayAllowed = android.provider.Settings.canDrawOverlays(context); onPauseOrDispose {} }
+                        SettingsRow(Icons.Outlined.Timer, "Tæller over andre apps", subtitle = "Flydende tæller, når appen er lukket", value = if (overlayAllowed) "Til" else "Fra", divider = false) {
+                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
+                        }
+                    }
                     SettingsGroup("Data") {
-                        SettingsRow(Icons.Outlined.Lock, "Krypteret backup", subtitle = preferences.lastBackupAt?.let {
-                            "Senest: " + java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy 'kl.' HH.mm", java.util.Locale.forLanguageTag("da")))
-                        } ?: "Ingen backup endnu") { dataManagementOpen = true }
-                        SettingsRow(Icons.Outlined.Restore, "Gendan backup") { dataManagementOpen = true }
+                        SettingsRow(Icons.Outlined.Lock, "Backup og gendannelse", subtitle = (preferences.lastBackupAt?.let {
+                            "Senest " + java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy 'kl.' HH.mm", java.util.Locale.forLanguageTag("da")))
+                        } ?: "Ingen backup endnu") + " · inkl. farveprofiler") { dataManagementOpen = true }
                         SettingsRow(Icons.Outlined.FileDownload, "Eksport (CSV / PDF)", divider = false) { dataManagementOpen = true }
                     }
                     SettingsGroup("Om appen") {
-                        SettingsRow(Icons.Outlined.Palette, "Farveprofiler") { palettePreviewOpen = true }
                         SettingsRow(Icons.Outlined.Info, "Version og licenser", value = BuildConfig.VERSION_NAME, divider = BuildConfig.DEBUG) { aboutOpen = true }
                         if (BuildConfig.DEBUG) SettingsRow(Icons.Outlined.Build, stringResource(R.string.developer_tools), subtitle = "Kun i testversionen", divider = false) { developerToolsOpen = true }
                     }
@@ -496,7 +497,7 @@ fun SettingsDialog(
         children = children,
         onUseForChild = { child, id -> onUpdateChild(child.copy(colorTheme = id)) },
     )
-    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders) { reminderSettingsOpen = false }
+    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, onUpdateHealthReminders) { reminderSettingsOpen = false }
     if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup, onDismiss = { dataManagementOpen = false }, onBackupSaved = onBackupSaved)
 }
 

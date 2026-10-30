@@ -400,7 +400,7 @@ fun BabyAppNavigation(
                 val target = entry.toRoute<BookPageDestination>()
                 dk.babyapp.ui.book.BabyBookScreen(child = profiles.firstOrNull { it.id == target.childId }, pages = bookPages, contentPadding = contentPadding,
                     onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
-                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, dismiss) }, initialPageId = target.pageId)
+                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, onUpdateHealthReminders, dismiss) }, initialPageId = target.pageId)
             }
             composable<AppDestination.Guide> {
                 var foodsOpen by remember { mutableStateOf(false) }
@@ -425,7 +425,7 @@ fun BabyAppNavigation(
             composable<BookDestination> {
                 dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
                     onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
-                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, dismiss) })
+                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, onUpdateHealthReminders, dismiss) })
 
             }
             composable<AppDestination.Family> {
