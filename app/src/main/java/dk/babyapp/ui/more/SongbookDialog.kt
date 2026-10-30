@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
@@ -137,22 +138,32 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
 @Composable
 private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDelete: (() -> Unit)?, onSave: (String) -> Unit) {
     var text by remember { mutableStateOf(lyrics) }
+    // The words are read, not edited; the pencil opens them for editing.
+    var editing by remember { mutableStateOf(false) }
     val context = LocalContext.current
     FormDialog(category = CareCategory.Sleep, onDismissRequest = onDismiss, title = { Text(song.title) }, subtitle = listOf(song.origin, song.category.label).filter(String::isNotBlank).joinToString(" · "), text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (song.actions.isNotBlank()) Text(song.actions, style = MaterialTheme.typography.bodyMedium)
-            RegistrationTextField(text, { text = it }, label = { Text("Sangtekst") }, minLines = 4,
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Sangtekst", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                if (!editing) IconButton(onClick = { editing = true }) { Icon(Icons.Outlined.Edit, "Rediger sangteksten") }
+            }
+            if (editing) RegistrationTextField(text, { text = it }, label = { Text("Sangtekst") }, minLines = 4,
                 placeholder = { Text("Skriv eller indsæt teksten, som I synger den") })
-            // The song's own page with the words when there is one, otherwise a web search; the app itself has no lyrics.
-            val page = song.link.ifBlank { "https://www.google.com/search?q=" + Uri.encode("${song.title} sangtekst") }
+            else Text(lyrics.ifBlank { "Ingen tekst endnu. Tryk på blyanten for at skrive eller indsætte den." }, style = MaterialTheme.typography.bodyLarge,
+                color = if (lyrics.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+            // The song's own page with the words when there is one, otherwise a Google search for "<titel> lyrik"; the app itself has no lyrics.
+            val page = song.link.ifBlank { "https://www.google.com/search?q=" + Uri.encode("${song.title} lyrik") }
             FilledTonalButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) } }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Search, null); Text(if (song.link.isNotBlank()) " Åbn teksten på ${Uri.parse(song.link).host}" else " Find teksten")
+                Icon(Icons.Outlined.Search, null); Text(if (song.link.isNotBlank()) " Åbn teksten på ${Uri.parse(song.link).host}" else " Søg efter teksten")
             }
         }
     }, dismissButton = if (onDelete != null) ({ IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Slet sangen", tint = MaterialTheme.colorScheme.error) }; Spacer(Modifier.weight(1f)) }) else null,
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Annuller") }
-            Button(onClick = { onSave(text.trim()) }) { Text("Gem") }
+            if (editing) {
+                TextButton(onClick = { text = lyrics; editing = false }) { Text("Annuller") }
+                Button(onClick = { onSave(text.trim()) }) { Text("Gem") }
+            } else TextButton(onClick = onDismiss) { Text("Luk") }
         })
 }
 

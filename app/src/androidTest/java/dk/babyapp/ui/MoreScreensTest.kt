@@ -40,6 +40,8 @@ class MoreScreensTest {
         compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Søg sang")).performTextInput("Mester")
         compose.onNodeWithContentDescription("Gør Mester Jakob til favorit").performClick()
         compose.onNodeWithText("Mester Jakob").performClick()
+        // The words open for editing with the pencil.
+        compose.onNodeWithContentDescription("Rediger sangteksten").performClick()
         compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Sangtekst")).performTextInput("Vores vers")
         compose.onNodeWithText("Gem").performClick()
         compose.runOnIdle {
