@@ -20,11 +20,16 @@ class HeadSideTrackingTest {
 
     @Test fun quickButtonsAddOneRecordPerTapAndDashboardShowsBothSides() {
         var records by mutableStateOf(emptyList<CareEventEntity>())
+        var open by mutableStateOf(true)
         compose.setContent { MaterialTheme { Column {
-            HeadSideQuickButtons(records, "child") { records = records + it }
+            // The Liggeside button opens this window; each tap registers one side and closes it.
+            if (open) HeadSidePickDialog(records, "child", { records = records + it }) { open = false }
             DailyOverview(eventsForDay(records, LocalDate.now()), listOf(DashboardMetric.HeadSide), LocalDate.now())
         } } }
-        compose.onNodeWithContentDescription("Registrer hovedside venstre").performClick().performClick()
+        compose.onNodeWithContentDescription("Registrer hovedside venstre").performClick()
+        compose.runOnIdle { open = true }
+        compose.onNodeWithContentDescription("Registrer hovedside venstre").performClick()
+        compose.runOnIdle { open = true }
         compose.onNodeWithContentDescription("Registrer hovedside højre").performClick()
         compose.onNodeWithText("Venstre 2 · Højre 1").assertIsDisplayed()
         compose.runOnIdle {

@@ -15,8 +15,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -38,59 +36,65 @@ import dk.babyapp.data.profile.ChildProfile
 import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.HealthRecordStatus
+import dk.babyapp.data.tracking.HealthVisitType
+import dk.babyapp.domain.ProgrammeItem
+import dk.babyapp.domain.isHealthVisitor
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.ui.graphics.Color
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** One line on the board: what, when, and whether it is late. */
-private data class BoardLine(val title: String, val whenText: String, val late: Boolean)
+/** One line on the board: what, when, whether it is late, and the programme item to book when it is not booked. */
+private data class BoardLine(val title: String, val whenText: String, val late: Boolean, val book: ProgrammeItem? = null)
 
 /**
- * Opslagstavle on I dag: planned health visits and vaccinations, the next items in the Danish programme
- * that are not planned yet, and the family's own messages. Long-press a message to change or remove it.
+ * Opslagstavle at the bottom of the I dag card: always the next examination or health visitor visit (booked or not),
+ * other planned visits and vaccinations, programme items due soon, and the family's own messages.
+ * An item that is not booked can be marked as booked with its time. Long-press a message to change or remove it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun BulletinBoard(child: ChildProfile?, childId: String, events: List<CareEventEntity>, notes: List<BoardNote>, onUpdateNotes: (List<BoardNote>) -> Unit) {
+internal fun BulletinBoard(child: ChildProfile?, childId: String, events: List<CareEventEntity>, notes: List<BoardNote>, onUpdateNotes: (List<BoardNote>) -> Unit, onSaveEvent: (CareEventEntity) -> Unit) {
     val today = LocalDate.now()
     val zone = ZoneId.systemDefault()
     val lines = remember(child, events, today) {
         val format = DateTimeFormatter.ofPattern("EEE d. MMM 'kl.' HH.mm", Locale.forLanguageTag("da"))
+        fun bookedText(at: Long) = Instant.ofEpochMilli(at).atZone(zone).let { "Booket · ${dk.babyapp.domain.dueLabel(it.toLocalDate(), today)} · ${it.format(format)}" }
+        fun programmeLine(item: ProgrammeItem) = if (item.scheduled != null) BoardLine(item.template.title, bookedText(item.scheduled.startedAt), false)
+            else BoardLine(item.template.title, "Ikke booket · ${dk.babyapp.domain.dueLabel(item.due, today)}", item.due < today, item)
+        val next = child?.let { dk.babyapp.domain.nextVisit(it, events, today) }
         val startOfToday = today.atStartOfDay(zone).toInstant().toEpochMilli()
         val planned = events.filter {
             it.childId == childId && it.deletedAt == null && !it.isDraft && it.healthStatus == HealthRecordStatus.Scheduled &&
-                (it.type == CareEventType.HealthVisit || it.type == CareEventType.Vaccination) && it.startedAt >= startOfToday
-        }.sortedBy { it.startedAt }.take(3).map { event ->
-            val at = Instant.ofEpochMilli(event.startedAt).atZone(zone)
-            BoardLine(eventTitle(event), "${dk.babyapp.domain.dueLabel(at.toLocalDate(), today).replaceFirstChar { it.uppercase() }} · ${at.format(format)}", false)
-        }
-        val programme = child?.let { dk.babyapp.domain.upcomingProgramme(it, events, today) }.orEmpty()
-            .filter { it.scheduled == null }.take(3)
-            .map { BoardLine(it.template.title, "Ikke planlagt · ${dk.babyapp.domain.dueLabel(it.due, today)}", it.due < today) }
-        planned + programme
+                (it.type == CareEventType.HealthVisit || it.type == CareEventType.Vaccination) && it.startedAt >= startOfToday && it.id != next?.scheduled?.id
+        }.sortedBy { it.startedAt }.take(3).map { BoardLine(eventTitle(it), bookedText(it.startedAt), false) }
+        val soon = child?.let { dk.babyapp.domain.upcomingProgramme(it, events, today) }.orEmpty()
+            .filter { it.scheduled == null && it.template.key != next?.template?.key }.take(3).map(::programmeLine)
+        listOfNotNull(next?.let(::programmeLine)) + planned + soon
     }
     val mine = notes.filter { it.childId == childId }
     var editing by remember { mutableStateOf<BoardNote?>(null) }
-    Card(
-        Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    var booking by remember { mutableStateOf<ProgrammeItem?>(null) }
+    Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = Color.White.copy(alpha = 0.85f)) {
+        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.PushPin, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                Text("Opslagstavle", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Icon(Icons.Outlined.PushPin, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Text("Opslagstavle", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                 IconButton(onClick = { editing = BoardNote(childId = childId, text = "") }) { Icon(Icons.Outlined.Add, "Ny besked") }
             }
-            if (lines.isEmpty() && mine.isEmpty()) Text("Her vises planlagte sundhedsbesøg og vaccinationer og jeres egne beskeder.",
+            if (lines.isEmpty() && mine.isEmpty()) Text("Her vises næste sundhedsbesøg, vaccinationer og jeres egne beskeder.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
             lines.forEach { line ->
-                Column(Modifier.padding(end = 8.dp)) {
-                    Text(line.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(line.whenText, style = MaterialTheme.typography.bodySmall, color = if (line.late) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(line.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(line.whenText, style = MaterialTheme.typography.bodySmall, color = if (line.late) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    line.book?.let { item -> TextButton(onClick = { booking = item }) { Text("Booket?") } }
                 }
             }
             mine.forEach { note ->
@@ -110,6 +114,33 @@ internal fun BulletinBoard(child: ChildProfile?, childId: String, events: List<C
         onUpdateNotes(if (note in notes) notes.map { if (it.id == note.id) it.copy(text = text) else it } else notes + note.copy(text = text))
         editing = null
     } }
+    booking?.let { item -> BookVisitDialog(item, { booking = null }) { time -> onSaveEvent(bookedVisit(childId, item, time)); booking = null } }
+}
+
+/** A planned registration for a programme item, so it shows as booked and is completed later from the journal. */
+internal fun bookedVisit(childId: String, item: ProgrammeItem, time: Long) = CareEventEntity(
+    childId = childId, type = if (item.vaccination) CareEventType.Vaccination else CareEventType.HealthVisit, startedAt = time, endedAt = time,
+    healthStatus = HealthRecordStatus.Scheduled, officialScheduleKey = item.template.key, healthTitle = item.template.title,
+    healthVisitType = if (item.vaccination) null else if (item.template.isHealthVisitor) HealthVisitType.HealthVisitor else HealthVisitType.PreventiveExam,
+    vaccineName = item.template.vaccineName, vaccineDose = item.template.dose,
+)
+
+@Composable
+private fun BookVisitDialog(item: ProgrammeItem, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
+    var time by remember { mutableLongStateOf(item.due.atTime(10, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()) }
+    FormDialog(
+        category = dk.babyapp.ui.theme.CareCategory.Health,
+        onDismissRequest = onDismiss,
+        title = { Text("Booket tid") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(item.template.title, style = MaterialTheme.typography.titleSmall)
+                DateTimeFields(time) { time = it }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        confirmButton = { Button(onClick = { onSave(time) }) { Text("Gem") } },
+    )
 }
 
 @Composable

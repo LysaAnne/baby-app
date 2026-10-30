@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import dk.babyapp.ui.theme.babyColors
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -112,6 +113,7 @@ fun BabyAppNavigation(
     onUpdateInsightPeriod: (Int) -> Unit = {},
     onUpdateInsightRange: (String, String) -> Unit = { _, _ -> },
     onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
+    onUpdateShowBulletinBoard: (Boolean) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
     onUpdateBoardNotes: (List<dk.babyapp.data.preferences.BoardNote>) -> Unit = {},
@@ -185,6 +187,26 @@ fun BabyAppNavigation(
     fun visible(events: List<CareEventEntity>) = events.filterNot { it.isDraft || it.deletedAt != null }
     var settingsOpen by remember { mutableStateOf(false) }
     var requestedEditChildId by remember { mutableStateOf<String?>(null) }
+    // The running timers; also shown inside full-screen pages such as Indsigt, so they never disappear.
+    val timerBar: @Composable () -> Unit = {
+        dk.babyapp.ui.tracking.ActiveTimers(
+            timers = runningEvents,
+            recentEvents = careEvents,
+            activeChildId = activeChild?.id,
+            childName = { id -> profiles.firstOrNull { it.id == id }?.name },
+            careProviders = careProviders,
+            medicines = medicines,
+            keepAwake = keepTimerAwake,
+            onKeepAwake = { keepTimerAwake = it },
+            onToggle = onToggleTimer,
+            onSwitchSide = onSwitchSide,
+            onStop = onStopTimer,
+            onUpdate = onUpdateCareEvent,
+            onDelete = onDeleteCareEvent,
+            onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
+        )
+    }
+    androidx.compose.runtime.CompositionLocalProvider(dk.babyapp.ui.tracking.LocalTimerBar provides timerBar) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -238,25 +260,10 @@ fun BabyAppNavigation(
         },
         bottomBar = {
             Column {
-            dk.babyapp.ui.tracking.ActiveTimers(
-                timers = runningEvents,
-                recentEvents = careEvents,
-                activeChildId = activeChild?.id,
-                childName = { id -> profiles.firstOrNull { it.id == id }?.name },
-                careProviders = careProviders,
-                medicines = medicines,
-                keepAwake = keepTimerAwake,
-                onKeepAwake = { keepTimerAwake = it },
-                onToggle = onToggleTimer,
-                onSwitchSide = onSwitchSide,
-                onStop = onStopTimer,
-                onUpdate = onUpdateCareEvent,
-                onDelete = onDeleteCareEvent,
-                onUpdateDefaultNippleShield = onUpdateDefaultNippleShield,
-            )
+            timerBar()
             NavigationBar {
                 AppDestination.topLevel.forEach { destination ->
-                    val selected = currentDestination?.hasRoute(destination::class) == true || (destination == AppDestination.Guide && currentDestination?.hasRoute<BookPageDestination>() == true)
+                    val selected = currentDestination?.hasRoute(destination::class) == true || (destination == AppDestination.Guide && (currentDestination?.hasRoute<BookPageDestination>() == true || currentDestination?.hasRoute<BookDestination>() == true))
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
@@ -296,6 +303,7 @@ fun BabyAppNavigation(
                     onOpenFamily = { activeChild?.let { requestedEditChildId = it.id }; navController.navigate(AppDestination.Family) },
                     onUpdateInsightPeriod = onUpdateInsightPeriod, onUpdateInsightRange = onUpdateInsightRange,
                     onUpdateSimpleQuickRegistration = onUpdateSimpleQuickRegistration,
+                    onUpdateShowBulletinBoard = onUpdateShowBulletinBoard,
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
                     onStartActivity = onStartActivity,
                     onToggleTimer = onToggleTimer, onSwitchSide = onSwitchSide, onStopTimer = onStopTimer,
@@ -386,6 +394,18 @@ fun BabyAppNavigation(
                     reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, dismiss) }, initialPageId = target.pageId)
             }
             composable<AppDestination.Guide> {
+                var foodsOpen by remember { mutableStateOf(false) }
+                val history = activeChild?.let { childHistory() }.orEmpty()
+                val tasted = remember(history, activeChild?.id) { activeChild?.let { dk.babyapp.domain.hundredFoodsProgress(history, it.id).size } ?: 0 }
+                val feeding = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Feeding)
+                val book = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Misc)
+                dk.babyapp.ui.more.MoreScreen(listOf(
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.book, "Barnets bog", "Måned for måned, billeder og minder", book.accent, book.container) { navController.navigate(BookDestination) },
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.food, "100 før 1", "$tasted af 100 smagt · madliste og gode råd", feeding.accent, feeding.container) { foodsOpen = true },
+                ), contentPadding)
+                if (foodsOpen && activeChild != null) dk.babyapp.ui.tracking.HundredFoodsDialog(activeChild.id, activeChild, history, { event -> onUpdateCareEvent(event) {} }) { foodsOpen = false }
+            }
+            composable<BookDestination> {
                 dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
                     onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
                     reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, dismiss) })
@@ -426,6 +446,7 @@ fun BabyAppNavigation(
                 )
             }
         }
+    }
     }
     if (settingsOpen) SettingsDialog(
         preferences = preferences,

@@ -88,7 +88,7 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                         if (child != null) Text(listOf(child.name, child.ageLabel(today)).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                LazyColumn(contentPadding = PaddingValues(start = BabySpacing.l, end = BabySpacing.l, top = BabySpacing.s, bottom = BabySpacing.xl), verticalArrangement = Arrangement.spacedBy(BabySpacing.m)) {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = BabySpacing.l, end = BabySpacing.l, top = BabySpacing.s, bottom = BabySpacing.xl), verticalArrangement = Arrangement.spacedBy(BabySpacing.m)) {
                     stickyHeader {
                         Box(Modifier.fillMaxWidth().background(formBody(category)).padding(vertical = 4.dp)) {
                             PeriodBar(ChartPeriod.entries.map { it.name to it.label }, period.name) { picked -> period = ChartPeriod.valueOf(picked); saveSelection() }
@@ -119,6 +119,7 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                         MeasurementChartCard(type, points, from, through, child?.takeIf { growth != null }, growth)
                     }
                 }
+                LocalTimerBar.current()
             }
         }
     }

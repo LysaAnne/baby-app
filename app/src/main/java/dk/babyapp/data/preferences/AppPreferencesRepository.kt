@@ -28,6 +28,7 @@ interface AppPreferencesRepository {
     suspend fun updateInsightPeriod(days: Int)
     suspend fun updateInsightRange(from: String, through: String)
     suspend fun updateSimpleQuickRegistration(enabled: Boolean)
+    suspend fun updateShowBulletinBoard(shown: Boolean)
     suspend fun markBackupSaved(at: Long)
     suspend fun updateHealthQuestions(questions: List<HealthQuestion>)
     suspend fun updateBoardNotes(notes: List<BoardNote>)

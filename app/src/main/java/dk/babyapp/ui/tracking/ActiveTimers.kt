@@ -41,6 +41,9 @@ import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.domain.changeNippleShield
 import dk.babyapp.ui.theme.BabySpacing
 
+/** The running timers as provided by the app; full-screen pages (Indsigt and the like) show it at the bottom. */
+internal val LocalTimerBar = androidx.compose.runtime.staticCompositionLocalOf<@Composable () -> Unit> { {} }
+
 /**
  * Running and paused timers, shown on every screen just above the menu bar while they exist.
  * Compact by default; each can be expanded for intervals and keep-screen-on. A stopped timer is saved at once
@@ -96,6 +99,7 @@ internal fun ActiveTimers(
                         minimized = minimized,
                         onMinimizedChange = { minimized = it },
                         childLabel = childName(event.childId).takeIf { event.childId != activeChildId },
+                        onPlace = { current, place -> onUpdate(current.copy(sleepLocation = place)) { success -> saveFailed = !success } },
                     )
                 }
             }

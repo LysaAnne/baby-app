@@ -167,6 +167,7 @@ fun TodayScreen(
     onUpdateInsightPeriod: (Int) -> Unit = {},
     onUpdateInsightRange: (String, String) -> Unit = { _, _ -> },
     onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
+    onUpdateShowBulletinBoard: (Boolean) -> Unit = {},
     medicines: List<MedicinePlan> = emptyList(),
     teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
     recentFrom: LocalDate? = null,
@@ -202,6 +203,8 @@ fun TodayScreen(
     // A graph opened from a card is shown over I dag, so back returns here.
     var insightOpen by remember { mutableStateOf<dk.babyapp.data.preferences.InsightCard?>(null) }
     var hundredFoodsOpen by remember { mutableStateOf(false) }
+    var headSidePick by remember { mutableStateOf(false) }
+    var growthPick by remember { mutableStateOf<List<QuickAction>>(emptyList()) }
     // [events] only covers recent days; the whole history is loaded while an older day or a chart is shown.
     val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen || insightOpen != null || hundredFoodsOpen || dialog == EditorKind.SolidFood)) history() else null
     val allChildEvents = historyEvents?.let { all -> all.filter { it.childId == childId && !it.isDraft && it.deletedAt == null } } ?: childEvents
@@ -236,9 +239,9 @@ fun TodayScreen(
                 onPrevious = { overviewDate = overviewDate.minusDays(1) },
                 onNext = { overviewDate = overviewDate.plusDays(1) }.takeIf { overviewDate < today },
                 onOpenSummary = { summaryOpen = true },
+                board = if (childId != null && preferences.showBulletinBoard) ({ BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes, onSaveHealthRecord) }) else null,
             )
         }
-        if (childId != null) item { BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes) }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
         }
@@ -249,13 +252,19 @@ fun TodayScreen(
                 val insightLinks = category.insightCards.map { (label, card) -> label to { insightOpen = card } }
                 QuickCategory(preferences.simpleQuickRegistration, category.careCategory, category.label, insightLinks, onSettings = { cardSettingsFor = category }) {
                     fun canStart(type: CareEventType) = childId != null && dk.babyapp.domain.canStartTimer(childEvents, childId, type)
-                    val buttons = actions.filterNot { it == QuickAction.HeadSide }.flatMap { action ->
+                    // Weight, height and head size share one Vækst button with a small window, like Amning and Liggeside.
+                    val growth = listOf(QuickAction.Weight, QuickAction.Height, QuickAction.HeadCircumference).filter { it in actions }
+                    val buttons = actions.flatMap { action ->
                         when (action) {
                             // One Amning button; the side is picked in a small window.
                             QuickAction.Breastfeeding -> listOf(QuickButtonSpec("Amning", canStart(CareEventType.Breastfeeding)) { dialog = EditorKind.StartBreast })
                             // Nap and night sleep are one Søvn button.
                             QuickAction.Night -> if (QuickAction.Nap in actions) emptyList() else listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, null) { sleepError = !it } } })
                             QuickAction.Nap -> listOf(QuickButtonSpec("Søvn", canStart(CareEventType.Sleep)) { childId?.let { id -> onStartSleep(id, null) { sleepError = !it } } })
+                            QuickAction.HeadSide -> listOf(QuickButtonSpec("Liggeside", childId != null) { headSidePick = true })
+                            QuickAction.Weight, QuickAction.Height, QuickAction.HeadCircumference ->
+                                if (growth.size > 1) { if (action == growth.first()) listOf(QuickButtonSpec("Vækst", childId != null) { growthPick = growth }) else emptyList() }
+                                else listOf(QuickButtonSpec(action.label, childId != null) { dialog = EditorKind.valueOf(action.name) })
                             QuickAction.Diaper -> DiaperType.entries.map { type ->
                                 QuickButtonSpec(type.displayLabel(), childId != null) { selectedDiaperType = type; dialog = EditorKind.Diaper }
                             }
@@ -282,7 +291,6 @@ fun TodayScreen(
                             }
                         }
                     }
-                    if (QuickAction.HeadSide in actions) HeadSideQuickButtons(childEvents, childId, onSave = onSaveHealthRecord)
                     // Teeth and questions sit in the same grid as the other health buttons; status lines follow below.
                     val healthExtras = if (category == QuickActionCategory.Health) {
                         val toothCount = teeth.count { it.childId == childId && it.lost == null }
@@ -322,9 +330,8 @@ fun TodayScreen(
             "Mavetid" to EditorKind.Activity, "Bad" to EditorKind.Activity, "Leg" to EditorKind.Activity, "Udetid" to EditorKind.Activity, "Andet" to EditorKind.Activity).map { (label, kind) -> label to { manualActivityType = manualActivityTypeFor(label); manualMenuOpen = false; dialog = kind } },
         { manualMenuOpen = false })
     when (dialog) {
-        EditorKind.StartBreast -> FormDialog(category = dk.babyapp.ui.theme.CareCategory.Feeding, onDismissRequest = { dialog = null }, title = { Text("Start amning") },
-            text = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { BreastSide.entries.forEach { side -> Button(onClick = { childId?.let { onStartBreastfeeding(it, side) }; dialog = null }, Modifier.weight(1f)) { Text(sideLabel(side).replaceFirstChar { it.uppercase() }) } } } },
-            confirmButton = {}, dismissButton = { TextButton(onClick = { dialog = null }) { Text("Annuller") } })
+        EditorKind.StartBreast -> QuickChoiceDialog("Start amning", dk.babyapp.ui.theme.CareCategory.Feeding,
+            BreastSide.entries.map { side -> QuickChoice(sideLabel(side).replaceFirstChar { it.uppercase() }) { childId?.let { onStartBreastfeeding(it, side) } } }) { if (dialog == EditorKind.StartBreast) dialog = null }
         EditorKind.Bottle -> BottleDialog(onDismiss = { dialog = null }) { time, content, offered, consumed, notes, ratio -> childId?.let { onAddBottle(it, time, content, offered, consumed, notes, ratio) }; dialog = null }
         EditorKind.Diaper -> DiaperDialog(initialType = selectedDiaperType, onDismiss = { dialog = null; selectedDiaperType = DiaperType.Wet }) { time, type, color, consistency, observation, notes -> childId?.let { onAddDiaper(it, time, type, color, consistency, observation, notes) {} }; dialog = null; selectedDiaperType = DiaperType.Wet }
         EditorKind.ManualBreastfeeding -> childId?.let { id ->
@@ -350,6 +357,8 @@ fun TodayScreen(
         EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }, historyEvents ?: events, onOpenList = { hundredFoodsOpen = true }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
+    if (headSidePick && childId != null) HeadSidePickDialog(childEvents, childId, onSaveHealthRecord) { headSidePick = false }
+    if (growthPick.isNotEmpty()) QuickChoiceDialog("Vækst", dk.babyapp.ui.theme.CareCategory.Measurement, growthPick.map { action -> QuickChoice(action.label) { dialog = EditorKind.valueOf(action.name) } }) { growthPick = emptyList() }
     // The whole 100 før 1 list opens from the Fast føde form, on top of it.
     if (hundredFoodsOpen && childId != null) HundredFoodsDialog(childId, child, historyEvents ?: events, onSaveHealthRecord) { hundredFoodsOpen = false }
     if (teethOpen && childId != null) TeethDialog(childId, teeth, onSaveTooth, child) { teethOpen = false }
@@ -367,7 +376,7 @@ fun TodayScreen(
         CardButtonsDialog(category, QuickAction.entries.filterNot(::visible).map { it.name }.toSet(), { cardSettingsFor = null }) { hidden -> onUpdateHiddenQuickActions(hidden); cardSettingsFor = null }
     }
     if (summaryOpen) DaySummaryDialog(allChildEvents, overviewDate) { summaryOpen = false }
-    if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
+    if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }, preferences.showBulletinBoard, onUpdateShowBulletinBoard) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
     if (sleepError) AlertDialog(
         onDismissRequest = { sleepError = false },
         title = { Text("Registreringen kan ikke startes") },
@@ -496,8 +505,9 @@ internal fun MedicineStatus(plans: List<MedicinePlan>, events: List<CareEventEnt
 }
 
 @Composable
-internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, onSave: (List<DashboardMetric>) -> Unit) {
+internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, board: Boolean = true, onBoardChange: (Boolean) -> Unit = {}, onSave: (List<DashboardMetric>) -> Unit) {
     // Shown fields first in their order, then the hidden ones.
+    var showBoard by remember { mutableStateOf(board) }
     var order by remember { mutableStateOf(current + DashboardMetric.entries.filterNot { it in current }) }
     var shown by remember { mutableStateOf(current.toSet()) }
     FormDialog(
@@ -506,13 +516,15 @@ internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: ()
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Vælg felterne, og flyt dem op eller ned.", style = MaterialTheme.typography.bodyMedium)
+                // The opslagstavle always sits at the bottom of the card, so it can only be shown or hidden.
+                CustomizeRow("Opslagstavle", showBoard, { showBoard = it })
                 order.forEachIndexed { index, metric ->
                     val (up, down) = order.moveCallbacks(index) { order = it }
                     CustomizeRow(metric.displayLabel(), metric in shown, { on -> shown = if (on) shown + metric else shown - metric }, up, down)
                 }
             }
         },
-        confirmButton = { Button(enabled = shown.isNotEmpty(), onClick = { onSave(order.filter { it in shown }) }) { Text("Gem") } },
+        confirmButton = { Button(enabled = shown.isNotEmpty(), onClick = { if (showBoard != board) onBoardChange(showBoard); onSave(order.filter { it in shown }) }) { Text("Gem") } },
         dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
@@ -611,7 +623,7 @@ private fun QuickButtonRows(buttons: List<QuickButtonSpec>, columns: Int) {
     }
 
 @Composable
-internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = true, onMinimizedChange: (Boolean) -> Unit = {}, childLabel: String? = null) {
+internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity) -> Unit, onSwitch: (CareEventEntity) -> Unit, onStop: (CareEventEntity) -> Unit, onCancel: (CareEventEntity) -> Unit, onEdit: (CareEventEntity) -> Unit, onShield: (CareEventEntity, Boolean) -> Unit, keepAwake: Boolean, onKeepAwake: (Boolean) -> Unit, modifier: Modifier = Modifier, minimized: Boolean = true, onMinimizedChange: (Boolean) -> Unit = {}, childLabel: String? = null, onPlace: ((CareEventEntity, String) -> Unit)? = null) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.runningSince) { while (event.runningSince != null) { now = System.currentTimeMillis(); delay(1_000) } }
     val elapsed = event.elapsedSeconds(now)
@@ -683,6 +695,8 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
                         }
                     }
                 }
+                // Sleep: where the child sleeps can be picked while the timer runs.
+                if (event.type == CareEventType.Sleep && onPlace != null) SleepPlaceField(event.sleepLocation) { onPlace(event, it) }
                 // Nursing always lists its intervals; other timers once they have been paused. Editing sits right below.
                 if (event.type == CareEventType.Breastfeeding || event.segmentIntervals().size > 1) NursingIntervalOverview(event, now)
                 TextButton(onClick = { onEdit(event) }, contentPadding = PaddingValues(horizontal = 4.dp)) {
@@ -857,7 +871,7 @@ internal fun SleepDialog(
 /** Common sleeping places as chips; anything else can still be written. */
 @Composable
 internal fun SleepPlaceField(value: String, onChange: (String) -> Unit) {
-    val places = listOf("Seng", "Barnevogn", "Kontaktlur", "På arm", "Bil", "Bæresele")
+    val places = listOf("Seng", "Barnevogn", "Lift", "Kontaktlur", "På arm", "Bil", "Bæresele")
     var other by remember { mutableStateOf(value.isNotBlank() && value !in places) }
     ChoiceChips(places.map { it to it } + ("" to "Andet"), if (other) "" else value.takeIf { it in places }, allowNone = true, label = "Sovested") { picked ->
         other = picked == ""
@@ -1096,7 +1110,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 }
 
 @Composable
-internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null, onPrevious: (() -> Unit)? = null, onNext: (() -> Unit)? = null, onOpenSummary: (() -> Unit)? = null) {
+internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null, onPrevious: (() -> Unit)? = null, onNext: (() -> Unit)? = null, onOpenSummary: (() -> Unit)? = null, board: (@Composable () -> Unit)? = null) {
             val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
             val lastNursing = dk.babyapp.domain.lastNursingInterval(todayEvents)
             val lastSide = lastNursing?.second
@@ -1184,6 +1198,7 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                             if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                         }
                     }
+                    board?.invoke()
                     }
                 }
             }

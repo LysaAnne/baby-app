@@ -2,7 +2,7 @@ package dk.babyapp.ui.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoGraph
 import androidx.compose.material.icons.outlined.FamilyRestroom
 import androidx.compose.material.icons.outlined.Home
@@ -35,9 +35,10 @@ sealed interface AppDestination {
     }
 
     @Serializable
+    // Mere: Barnets bog, 100 før 1 and the other extras. Kept as Guide so the route name stays the same.
     data object Guide : AppDestination {
         override val labelRes = R.string.nav_guide
-        override val icon = Icons.AutoMirrored.Outlined.MenuBook
+        override val icon = Icons.Outlined.Apps
     }
 
     @Serializable
@@ -47,9 +48,13 @@ sealed interface AppDestination {
     }
 
     companion object {
-        val topLevel = listOf(Today, Timeline, Overview, Guide, Family)
+        val topLevel = listOf(Today, Timeline, Overview, Family, Guide)
     }
 }
+
+/** Barnets bog, opened from Mere. */
+@Serializable
+data object BookDestination
 
 @Serializable
 data class BookPageDestination(val childId: String, val pageId: String)

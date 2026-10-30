@@ -59,6 +59,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             insightFrom = values[INSIGHT_FROM],
             insightThrough = values[INSIGHT_THROUGH],
             simpleQuickRegistration = values[SIMPLE_QUICK] ?: false,
+            showBulletinBoard = values[SHOW_BULLETIN_BOARD] ?: true,
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
             boardNotes = values[BOARD_NOTES]?.let { runCatching { Json.decodeFromString<List<BoardNote>>(it) }.getOrNull() } ?: emptyList(),
@@ -203,6 +204,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[SIMPLE_QUICK] = enabled }
     }
 
+    override suspend fun updateShowBulletinBoard(shown: Boolean) {
+        context.appPreferencesDataStore.edit { it[SHOW_BULLETIN_BOARD] = shown }
+    }
+
     override suspend fun updateHiddenQuickActions(hidden: Set<String>) {
         context.appPreferencesDataStore.edit { it[HIDDEN_QUICK_ACTIONS] = hidden.joinToString(",") }
     }
@@ -240,6 +245,7 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val INSIGHT_THROUGH = stringPreferencesKey("insight_through")
         val INSIGHT_CARDS_KNOWN = stringPreferencesKey("insight_cards_known")
         val SIMPLE_QUICK = booleanPreferencesKey("simple_quick_registration")
+        val SHOW_BULLETIN_BOARD = booleanPreferencesKey("show_bulletin_board")
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
         val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")
         val BOARD_NOTES = stringPreferencesKey("board_notes")

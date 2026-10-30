@@ -470,6 +470,7 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, events: L
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                LocalTimerBar.current()
             }
         }
         }

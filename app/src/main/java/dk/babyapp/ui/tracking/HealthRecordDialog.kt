@@ -39,7 +39,7 @@ import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.HealthRecordStatus
 import dk.babyapp.data.tracking.HealthVisitType
-import dk.babyapp.data.tracking.danishPreventiveExaminationTemplates
+import dk.babyapp.data.tracking.danishVisitTemplates
 import dk.babyapp.data.tracking.danishVaccinationTemplates
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,14 +117,14 @@ fun HealthRecordDialog(
                 RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
             }
         } else {
-            val selectedTemplate = danishPreventiveExaminationTemplates.firstOrNull { it.key == officialKey }
+            val selectedTemplate = danishVisitTemplates.firstOrNull { it.key == officialKey }
             SelectionDropdown(
-                "Børneundersøgelse",
+                "Børneundersøgelse eller sundhedsplejerske",
                 selectedTemplate?.title ?: "Ingen – andet besøg",
-                listOf<String?>(null).map { it to "Ingen – andet besøg" } + danishPreventiveExaminationTemplates.map { it.key as String? to it.title },
+                listOf<String?>(null).map { it to "Ingen – andet besøg" } + danishVisitTemplates.map { it.key as String? to it.title },
             ) { key ->
                 officialKey = key
-                danishPreventiveExaminationTemplates.firstOrNull { it.key == key }?.let { template -> title = template.title; visitType = HealthVisitType.PreventiveExam }
+                danishVisitTemplates.firstOrNull { it.key == key }?.let { template -> title = template.title; visitType = if (template.key.startsWith("visitor-")) HealthVisitType.HealthVisitor else HealthVisitType.PreventiveExam }
             }
             if (selectedTemplate == null) ChoiceChips(HealthVisitType.entries.map { it to it.displayLabel() }, visitType, label = "Besøgstype") { it?.let { visitType = it } }
             DateAndOptionalTimeFields(time, timeSpecified, { time = it }, { timeSpecified = it })

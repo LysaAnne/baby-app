@@ -6,7 +6,7 @@ import dk.babyapp.data.tracking.CareEventEntity
 import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.data.tracking.DanishHealthTemplate
 import dk.babyapp.data.tracking.HealthRecordStatus
-import dk.babyapp.data.tracking.danishPreventiveExaminationTemplates
+import dk.babyapp.data.tracking.danishVisitTemplates
 import dk.babyapp.data.tracking.danishVaccinationTemplates
 import java.time.LocalDate
 import java.time.Period
@@ -16,6 +16,8 @@ import java.time.temporal.ChronoUnit
 private val programmeAges: Map<String, Period> = mapOf(
     "exam-5-weeks" to Period.ofWeeks(5), "exam-5-months" to Period.ofMonths(5), "exam-12-months" to Period.ofMonths(12),
     "exam-2-years" to Period.ofYears(2), "exam-3-years" to Period.ofYears(3), "exam-4-years" to Period.ofYears(4), "exam-5-years" to Period.ofYears(5),
+    "visitor-postnatal" to Period.ofDays(5), "visitor-establishing" to Period.ofWeeks(2), "visitor-2-months" to Period.ofMonths(2),
+    "visitor-4-6-months" to Period.ofMonths(5), "visitor-8-10-months" to Period.ofMonths(9),
     "vaccine-dtkphib-1" to Period.ofMonths(3), "vaccine-pneumococcal-1" to Period.ofMonths(3),
     "vaccine-dtkphib-2" to Period.ofMonths(5), "vaccine-pneumococcal-2" to Period.ofMonths(5),
     "vaccine-dtkphib-3" to Period.ofMonths(12), "vaccine-pneumococcal-3" to Period.ofMonths(12),
@@ -33,7 +35,7 @@ fun upcomingProgramme(child: ChildProfile, events: List<CareEventEntity>, today:
     val birth = child.birthDate?.takeIf { child.birthStatus == BirthStatus.Born } ?: return emptyList()
     val records = events.filter { it.childId == child.id && it.deletedAt == null && !it.isDraft && it.officialScheduleKey != null &&
         (it.type == CareEventType.HealthVisit || it.type == CareEventType.Vaccination) }
-    val all = danishPreventiveExaminationTemplates.map { it to false } + danishVaccinationTemplates.map { it to true }
+    val all = danishVisitTemplates.map { it to false } + danishVaccinationTemplates.map { it to true }
     return all.mapNotNull { (template, vaccination) ->
         val due = programmeAges[template.key]?.let { birth.plus(it) } ?: return@mapNotNull null
         val mine = records.filter { it.officialScheduleKey == template.key }
@@ -45,7 +47,14 @@ fun upcomingProgramme(child: ChildProfile, events: List<CareEventEntity>, today:
 
 /** Items to remind about today: due in a week, or due today, and not done. */
 fun programmeRemindersFor(child: ChildProfile, events: List<CareEventEntity>, today: LocalDate): List<ProgrammeItem> =
-    upcomingProgramme(child, events, today, aheadDays = 7, overdueDays = 0).filter { it.due == today || it.due == today.plusDays(7) }
+    upcomingProgramme(child, events, today, aheadDays = 7, overdueDays = 0).filter { (it.due == today || it.due == today.plusDays(7)) && !it.template.isHealthVisitor }
+
+/** The health visitor comes home; the municipality arranges it, so it gets no reminder of its own. */
+val DanishHealthTemplate.isHealthVisitor get() = key.startsWith("visitor-")
+
+/** The next examination or health visitor visit that is not done, however far ahead, or null when there is none. */
+fun nextVisit(child: ChildProfile, events: List<CareEventEntity>, today: LocalDate): ProgrammeItem? =
+    upcomingProgramme(child, events, today, aheadDays = 3650, overdueDays = 60).firstOrNull { !it.vaccination }
 
 fun dueLabel(due: LocalDate, today: LocalDate): String {
     val days = ChronoUnit.DAYS.between(today, due)

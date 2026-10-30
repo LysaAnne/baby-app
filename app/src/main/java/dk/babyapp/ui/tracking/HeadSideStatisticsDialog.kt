@@ -48,7 +48,7 @@ internal fun HeadSideStatisticsDialog(childId: String, events: List<CareEventEnt
                         IconButton(onClick = onDismiss) { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
                         Text("Liggeside", style = MaterialTheme.typography.titleLarge)
                     }
-                    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // The same periods as the rest of Indsigt, fixed at the top while scrolling.
                         stickyHeader {
                             Box(Modifier.fillMaxWidth().background(formBody(category)).padding(vertical = 4.dp)) {
@@ -97,6 +97,7 @@ internal fun HeadSideStatisticsDialog(childId: String, events: List<CareEventEnt
                             item { Text("Procenterne viser andelen af registreringer, ikke hvor længe barnet har ligget på hver side.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                     }
+                    LocalTimerBar.current()
                 }
             }
         }

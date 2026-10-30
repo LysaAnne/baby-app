@@ -17,6 +17,21 @@ val danishPreventiveExaminationTemplates = listOf(
     DanishHealthTemplate("exam-5-years", "5-års børneundersøgelse"),
 )
 
+/**
+ * The health visitor's (sundhedsplejerske) home visits in the first year, as recommended by Sundhedsstyrelsen.
+ * The exact weeks vary between municipalities; the visits are offered by the municipality.
+ */
+val danishHealthVisitorTemplates = listOf(
+    DanishHealthTemplate("visitor-postnatal", "Sundhedsplejerske · barselsbesøg"),
+    DanishHealthTemplate("visitor-establishing", "Sundhedsplejerske · etableringsbesøg"),
+    DanishHealthTemplate("visitor-2-months", "Sundhedsplejerske · 2 måneder"),
+    DanishHealthTemplate("visitor-4-6-months", "Sundhedsplejerske · 4–6 måneder"),
+    DanishHealthTemplate("visitor-8-10-months", "Sundhedsplejerske · 8–10 måneder"),
+)
+
+/** Examinations and health visitor visits: the visits that can be booked. */
+val danishVisitTemplates get() = danishPreventiveExaminationTemplates + danishHealthVisitorTemplates
+
 val danishVaccinationTemplates = listOf(
     DanishHealthTemplate("vaccine-dtkphib-1", "3 måneder · DiTeKiPol-Hib", "DiTeKiPol-Hib", "Dosis 1 af 3"),
     DanishHealthTemplate("vaccine-pneumococcal-1", "3 måneder · Pneumokok", "Pneumokok", "Dosis 1 af 3"),

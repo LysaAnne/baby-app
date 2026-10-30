@@ -93,7 +93,7 @@ internal fun HundredFoodsDialog(childId: String, child: ChildProfile?, events: L
                         IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
                         Text("100 før 1", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                     }
-                    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         item {
                             WhiteCard {
                                 // The goal is 100; the list has more to choose from.
@@ -147,6 +147,7 @@ internal fun HundredFoodsDialog(childId: String, child: ChildProfile?, events: L
                             }
                         }
                     }
+                    LocalTimerBar.current()
                 }
             }
         }

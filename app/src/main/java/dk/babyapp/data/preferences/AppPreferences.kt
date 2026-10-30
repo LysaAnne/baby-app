@@ -34,6 +34,8 @@ data class AppPreferences(
     val insightThrough: String? = null,
     /** Today's quick registration as compact icon rows instead of cards. */
     val simpleQuickRegistration: Boolean = false,
+    /** The opslagstavle at the bottom of the I dag card. */
+    val showBulletinBoard: Boolean = true,
     /** When an encrypted backup was last saved to a file, or null if never. */
     val lastBackupAt: Long? = null,
     /** Questions for the next health visit, per child; attached to a visit when it is registered. */

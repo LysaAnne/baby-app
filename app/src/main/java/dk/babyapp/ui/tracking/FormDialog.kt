@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -243,4 +247,26 @@ internal fun AmountField(value: String, onChange: (String) -> Unit, label: Strin
         FilledTonalIconButton(onClick = { onChange(((value.toIntOrNull() ?: 0) - step).coerceAtLeast(0).toString()) }) { Text("−$step", style = MaterialTheme.typography.labelSmall) }
         FilledTonalIconButton(onClick = { onChange(((value.toIntOrNull() ?: 0) + step).toString()) }) { Text("+$step", style = MaterialTheme.typography.labelSmall) }
     }
+}
+
+/** One choice in [QuickChoiceDialog]; [description] is read by screen readers instead of the label. */
+internal class QuickChoice(val label: String, val description: String? = null, val onClick: () -> Unit)
+
+/**
+ * A small window for a quick button with a few choices, like Venstre/Højre: two buttons per row,
+ * and a button alone on its row takes the whole width. A choice closes the window.
+ */
+@Composable
+internal fun QuickChoiceDialog(title: String, category: CareCategory?, choices: List<QuickChoice>, onDismiss: () -> Unit) {
+    FormDialog(category = category, onDismissRequest = onDismiss, title = { Text(title) }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            choices.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { choice ->
+                        Button(onClick = { choice.onClick(); onDismiss() }, modifier = Modifier.weight(1f).let { m -> choice.description?.let { d -> m.semantics { contentDescription = d } } ?: m }) { Text(choice.label) }
+                    }
+                }
+            }
+        }
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }

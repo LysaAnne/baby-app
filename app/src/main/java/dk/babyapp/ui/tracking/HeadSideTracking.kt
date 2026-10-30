@@ -15,24 +15,13 @@ import dk.babyapp.data.tracking.*
 import dk.babyapp.domain.*
 import java.time.LocalDate
 
+/** The Liggeside quick button's window: Venstre or Højre with today's count; a tap registers it. */
 @Composable
-internal fun HeadSideQuickButtons(events: List<CareEventEntity>, childId: String?, onOpenStatistics: (() -> Unit)? = null, onSave: (CareEventEntity) -> Unit) {
+internal fun HeadSidePickDialog(events: List<CareEventEntity>, childId: String, onSave: (CareEventEntity) -> Unit, onDismiss: () -> Unit) {
     val counts = headSideTotals(eventsForDay(events.filter { it.childId == childId }, LocalDate.now()))
-    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = if (onOpenStatistics != null) 48.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Liggeside", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
-            if (onOpenStatistics != null) IconButton(onClick = onOpenStatistics, enabled = childId != null) {
-                Icon(Icons.Outlined.AutoGraph, contentDescription = "Åbn liggeside")
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            HeadSide.entries.forEach { side ->
-                QuickButton("${side.displayLabel()} · ${if (side == HeadSide.Left) counts.left else counts.right}", Modifier.weight(1f).semantics { contentDescription = "Registrer hovedside ${side.displayLabel().lowercase()}" }, childId != null) {
-                    childId?.let { onSave(headSideObservation(it, side)) }
-                }
-            }
-        }
-    }
+    QuickChoiceDialog("Liggeside", dk.babyapp.ui.theme.CareCategory.Sleep, HeadSide.entries.map { side ->
+        QuickChoice("${side.displayLabel()} · ${if (side == HeadSide.Left) counts.left else counts.right}", "Registrer hovedside ${side.displayLabel().lowercase()}") { onSave(headSideObservation(childId, side)) }
+    }, onDismiss)
 }
 
 @Composable

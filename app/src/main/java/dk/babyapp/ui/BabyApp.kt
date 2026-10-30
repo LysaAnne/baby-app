@@ -88,6 +88,7 @@ fun BabyApp(
                     onUpdateInsightPeriod = settings::updateInsightPeriod,
                     onUpdateInsightRange = settings::updateInsightRange,
                     onUpdateSimpleQuickRegistration = settings::updateSimpleQuickRegistration,
+                    onUpdateShowBulletinBoard = settings::updateShowBulletinBoard,
                     onBackupSaved = settings::markBackupSaved,
                     onUpdateHealthQuestions = settings::updateHealthQuestions,
                     onUpdateBoardNotes = settings::updateBoardNotes,
