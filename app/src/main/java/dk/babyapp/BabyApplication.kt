@@ -9,5 +9,6 @@ class BabyApplication : Application() {
         super.onCreate()
         // The daily check is cheap and idempotent; it only notifies when something in the programme is due.
         dk.babyapp.reminders.HealthReminderScheduler.ensureScheduled(this)
+        dk.babyapp.reminders.DevelopmentReminderScheduler.ensureScheduled(this)
     }
 }

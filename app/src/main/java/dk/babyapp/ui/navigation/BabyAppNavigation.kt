@@ -86,6 +86,7 @@ fun BabyAppNavigation(
     activeChild: ChildProfile?,
     onSelectChild: (String) -> Unit,
     onSaveProfile: (ProfileDraft, (ProfileValidationError?) -> Unit) -> Unit,
+    onUpdateChild: (ChildProfile) -> Unit = {},
     onDeleteProfile: (ChildProfile) -> Unit,
     photoFile: (String?) -> File?,
     onPhotoSelected: suspend (Uri) -> String,
@@ -114,6 +115,10 @@ fun BabyAppNavigation(
     onUpdateInsightRange: (String, String) -> Unit = { _, _ -> },
     onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
     onUpdateShowBulletinBoard: (Boolean) -> Unit = {},
+    onUpdateShowDevelopmentStrip: (Boolean) -> Unit = {},
+    onUpdateCustomReminders: (List<dk.babyapp.data.preferences.CustomReminder>) -> Unit = {},
+    onUpdateDevelopmentReminders: (Boolean) -> Unit = {},
+    onUpdateCollapsedCards: (Set<String>) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
     onUpdateBoardNotes: (List<dk.babyapp.data.preferences.BoardNote>) -> Unit = {},
@@ -136,7 +141,7 @@ fun BabyAppNavigation(
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onAddSleep: (String, Long, Long, SleepType?, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit = { _, _, _, _, _, _, _, _, _, result -> result(false) },
     onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
-    onAddActivity: (String, Long, Long, ActivityType, String) -> Unit = { _, _, _, _, _ -> },
+    onAddActivity: (String, Long, Long, ActivityType, String, String) -> Unit = { _, _, _, _, _, _ -> },
     onSaveHealthRecord: (CareEventEntity) -> Unit = {},
     onUpdateCareEvent: (CareEventEntity, (Boolean) -> Unit) -> Unit = { _, result -> result(true) },
     onDeleteCareEvent: (CareEventEntity) -> Unit = {},
@@ -162,8 +167,6 @@ fun BabyAppNavigation(
     onSaveColorProfile: (ColorProfile) -> Unit = {},
     onDeleteColorProfile: (String, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
     onMoveColorProfile: (String, Int) -> Unit = { _, _ -> },
-    exportColorProfiles: () -> String = { "[]" },
-    importColorProfiles: (String, (Boolean) -> Unit) -> Unit = { _, done -> done(false) },
     onDismissGettingStarted: () -> Unit = {},
 ) {
     val navController = rememberNavController()
@@ -306,6 +309,10 @@ fun BabyAppNavigation(
                     onUpdateInsightPeriod = onUpdateInsightPeriod, onUpdateInsightRange = onUpdateInsightRange,
                     onUpdateSimpleQuickRegistration = onUpdateSimpleQuickRegistration,
                     onUpdateShowBulletinBoard = onUpdateShowBulletinBoard,
+                    onUpdateShowDevelopmentStrip = onUpdateShowDevelopmentStrip,
+                    onUpdateCollapsedCards = onUpdateCollapsedCards,
+                    onUpdateDevelopmentChecks = onUpdateDevelopmentChecks,
+                    onUpdateChild = onUpdateChild,
                     onStartBreastfeeding = onStartBreastfeeding, onStartPumping = onStartPumping, onStartSleep = onStartSleep,
                     onStartActivity = onStartActivity,
                     onToggleTimer = onToggleTimer, onSwitchSide = onSwitchSide, onStopTimer = onStopTimer,
@@ -393,7 +400,7 @@ fun BabyAppNavigation(
                 val target = entry.toRoute<BookPageDestination>()
                 dk.babyapp.ui.book.BabyBookScreen(child = profiles.firstOrNull { it.id == target.childId }, pages = bookPages, contentPadding = contentPadding,
                     onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
-                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, dismiss) }, initialPageId = target.pageId)
+                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, dismiss) }, initialPageId = target.pageId)
             }
             composable<AppDestination.Guide> {
                 var foodsOpen by remember { mutableStateOf(false) }
@@ -411,14 +418,14 @@ fun BabyAppNavigation(
                     dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.development, "Udvikling", developmentLine(activeChild), growth.accent, growth.container) { developmentOpen = true },
                     dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.songs, "Sangbog", "${dk.babyapp.domain.songs.size + preferences.songbook.ownSongs.size} danske børnesange", sleep.accent, sleep.container) { songbookOpen = true },
                 ), contentPadding)
-                if (developmentOpen && activeChild != null) dk.babyapp.ui.more.DevelopmentDialog(activeChild, preferences.developmentChecks, onUpdateDevelopmentChecks) { developmentOpen = false }
+                if (developmentOpen && activeChild != null) dk.babyapp.ui.more.DevelopmentEntry(activeChild, preferences.developmentChecks, onUpdateDevelopmentChecks, onUpdateChild) { developmentOpen = false }
                 if (songbookOpen) dk.babyapp.ui.more.SongbookDialog(preferences.songbook, onUpdateSongbook) { songbookOpen = false }
                 if (foodsOpen && activeChild != null) dk.babyapp.ui.tracking.HundredFoodsDialog(activeChild.id, activeChild, history, { event -> onUpdateCareEvent(event) {} }) { foodsOpen = false }
             }
             composable<BookDestination> {
                 dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
                     onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
-                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, dismiss) })
+                    reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, dismiss) })
 
             }
             composable<AppDestination.Family> {
@@ -451,6 +458,7 @@ fun BabyAppNavigation(
                     onReorderFamily = onReorderFamily,
                     careProviders = careProviders,
                     colorProfiles = colorProfiles,
+                    onSaveColorProfile = onSaveColorProfile,
                     requestedEditChildId = requestedEditChildId,
                     onEditRequestHandled = { requestedEditChildId = null },
                 )
@@ -465,6 +473,8 @@ fun BabyAppNavigation(
         onBackupSaved = onBackupSaved,
         onUpdateHealthReminders = onUpdateHealthReminders,
         onUpdateBookReminderFrequency = onUpdateBookReminderFrequency,
+        onUpdateCustomReminders = onUpdateCustomReminders,
+        onUpdateDevelopmentReminders = onUpdateDevelopmentReminders,
         onUpdateBookReminders = onUpdateBookReminders,
         onUpdateDailyReminder = onUpdateDailyReminder,
         createEncryptedBackup = createEncryptedBackup,
@@ -477,8 +487,8 @@ fun BabyAppNavigation(
         onSaveColorProfile = onSaveColorProfile,
         onDeleteColorProfile = onDeleteColorProfile,
         onMoveColorProfile = onMoveColorProfile,
-        exportColorProfiles = exportColorProfiles,
-        importColorProfiles = importColorProfiles,
+        children = profiles,
+        onUpdateChild = onUpdateChild,
         onDismiss = { settingsOpen = false },
     )
 }

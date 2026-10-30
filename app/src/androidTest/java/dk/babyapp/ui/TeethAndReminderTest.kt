@@ -49,7 +49,7 @@ class TeethAndReminderTest {
     @Test fun reminderSettingsHaveOnlyBookChoiceAndSaveFrequency() {
         var preferences by mutableStateOf(AppPreferences())
         compose.setContent { MaterialTheme {
-            dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, { _, _, _ -> }, { preferences = preferences.copy(bookRemindersEnabled = it) }, { preferences = preferences.copy(bookReminderFrequency = it) }, {})
+            dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, { _, _, _ -> }, { preferences = preferences.copy(bookRemindersEnabled = it) }, { preferences = preferences.copy(bookReminderFrequency = it) }, onDismiss = {})
         } }
         compose.onNodeWithText("Påmind om registrering").assertDoesNotExist()
         compose.onNodeWithText("Tre gange om ugen").performClick()

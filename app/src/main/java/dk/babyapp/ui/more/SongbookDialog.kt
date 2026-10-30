@@ -119,7 +119,7 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
             onDelete = if (song.id.startsWith("own-")) ({ val id = song.id.removePrefix("own-"); onUpdate(data.copy(ownSongs = data.ownSongs.filterNot { it.id == id }, lyrics = data.lyrics - song.id, favorites = data.favorites - song.id)); open = null }) else null,
         ) { lyrics -> onUpdate(data.copy(lyrics = if (lyrics.isBlank()) data.lyrics - song.id else data.lyrics + (song.id to lyrics))); open = null }
     }
-    if (adding) OwnSongDialog({ adding = false }) { own -> onUpdate(data.copy(ownSongs = data.ownSongs + own)); adding = false }
+    if (adding) OwnSongDialog({ adding = false }) { own, words -> onUpdate(data.copy(ownSongs = data.ownSongs + own, lyrics = if (words.isBlank()) data.lyrics else data.lyrics + ("own-${own.id}" to words))); adding = false }
 }
 
 /** One song: where it is from, the movements, and the family's own words for it. */
@@ -145,14 +145,16 @@ private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDele
 }
 
 @Composable
-private fun OwnSongDialog(onDismiss: () -> Unit, onSave: (OwnSong) -> Unit) {
+private fun OwnSongDialog(onDismiss: () -> Unit, onSave: (OwnSong, String) -> Unit) {
     var title by remember { mutableStateOf("") }
+    var words by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(SongCategory.Rhymes) }
     FormDialog(category = CareCategory.Sleep, onDismissRequest = onDismiss, title = { Text("Egen sang") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             RegistrationTextField(title, { title = it }, label = { Text("Titel") }, singleLine = true)
             ChoiceChips(SongCategory.entries.map { it to it.label }, category, label = "Slags") { it?.let { category = it } }
+            RegistrationTextField(words, { words = it }, label = { Text("Sangtekst") }, minLines = 4)
         }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
-        confirmButton = { Button(enabled = title.isNotBlank(), onClick = { onSave(OwnSong(title = title.trim(), category = category.name)) }) { Text("Tilføj") } })
+        confirmButton = { Button(enabled = title.isNotBlank(), onClick = { onSave(OwnSong(title = title.trim(), category = category.name), words.trim()) }) { Text("Tilføj") } })
 }

@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -52,13 +55,13 @@ import java.util.Locale
 private data class BoardLine(val title: String, val whenText: String, val late: Boolean, val book: ProgrammeItem? = null)
 
 /**
- * Opslagstavle at the bottom of the I dag card: always the next examination or health visitor visit (booked or not),
- * other planned visits and vaccinations, programme items due soon, and the family's own messages.
+ * Begivenheder on I dag: always the next examination or health visitor visit (booked or not),
+ * other planned visits and vaccinations, programme items due soon, and messages written in earlier versions.
  * An item that is not booked can be marked as booked with its time. Long-press a message to change or remove it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun BulletinBoard(child: ChildProfile?, childId: String, events: List<CareEventEntity>, notes: List<BoardNote>, onUpdateNotes: (List<BoardNote>) -> Unit, onSaveEvent: (CareEventEntity) -> Unit) {
+internal fun BulletinBoard(child: ChildProfile?, childId: String, events: List<CareEventEntity>, notes: List<BoardNote>, onUpdateNotes: (List<BoardNote>) -> Unit, onSaveEvent: (CareEventEntity) -> Unit, collapsed: Boolean = false, onCollapse: (Boolean) -> Unit = {}) {
     val today = LocalDate.now()
     val zone = ZoneId.systemDefault()
     val lines = remember(child, events, today) {
@@ -79,33 +82,26 @@ internal fun BulletinBoard(child: ChildProfile?, childId: String, events: List<C
     val mine = notes.filter { it.childId == childId }
     var editing by remember { mutableStateOf<BoardNote?>(null) }
     var booking by remember { mutableStateOf<ProgrammeItem?>(null) }
-    Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = Color.White.copy(alpha = 0.85f)) {
-        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.PushPin, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                Text("Opslagstavle", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                IconButton(onClick = { editing = BoardNote(childId = childId, text = "") }) { Icon(Icons.Outlined.Add, "Ny besked") }
-            }
-            if (lines.isEmpty() && mine.isEmpty()) Text("Her vises næste sundhedsbesøg, vaccinationer og jeres egne beskeder.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
-            lines.forEach { line ->
-                Row(Modifier.padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(line.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(line.whenText, style = MaterialTheme.typography.bodySmall, color = if (line.late) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    line.book?.let { item -> TextButton(onClick = { booking = item }) { Text("Booket?") } }
+    CollapsibleCard(Icons.Outlined.Event, "Begivenheder", collapsed, onCollapse) {
+        if (lines.isEmpty() && mine.isEmpty()) Text("Her vises næste sundhedsbesøg og vaccinationer.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))
+        lines.forEach { line ->
+            Row(Modifier.padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(line.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(line.whenText, style = MaterialTheme.typography.bodySmall, color = if (line.late) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                line.book?.let { item -> TextButton(onClick = { booking = item }) { Text("Booket?") } }
             }
-            mine.forEach { note ->
-                var menu by remember { mutableStateOf(false) }
-                Box {
-                    Text("• ${note.text}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(end = 8.dp)
-                        .combinedClickable(onClickLabel = "Ret besked", onClick = { editing = note }, onLongClick = { menu = true }))
-                    DropdownMenu(menu, { menu = false }) {
-                        DropdownMenuItem(text = { Text("Rediger") }, onClick = { menu = false; editing = note })
-                        DropdownMenuItem(text = { Text("Slet") }, leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }, onClick = { menu = false; onUpdateNotes(notes - note) })
-                    }
+        }
+        mine.forEach { note ->
+            var menu by remember { mutableStateOf(false) }
+            Box {
+                Text("• ${note.text}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(end = 8.dp)
+                    .combinedClickable(onClickLabel = "Ret besked", onClick = { editing = note }, onLongClick = { menu = true }))
+                DropdownMenu(menu, { menu = false }) {
+                    DropdownMenuItem(text = { Text("Rediger") }, onClick = { menu = false; editing = note })
+                    DropdownMenuItem(text = { Text("Slet") }, leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) }, onClick = { menu = false; onUpdateNotes(notes - note) })
                 }
             }
         }
@@ -156,4 +152,31 @@ private fun BoardNoteDialog(note: BoardNote, isNew: Boolean, onDismiss: () -> Un
             Button(enabled = text.isNotBlank(), onClick = { onSave(text.trim()) }) { Text("Gem") }
         },
     )
+}
+
+/**
+ * A card on I dag that folds to its heading: tap the heading or the arrow. Used by Begivenheder and Udvikling;
+ * the I dag card has its own heading with the same arrow.
+ */
+@Composable
+internal fun CollapsibleCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, collapsed: Boolean, onCollapse: (Boolean) -> Unit, onOpen: (() -> Unit)? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    androidx.compose.material3.Card(
+        Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = if (collapsed) 2.dp else 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(onClickLabel = if (collapsed) "Fold $title ud" else "Fold $title sammen") { onCollapse(!collapsed) },
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                if (onOpen != null) TextButton(onClick = onOpen) { Text("Åbn") }
+                IconButton(onClick = { onCollapse(!collapsed) }) {
+                    Icon(if (collapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, if (collapsed) "Fold $title ud" else "Fold $title sammen")
+                }
+            }
+            if (!collapsed) Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
+        }
+    }
 }

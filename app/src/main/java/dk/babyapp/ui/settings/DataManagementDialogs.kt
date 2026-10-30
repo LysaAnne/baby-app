@@ -25,6 +25,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -56,12 +60,15 @@ import kotlinx.coroutines.launch
 private enum class DataAction { Csv, Pdf, Backup, Restore }
 
 @Composable
-fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int, Int) -> Unit, onUpdateBookReminders: (Boolean) -> Unit, onFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit = {}, onDismiss: () -> Unit) {
+fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int, Int) -> Unit, onUpdateBookReminders: (Boolean) -> Unit, onFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit = {}, onUpdateCustomReminders: (List<dk.babyapp.data.preferences.CustomReminder>) -> Unit = {}, onUpdateDevelopmentReminders: (Boolean) -> Unit = {}, onDismiss: () -> Unit) {
     val context = LocalContext.current; var message by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<dk.babyapp.data.preferences.CustomReminder?>(null) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    fun askPermission() { if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permission.launch(Manifest.permission.POST_NOTIFICATIONS) }
     val bookPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) onUpdateBookReminders(true) else message = "Notifikationstilladelsen blev ikke givet."
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Notifikationer") }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Notifikationer") }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Barnets bog"); Text("Højst én påmindelse pr. valgt dag kl. 20, når der er en ledig side.", style = MaterialTheme.typography.bodySmall) }
             Switch(preferences.bookRemindersEnabled, { enabled ->
@@ -71,8 +78,29 @@ fun ReminderSettingsDialog(preferences: AppPreferences, onUpdate: (Boolean, Int,
         }
         if (preferences.bookRemindersEnabled) dk.babyapp.ui.tracking.SelectionDropdown("Hyppighed", preferences.bookReminderFrequency.label, dk.babyapp.data.preferences.BookReminderFrequency.entries.map { it to it.label }, onFrequency)
         Text("Ugentligt: mandag. Månedligt: den 1. Tre gange: mandag, onsdag og fredag. Android kan forsinke leveringen.", style = MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text("Udvikling"); Text("Når et nyt spring begynder, og når en milepæl typisk kommer. Kl. 9.", style = MaterialTheme.typography.bodySmall) }
+            Switch(preferences.developmentRemindersEnabled, { enabled -> if (enabled) askPermission(); onUpdateDevelopmentReminders(enabled) }, modifier = Modifier.semantics { contentDescription = "Udviklingspåmindelser" })
+        }
+        HorizontalDivider()
+        Text("Egne påmindelser", style = MaterialTheme.typography.titleSmall)
+        preferences.customReminders.forEach { reminder ->
+            Row(Modifier.fillMaxWidth().clickable { editing = reminder }, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text(reminder.title); Text(reminderSummary(reminder), style = MaterialTheme.typography.bodySmall) }
+                Switch(reminder.enabled, { on -> onUpdateCustomReminders(preferences.customReminders.map { if (it.id == reminder.id) it.copy(enabled = on) else it }) },
+                    modifier = Modifier.semantics { contentDescription = "Påmindelse ${reminder.title}" })
+            }
+        }
+        OutlinedButton(onClick = { askPermission(); editing = dk.babyapp.data.preferences.CustomReminder(title = "", days = (1..7).toSet(), hour = 10, minute = 0) }, modifier = Modifier.fillMaxWidth()) { Text("+ Ny påmindelse") }
 
     } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Luk") } })
+    editing?.let { reminder ->
+        val existing = preferences.customReminders.any { it.id == reminder.id }
+        CustomReminderDialog(reminder, existing, onDismiss = { editing = null }, onDelete = { onUpdateCustomReminders(preferences.customReminders.filterNot { it.id == reminder.id }); editing = null }) { saved ->
+            onUpdateCustomReminders(if (existing) preferences.customReminders.map { if (it.id == saved.id) saved else it } else preferences.customReminders + saved); editing = null
+        }
+    }
     message?.let { AlertDialog(onDismissRequest = { message = null }, title = { Text("Påmindelse") }, text = { Text(it) }, confirmButton = { Button(onClick = { message = null }) { Text("OK") } }) }
 }
 
@@ -104,3 +132,44 @@ fun DataManagementDialog(child: ChildProfile?, events: List<CareEventEntity>, pr
 private fun minutes(value: Long) = if (value < 60) "$value min" else "${value / 60} t ${value % 60} min"
 private fun writeHealthPdf(output: java.io.OutputStream, child: ChildProfile, events: List<CareEventEntity>, from: LocalDate, through: LocalDate, units: String) { val data = calculateInsights(events, child.id, from, through); val document = PdfDocument(); val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create()); val canvas = page.canvas; val paint = Paint().apply { isAntiAlias = true }; var y = 54f; fun line(text: String, size: Float = 14f) { paint.textSize = size; canvas.drawText(text.take(88), 42f, y, paint); y += size + 10 }
     line("BabyLog – oversigt til sundhedsbesøg", 22f); line("Barn: ${child.name}"); line("Periode: $from til $through"); line("Enheder: $units · Tidszone: ${ZoneId.systemDefault().id}"); line("Madning", 18f); line("${data.feedingCount} registreringer · amning ${data.breastfeedingMinutes} min · flaske ${data.bottleMl} ml"); line("Bleer", 18f); line("${data.diaperCount} registreringer · våde ${data.wetDiapers} · afføring ${data.dirtyDiapers}"); line("Søvn", 18f); line("I alt ${minutes(data.sleepMinutes)} · ${data.sleepCount} gange · længste ${minutes(data.longestSleepMinutes)}"); val questions = events.filter { it.childId == child.id && it.healthQuestions.isNotBlank() }.map { it.healthQuestions }.distinct(); if (questions.isNotEmpty()) { line("Spørgsmål og noter", 18f); questions.take(10).forEach { line("• $it") } }; line("Egne registreringer – ikke en officiel sundhedsjournal.", 11f); document.finishPage(page); document.writeTo(output); document.close() }
+
+private val weekdayLetters = listOf("M", "T", "O", "T", "F", "L", "S")
+
+/** "Hverdage · 10.00", "Hver dag · 19.30" or "Man, ons · 8.00". */
+internal fun reminderSummary(reminder: dk.babyapp.data.preferences.CustomReminder): String {
+    val names = listOf("man", "tir", "ons", "tor", "fre", "lør", "søn")
+    val days = when (reminder.days) {
+        (1..7).toSet() -> "Hver dag"
+        (1..5).toSet() -> "Hverdage"
+        setOf(6, 7) -> "Weekend"
+        else -> reminder.days.sorted().joinToString(", ") { names[it - 1] }.replaceFirstChar { it.uppercase() }
+    }
+    return "$days · %d.%02d".format(reminder.hour, reminder.minute)
+}
+
+/** One own reminder: what, which weekdays and when. */
+@Composable
+private fun CustomReminderDialog(reminder: dk.babyapp.data.preferences.CustomReminder, existing: Boolean, onDismiss: () -> Unit, onDelete: () -> Unit, onSave: (dk.babyapp.data.preferences.CustomReminder) -> Unit) {
+    val context = LocalContext.current
+    var draft by remember { mutableStateOf(reminder) }
+    dk.babyapp.ui.tracking.FormDialog(onDismissRequest = onDismiss, title = { Text(if (existing) "Ret påmindelse" else "Ny påmindelse") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            dk.babyapp.ui.tracking.RegistrationTextField(draft.title, { draft = draft.copy(title = it) }, label = { Text("Hvad skal du mindes om?") }, singleLine = true)
+            dk.babyapp.ui.tracking.ChoiceChips(listOf("Mavetid", "Bad", "Vægtmåling", "D-vitamin", "Klippe negle").map { it to it }, draft.title.takeIf { it.isNotBlank() }, allowNone = true) { it?.let { title -> draft = draft.copy(title = title) } }
+            Text("Dage", style = MaterialTheme.typography.labelMedium)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                weekdayLetters.forEachIndexed { index, letter ->
+                    val day = index + 1
+                    FilterChip(day in draft.days, { draft = draft.copy(days = if (day in draft.days) draft.days - day else draft.days + day) }, label = { Text(letter) }, modifier = Modifier.weight(1f))
+                }
+            }
+            OutlinedButton(onClick = { android.app.TimePickerDialog(context, { _, h, m -> draft = draft.copy(hour = h, minute = m) }, draft.hour, draft.minute, true).show() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Kl. %d.%02d".format(draft.hour, draft.minute))
+            }
+        }
+    }, dismissButton = if (existing) ({ androidx.compose.material3.IconButton(onClick = onDelete) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Delete, "Slet påmindelse", tint = MaterialTheme.colorScheme.error) }; androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }) else null,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Annuller") }
+            Button(enabled = draft.title.isNotBlank() && draft.days.isNotEmpty(), onClick = { onSave(draft.copy(title = draft.title.trim())) }) { Text("Gem") }
+        })
+}

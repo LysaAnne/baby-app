@@ -155,6 +155,7 @@ fun FamilyScreen(
     onReorderFamily: (List<String>) -> Unit,
     careProviders: List<CareProvider>,
     colorProfiles: List<ColorProfile>,
+    onSaveColorProfile: (ColorProfile) -> Unit = {},
     requestedEditChildId: String? = null,
     onEditRequestHandled: () -> Unit = {},
 ) {
@@ -281,6 +282,7 @@ fun FamilyScreen(
             familyLinks = parentLinks,
             careProviders = editing?.let { child -> careProviders.filter { it.childId == child.id } }.orEmpty(),
             colorProfiles = colorProfiles,
+            onSaveColorProfile = onSaveColorProfile,
             onDismiss = { adding = false; editing = null },
         )
     }
@@ -347,6 +349,8 @@ fun SettingsDialog(
     activeChild: ChildProfile?,
     careEvents: List<CareEventEntity>,
     onUpdateBookReminderFrequency: (dk.babyapp.data.preferences.BookReminderFrequency) -> Unit,
+    onUpdateCustomReminders: (List<dk.babyapp.data.preferences.CustomReminder>) -> Unit = {},
+    onUpdateDevelopmentReminders: (Boolean) -> Unit = {},
     onUpdateBookReminders: (Boolean) -> Unit,
     onUpdateDailyReminder: (Boolean, Int, Int) -> Unit,
     createEncryptedBackup: suspend (CharArray) -> ByteArray,
@@ -359,9 +363,9 @@ fun SettingsDialog(
     onSaveColorProfile: (ColorProfile) -> Unit,
     onDeleteColorProfile: (String, (Boolean) -> Unit) -> Unit,
     onMoveColorProfile: (String, Int) -> Unit,
-    exportColorProfiles: () -> String,
-    importColorProfiles: (String, (Boolean) -> Unit) -> Unit,
     onDismiss: () -> Unit,
+    children: List<ChildProfile> = emptyList(),
+    onUpdateChild: (ChildProfile) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthReminders: (Boolean) -> Unit = {},
 ) {
@@ -488,11 +492,11 @@ fun SettingsDialog(
         onSave = onSaveColorProfile,
         onDelete = onDeleteColorProfile,
         onMove = onMoveColorProfile,
-        exportJson = exportColorProfiles,
-        onImport = importColorProfiles,
         onDismiss = { palettePreviewOpen = false },
+        children = children,
+        onUseForChild = { child, id -> onUpdateChild(child.copy(colorTheme = id)) },
     )
-    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency) { reminderSettingsOpen = false }
+    if (reminderSettingsOpen) ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders) { reminderSettingsOpen = false }
     if (dataManagementOpen) DataManagementDialog(activeChild, careEvents, preferences, createEncryptedBackup, restoreEncryptedBackup, onDismiss = { dataManagementOpen = false }, onBackupSaved = onBackupSaved)
 }
 
@@ -862,6 +866,7 @@ private fun ProfileEditorDialog(
     familyLinks: List<ChildParentLink>,
     careProviders: List<CareProvider>,
     colorProfiles: List<ColorProfile>,
+    onSaveColorProfile: (ColorProfile) -> Unit = {},
 ) {
     var draft by remember(existing?.id, units) { mutableStateOf(existing?.toDraft(units, linkedParentIds, careProviders) ?: ProfileDraft()) }
     var error by remember { mutableStateOf<ProfileValidationError?>(null) }
@@ -879,6 +884,7 @@ private fun ProfileEditorDialog(
                     onPhotoSelected = onPhotoSelected,
                     units = units,
                     colorProfiles = colorProfiles,
+                    onSaveColorProfile = onSaveColorProfile,
                     modifier = Modifier.weight(1f),
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

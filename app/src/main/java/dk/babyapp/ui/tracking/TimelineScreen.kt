@@ -88,7 +88,7 @@ fun TimelineScreen(
     onAddDiaper: (String, Long, DiaperType, DiaperColor?, DiaperConsistency?, String, String, (CareEventEntity) -> Unit) -> Unit,
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit,
     onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit,
-    onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
+    onAddActivity: (String, Long, Long, ActivityType, String, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
     onResumeBreastfeeding: (CareEventEntity, BreastSide, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
@@ -293,7 +293,7 @@ fun TimelineScreen(
     }
     if (addKind == AddKind.Pumping && activeChildId != null) PumpingDialog(activeChildId, lastPumpingMethod, { addKind = null }, ::saveAdded)
     if (addKind == AddKind.Measurement) MeasurementDialog(manualMeasurementType, { addKind = null }) { time, timeSpecified, type, value, unit, notes -> activeChildId?.let { onAddMeasurement(it, time, timeSpecified, type, value, unit, notes) }; addKind = null }
-    if (addKind == AddKind.Activity) ActivityDialog(manualActivityType, { addKind = null }) { start, end, type, notes -> activeChildId?.let { onAddActivity(it, start, end, type, notes) }; addKind = null }
+    if (addKind == AddKind.Activity) ActivityDialog(manualActivityType, { addKind = null }) { start, end, type, notes, name -> activeChildId?.let { onAddActivity(it, start, end, type, notes, name) }; addKind = null }
     editing?.let { event ->
         if (event.type == CareEventType.HealthVisit || event.type == CareEventType.Vaccination) {
             HealthRecordDialog(event.childId, event.type == CareEventType.Vaccination, careProviders, event, { editing = null }) { updated ->

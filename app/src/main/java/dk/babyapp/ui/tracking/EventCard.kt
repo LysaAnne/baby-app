@@ -113,7 +113,7 @@ internal fun eventTitle(event: CareEventEntity) = when (event.type) {
     CareEventType.Diaper -> event.diaperType?.let { "Ble – ${it.displayLabel()}" } ?: "Ble"
     CareEventType.Sleep -> "Søvn"
     CareEventType.Measurement -> event.measurementType?.displayLabel() ?: event.type.displayLabel()
-    CareEventType.Activity -> if (event.activityType == dk.babyapp.data.tracking.ActivityType.Medicine) event.medicationName.ifBlank { "Medicin" } else event.activityType?.displayLabel() ?: "Aktivitet"
+    CareEventType.Activity -> if (event.activityType == dk.babyapp.data.tracking.ActivityType.Medicine) event.medicationName.ifBlank { "Medicin" } else event.activityName.takeIf { event.activityType == dk.babyapp.data.tracking.ActivityType.Other && it.isNotBlank() } ?: event.activityType?.displayLabel() ?: "Aktivitet"
     CareEventType.HealthVisit -> event.healthTitle.ifBlank { event.type.displayLabel() }
     CareEventType.Vaccination -> event.vaccineName.ifBlank { event.type.displayLabel() }
     else -> event.type.displayLabel()

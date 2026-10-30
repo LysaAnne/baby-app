@@ -100,21 +100,21 @@ fun LocalDate.plusWeekFraction(weeks: Double): LocalDate = plusDays(Math.round(w
  * A milestone and its usual window in months. The motor milestones use the WHO windows (the ages by which
  * 1 % to 99 % of healthy children reach them); the others are typical ages.
  */
-data class Milestone(val key: String, val title: String, val fromMonths: Double, val toMonths: Double, val who: Boolean = false)
+data class Milestone(val key: String, val title: String, val fromMonths: Double, val toMonths: Double, val who: Boolean = false, val about: String = "")
 
 val milestones = listOf(
-    Milestone("smile", "Smiler socialt", 1.0, 3.0),
-    Milestone("head-up", "Løfter hovedet på maven", 1.5, 4.0),
-    Milestone("roll", "Vender sig", 3.0, 7.0),
-    Milestone("sit", "Sidder uden støtte", 3.8, 9.2, who = true),
-    Milestone("stand-support", "Står med støtte", 4.8, 11.4, who = true),
-    Milestone("crawl", "Kravler på hænder og knæ", 5.2, 13.5, who = true),
-    Milestone("walk-support", "Går med støtte", 5.9, 13.7, who = true),
-    Milestone("stand-alone", "Står alene", 6.9, 16.9, who = true),
-    Milestone("walk-alone", "Går alene", 8.2, 17.6, who = true),
-    Milestone("first-word", "Siger det første ord", 9.0, 15.0),
-    Milestone("pincer", "Pincetgreb med to fingre", 8.0, 12.0),
-    Milestone("two-words", "Sætter to ord sammen", 18.0, 24.0),
+    Milestone("smile", "Smiler socialt", 1.0, 3.0, about = "Barnet smiler tilbage til jer, når I taler og smiler – ikke kun i søvne. Det er et tidligt tegn på kontakt."),
+    Milestone("head-up", "Løfter hovedet på maven", 1.5, 4.0, about = "På maven løfter barnet hovedet, først kort og siden med støtte på underarmene. Mavetid hver dag hjælper."),
+    Milestone("roll", "Vender sig", 3.0, 7.0, about = "Barnet ruller fra ryg til side eller mave, eller omvendt. Mange vender først den ene vej."),
+    Milestone("sit", "Sidder uden støtte", 3.8, 9.2, who = true, about = "Barnet sidder selv med ret ryg i mindst 10 sekunder uden at holde sig og uden at falde."),
+    Milestone("stand-support", "Står med støtte", 4.8, 11.4, who = true, about = "Barnet står oprejst med fødderne på gulvet og holder fast i et møbel eller en hånd i mindst 10 sekunder."),
+    Milestone("crawl", "Kravler på hænder og knæ", 5.2, 13.5, who = true, about = "Barnet kravler fremad på hænder og knæ med maven fri af gulvet. Nogle børn springer kravlen over eller rumpeskubber i stedet."),
+    Milestone("walk-support", "Går med støtte", 5.9, 13.7, who = true, about = "Barnet går sidelæns eller fremad langs møbler eller med en hånd at holde i."),
+    Milestone("stand-alone", "Står alene", 6.9, 16.9, who = true, about = "Barnet står selv uden at holde fast i mindst 10 sekunder."),
+    Milestone("walk-alone", "Går alene", 8.2, 17.6, who = true, about = "Barnet tager mindst fem skridt alene med ret ryg."),
+    Milestone("first-word", "Siger det første ord", 9.0, 15.0, about = "Et ord, barnet bruger om det samme hver gang, fx \"mor\", \"far\" eller et ord for en ting eller et dyr."),
+    Milestone("pincer", "Pincetgreb med to fingre", 8.0, 12.0, about = "Barnet samler små ting op mellem tommelfinger og pegefinger, fx en rosin eller en ært."),
+    Milestone("two-words", "Sætter to ord sammen", 18.0, 24.0, about = "Barnet sætter to ord sammen til en lille sætning, fx \"mere mad\" eller \"far væk\"."),
 )
 
 fun Milestone.window(): String {

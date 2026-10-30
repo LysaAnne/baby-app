@@ -33,8 +33,8 @@ class SettingsViewModel @Inject constructor(
     private val colorProfileRepository: ColorProfileRepository,
     private val backupService: EncryptedBackupService? = null,
     private val reminderScheduler: DailyReminderScheduler? = null,
+    @param:dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context? = null,
 ) : ViewModel() {
-    private val colorProfileJson = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     // Export is synchronous, so the current colour profiles are kept at hand.
     private val colorProfiles = colorProfileRepository.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -50,6 +50,17 @@ class SettingsViewModel @Inject constructor(
     fun updateInsightPeriod(days: Int) = viewModelScope.launch { preferencesRepository.updateInsightPeriod(days) }
     fun updateInsightRange(from: String, through: String) = viewModelScope.launch { preferencesRepository.updateInsightRange(from, through) }
     fun updateSimpleQuickRegistration(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateSimpleQuickRegistration(enabled) }
+    fun updateCustomReminders(reminders: List<dk.babyapp.data.preferences.CustomReminder>) = viewModelScope.launch {
+        val previous = preferencesRepository.preferences.first().customReminders
+        preferencesRepository.updateCustomReminders(reminders)
+        appContext?.let { dk.babyapp.reminders.CustomReminderScheduler.update(it, previous, reminders) }
+    }
+    fun updateDevelopmentReminders(enabled: Boolean) = viewModelScope.launch {
+        preferencesRepository.updateDevelopmentReminders(enabled)
+        if (enabled) appContext?.let { dk.babyapp.reminders.DevelopmentReminderScheduler.ensureScheduled(it) }
+    }
+    fun updateShowDevelopmentStrip(shown: Boolean) = viewModelScope.launch { preferencesRepository.updateShowDevelopmentStrip(shown) }
+    fun updateCollapsedCards(cards: Set<String>) = viewModelScope.launch { preferencesRepository.updateCollapsedCards(cards) }
     fun updateShowBulletinBoard(shown: Boolean) = viewModelScope.launch { preferencesRepository.updateShowBulletinBoard(shown) }
     fun updateHealthQuestions(questions: List<dk.babyapp.data.preferences.HealthQuestion>) = viewModelScope.launch { preferencesRepository.updateHealthQuestions(questions) }
     fun updateDevelopmentChecks(checks: List<dk.babyapp.data.preferences.DevelopmentCheck>) = viewModelScope.launch { preferencesRepository.updateDevelopmentChecks(checks) }
@@ -91,25 +102,5 @@ class SettingsViewModel @Inject constructor(
 
     fun moveColorProfile(id: String, direction: Int) = viewModelScope.launch {
         colorProfileRepository.move(id, direction)
-    }
-
-    fun exportColorProfiles(): String = colorProfileJson.encodeToString(colorProfiles.value)
-
-    fun importColorProfiles(value: String, onResult: (Boolean) -> Unit) = viewModelScope.launch {
-        val imported = runCatching {
-            colorProfileJson.decodeFromString<List<ColorProfile>>(value)
-        }.getOrNull()
-        val usedIds = profilesRepository.profiles.first().map { it.colorTheme }.toSet()
-        val valid = imported?.takeIf { profiles ->
-            profiles.isNotEmpty() && profiles.map { it.id }.toSet().containsAll(usedIds) && profiles.map { it.id }.distinct().size == profiles.size && profiles.all { profile ->
-                profile.id.isNotBlank() && profile.name.isNotBlank() && listOf(
-                    profile.background, profile.primary, profile.primaryContainer, profile.secondary, profile.tertiary,
-                ).all { it.normalizedHex() != null }
-            }
-        }
-        if (valid == null) onResult(false) else {
-            colorProfileRepository.replaceAll(valid)
-            onResult(true)
-        }
     }
 }

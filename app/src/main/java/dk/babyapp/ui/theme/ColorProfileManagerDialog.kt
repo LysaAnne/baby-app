@@ -16,6 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -60,6 +65,10 @@ import dk.babyapp.data.color.duplicate
 import dk.babyapp.data.color.normalizedHex
 import java.util.UUID
 
+/**
+ * Farveprofiler: each child's colours. Profiles are saved at once and are part of the normal encrypted backup.
+ * From the editor a profile can be put to use on a child straight away.
+ */
 @Composable
 fun ColorProfileManagerDialog(
     profiles: List<ColorProfile>,
@@ -67,40 +76,22 @@ fun ColorProfileManagerDialog(
     onSave: (ColorProfile) -> Unit,
     onDelete: (String, (Boolean) -> Unit) -> Unit,
     onMove: (String, Int) -> Unit,
-    exportJson: () -> String,
-    onImport: (String, (Boolean) -> Unit) -> Unit,
     onDismiss: () -> Unit,
+    children: List<dk.babyapp.data.profile.ChildProfile> = emptyList(),
+    onUseForChild: (dk.babyapp.data.profile.ChildProfile, String) -> Unit = { _, _ -> },
 ) {
     var editing by remember { mutableStateOf<ColorProfile?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) runCatching {
-            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(exportJson()) }
-        }.onSuccess { message = "Farveprofilerne er eksporteret." }.onFailure { message = "Filen kunne ikke gemmes." }
-    }
-    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            val value = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()
-            if (value == null) message = "Filen kunne ikke læses." else onImport(value) { success ->
-                message = if (success) "Farveprofilerne er importeret." else "Filen indeholder ikke gyldige farveprofiler."
-            }
-        }
-    }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Rediger farveprofiler", style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = onDismiss) { Text("Luk") }
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
+                    Text("Farveprofiler", style = MaterialTheme.typography.titleLarge)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { editing = newColorProfile(profiles) }) { Icon(Icons.Outlined.Add, null); Text("Ny") }
-                    OutlinedButton(onClick = { exportLauncher.launch("child_color_profiles.json") }) { Text("Eksportér") }
-                    OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) }) { Text("Importér") }
-                }
-                Text("Tryk på et kort for at redigere farverne. Ændringer gemmes lokalt med det samme.")
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = { editing = newColorProfile(profiles) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add, null); Text(" Ny farveprofil") }
+                Text("Tryk på et kort for at rette farverne. Farveprofilerne kommer med i den krypterede backup.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(profiles, key = { it.id }) { profile ->
                         val group = profiles.filter { it.isDark == profile.isDark }
                         val position = group.indexOfFirst { it.id == profile.id }
@@ -124,7 +115,11 @@ fun ColorProfileManagerDialog(
             }
         }
     }
-    editing?.let { profile -> ColorProfileEditDialog(profile, onSave = { onSave(it); editing = null }, onDismiss = { editing = null }) }
+    editing?.let { profile ->
+        ColorProfileEditDialog(profile, onSave = { onSave(it); editing = null }, onDismiss = { editing = null }, children = children) { saved, child ->
+            onSave(saved); onUseForChild(child, saved.id); editing = null; message = "${child.name} bruger nu ${saved.name}."
+        }
+    }
     message?.let { value -> AlertDialog(onDismissRequest = { message = null }, text = { Text(value) }, confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } }) }
 }
 
@@ -145,7 +140,7 @@ private fun ProfileManagerCard(
     Card(onClick = onEdit, colors = CardDefaults.cardColors(containerColor = colors.background, contentColor = foreground)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column { Text(profile.name, style = MaterialTheme.typography.titleMedium); Text(if (profile.isDark) "Mørk" else "Lys") }
+                Text(profile.name, style = MaterialTheme.typography.titleMedium)
                 Text(if (isUsed) "I brug" else "")
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -164,11 +159,15 @@ private fun ProfileManagerCard(
     }
 }
 
+/**
+ * Edits one profile's name and colours. [onUse] saves it and puts it to use on the chosen child.
+ * Light profiles only; an older dark profile keeps its setting.
+ */
 @Composable
-private fun ColorProfileEditDialog(initial: ColorProfile, onSave: (ColorProfile) -> Unit, onDismiss: () -> Unit) {
+internal fun ColorProfileEditDialog(initial: ColorProfile, onSave: (ColorProfile) -> Unit, onDismiss: () -> Unit, children: List<dk.babyapp.data.profile.ChildProfile> = emptyList(), onUse: ((ColorProfile, dk.babyapp.data.profile.ChildProfile) -> Unit)? = null) {
     var draft by remember(initial.id) { mutableStateOf(initial) }
     var picking by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var todayPreviewOpen by remember { mutableStateOf(false) }
+    var childMenu by remember { mutableStateOf(false) }
     val fields = listOf(
         "Baggrund" to draft.background,
         "Primære knapper" to draft.primary,
@@ -176,19 +175,19 @@ private fun ColorProfileEditDialog(initial: ColorProfile, onSave: (ColorProfile)
         "Sekundær accent" to draft.secondary,
         "Tredje accent" to draft.tertiary,
     )
+    val valid = draft.name.isNotBlank() && fields.all { it.second.normalizedHex() != null }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val preview = runCatching { draft.colors() }.getOrNull()
-        Surface(Modifier.fillMaxSize(), color = preview?.background ?: MaterialTheme.colorScheme.surface) {
-            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Rediger farveprofil", style = MaterialTheme.typography.headlineSmall, color = if (draft.isDark) Color.White else Color.Black)
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
+                    Text("Rediger farveprofil", style = MaterialTheme.typography.titleLarge)
+                }
                 OutlinedTextField(draft.name, { draft = draft.copy(name = it) }, label = { Text("Navn") }, modifier = Modifier.fillMaxWidth())
-                Row(verticalAlignment = Alignment.CenterVertically) { Text("Mørk profil", color = if (draft.isDark) Color.White else Color.Black); Switch(draft.isDark, { draft = draft.copy(isDark = it) }) }
-                preview?.let { colors ->
+                runCatching { draft.colors() }.getOrNull()?.let { colors ->
                     LivePalettePreview(draft, colors)
-                    val foreground = if (draft.isDark) Color.White else Color(0xFF171817)
-                    val buttonForeground = if (draft.isDark) Color(0xFF071315) else Color.White
-                    if (contrastRatio(colors.background, foreground) < 4.5 || contrastRatio(colors.primary, buttonForeground) < 4.5) {
-                        Text("⚠ Farverne har lav kontrast. Tekst kan være svær at læse.", color = if (draft.isDark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A))
+                    if (contrastRatio(colors.background, Color(0xFF171817)) < 4.5 || contrastRatio(colors.primary, Color.White) < 4.5) {
+                        Text("⚠ Farverne har lav kontrast. Tekst kan være svær at læse.", color = Color(0xFFBA1A1A))
                     }
                 }
                 LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -196,85 +195,20 @@ private fun ColorProfileEditDialog(initial: ColorProfile, onSave: (ColorProfile)
                         ColorField(label, value, onClick = { picking = label to value }, onHexChange = { update -> draft = draft.withColor(label, update) })
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        enabled = draft.name.isNotBlank() && fields.all { it.second.normalizedHex() != null },
-                        onClick = { todayPreviewOpen = true },
-                    ) { Text("Forhåndsvis") }
-                    TextButton(onClick = onDismiss) { Text("Annuller") }
-                    Button(enabled = draft.name.isNotBlank() && fields.all { it.second.normalizedHex() != null }, onClick = { onSave(draft.normalizeColors()) }) { Text("Gem") }
+                // Use it on a child straight away, or just save it.
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (onUse != null && children.isNotEmpty()) Box(Modifier.weight(1f)) {
+                        OutlinedButton(enabled = valid, onClick = { if (children.size == 1) onUse(draft.normalizeColors(), children.single()) else childMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("Brug farveprofil") }
+                        DropdownMenu(childMenu, { childMenu = false }) {
+                            children.forEach { child -> DropdownMenuItem(text = { Text(child.name) }, onClick = { childMenu = false; onUse(draft.normalizeColors(), child) }) }
+                        }
+                    }
+                    Button(enabled = valid, onClick = { onSave(draft.normalizeColors()) }, modifier = Modifier.weight(1f)) { Text("Gem") }
                 }
             }
         }
     }
     picking?.let { (label, value) -> ColorPickerDialog(label, value, onSelect = { draft = draft.withColor(label, it); picking = null }, onDismiss = { picking = null }) }
-    if (todayPreviewOpen) TodayPalettePreviewDialog(draft.normalizeColors(), onDismiss = { todayPreviewOpen = false })
-}
-
-@Composable
-private fun TodayPalettePreviewDialog(profile: ColorProfile, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BabyAppTheme(childColorTheme = profile) {
-            Scaffold(
-                topBar = {
-                    Surface(color = MaterialTheme.colorScheme.surface) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Surface(color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = MaterialTheme.shapes.large) {
-                                Text("🧸 Eksempelbarn⌄", Modifier.padding(horizontal = 16.dp, vertical = 10.dp), style = MaterialTheme.typography.titleMedium)
-                            }
-                            TextButton(onClick = onDismiss) { Text("Tilbage") }
-                        }
-                    }
-                },
-                bottomBar = {
-                    NavigationBar {
-                        listOf("I dag", "Journal", "Overblik", "Guide", "Familie").forEachIndexed { index, label ->
-                            NavigationBarItem(selected = index == 0, onClick = {}, icon = { Text(listOf("●", "◷", "▥", "♡", "♧")[index]) }, label = { Text(label) })
-                        }
-                    }
-                },
-            ) { padding ->
-                LazyColumn(Modifier.fillMaxSize().padding(padding).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    item {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Dagens overblik", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Text("Amning: 24 min.  •  Flaske: 120 ml  •  Bleer: 4", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            }
-                        }
-                    }
-                    item { Text("Hurtig registrering  ⚙", style = MaterialTheme.typography.titleLarge) }
-                    item { PreviewActionSection("🍼  Madning", listOf("Venstre bryst", "Højre bryst", "Flaske", "Pumpning")) }
-                    item { PreviewActionSection("🧷  Ble", listOf("Våd", "Afføring", "Begge", "Tør")) }
-                    item {
-                        OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("＋  Manuel registrering") }
-                    }
-                    item {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                            Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                Text("Seneste", style = MaterialTheme.typography.titleLarge)
-                                Text("Flaske · 120 ml · kl. 10.42")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PreviewActionSection(title: String, actions: List<String>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            actions.forEach { action ->
-                Button(onClick = {}, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 3.dp)) {
-                    Text(action, maxLines = 2)
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -332,7 +266,7 @@ private fun ColorPickerDialog(label: String, initial: String, onSelect: (String)
     )
 }
 
-private fun newColorProfile(profiles: List<ColorProfile>): ColorProfile = profiles.firstOrNull()?.copy(
+internal fun newColorProfile(profiles: List<ColorProfile>): ColorProfile = profiles.firstOrNull()?.copy(
     id = UUID.randomUUID().toString(), name = "Ny farveprofil", builtIn = false,
 ) ?: ColorProfile(name = "Ny farveprofil", isDark = false, background = "#F7F7F7", primary = "#52665A", primaryContainer = "#D5E5DA", secondary = "#655D55", tertiary = "#50636A")
 

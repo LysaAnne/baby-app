@@ -146,7 +146,7 @@ class TimerNotificationService : Service() {
                 dk.babyapp.data.tracking.ActivityType.OutdoorTime -> "Udetid"
                 dk.babyapp.data.tracking.ActivityType.Play -> "Leg"
                 dk.babyapp.data.tracking.ActivityType.Medicine -> "Medicin"
-                dk.babyapp.data.tracking.ActivityType.Other -> "Anden aktivitet"
+                dk.babyapp.data.tracking.ActivityType.Other -> event.activityName.ifBlank { "Anden aktivitet" }
             } } ?: "Aktivitet"
             else -> "Pumpning"
         }

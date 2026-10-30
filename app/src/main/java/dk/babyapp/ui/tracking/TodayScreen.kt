@@ -149,7 +149,7 @@ fun TodayScreen(
     onAddManualTimer: (String, CareEventType, Long, Long, BreastSide?, Int?, String) -> Unit,
     onAddSleep: (String, Long, Long, SleepType?, String, String, Int?, SleepQuality?, String, (Boolean) -> Unit) -> Unit,
     onAddMeasurement: (String, Long, Boolean, MeasurementType, Double, String, String) -> Unit,
-    onAddActivity: (String, Long, Long, ActivityType, String) -> Unit,
+    onAddActivity: (String, Long, Long, ActivityType, String, String) -> Unit,
     onUpdate: (CareEventEntity, (Boolean) -> Unit) -> Unit,
     onDelete: (CareEventEntity) -> Unit,
     onUpdateQuickActions: (Boolean, Boolean, Boolean, Boolean) -> Unit,
@@ -168,6 +168,10 @@ fun TodayScreen(
     onUpdateInsightRange: (String, String) -> Unit = { _, _ -> },
     onUpdateSimpleQuickRegistration: (Boolean) -> Unit = {},
     onUpdateShowBulletinBoard: (Boolean) -> Unit = {},
+    onUpdateShowDevelopmentStrip: (Boolean) -> Unit = {},
+    onUpdateCollapsedCards: (Set<String>) -> Unit = {},
+    onUpdateDevelopmentChecks: (List<dk.babyapp.data.preferences.DevelopmentCheck>) -> Unit = {},
+    onUpdateChild: (dk.babyapp.data.profile.ChildProfile) -> Unit = {},
     medicines: List<MedicinePlan> = emptyList(),
     teeth: List<dk.babyapp.data.teeth.ToothRecord> = emptyList(),
     recentFrom: LocalDate? = null,
@@ -204,6 +208,8 @@ fun TodayScreen(
     var insightOpen by remember { mutableStateOf<dk.babyapp.data.preferences.InsightCard?>(null) }
     var hundredFoodsOpen by remember { mutableStateOf(false) }
     var headSidePick by remember { mutableStateOf(false) }
+    var developmentOpen by remember { mutableStateOf(false) }
+    fun collapse(card: String, collapsed: Boolean) = onUpdateCollapsedCards(if (collapsed) preferences.collapsedCards + card else preferences.collapsedCards - card)
     var growthPick by remember { mutableStateOf<List<QuickAction>>(emptyList()) }
     // [events] only covers recent days; the whole history is loaded while an older day or a chart is shown.
     val historyEvents = if (recentFrom != null && (overviewDate <= recentFrom || headSideOpen || chartsOpen || insightOpen != null || hundredFoodsOpen || dialog == EditorKind.SolidFood)) history() else null
@@ -239,8 +245,14 @@ fun TodayScreen(
                 onPrevious = { overviewDate = overviewDate.minusDays(1) },
                 onNext = { overviewDate = overviewDate.plusDays(1) }.takeIf { overviewDate < today },
                 onOpenSummary = { summaryOpen = true },
-                board = if (childId != null && preferences.showBulletinBoard) ({ BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes, onSaveHealthRecord) }) else null,
+                collapsed = "today" in preferences.collapsedCards, onCollapse = { collapse("today", it) },
             )
+        }
+        if (childId != null && preferences.showBulletinBoard) item {
+            BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes, onSaveHealthRecord, "events" in preferences.collapsedCards) { collapse("events", it) }
+        }
+        if (child != null && preferences.showDevelopmentStrip) item {
+            dk.babyapp.ui.more.DevelopmentStripCard(child, "development" in preferences.collapsedCards, { collapse("development", it) }) { developmentOpen = true }
         }
         item {
             BabySectionHeader("Hurtig registrering", actionIcon = Icons.Outlined.Tune, actionDescription = "Tilpas hurtig registrering", onAction = { customizeOpen = true })
@@ -353,10 +365,11 @@ fun TodayScreen(
         EditorKind.Medicine -> childId?.let { id -> MedicineDialog(id, null, { dialog = null }, medicines, onOpenMedicineCard = { medicineCardOpen = true }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.HealthNote -> childId?.let { id -> HealthNoteDialog(id, { dialog = null }) { onSaveHealthRecord(it); dialog = null } }
         EditorKind.StartActivity -> StartActivityDialog({ dialog = null }) { type -> childId?.let { onStartActivity(it, type) { success -> sleepError = !success } }; dialog = null }
-        EditorKind.Activity -> childId?.let { id -> ActivityDialog(manualActivityType, { dialog = null }) { start, end, type, notes -> onAddActivity(id, start, end, type, notes); dialog = null } }
+        EditorKind.Activity -> childId?.let { id -> ActivityDialog(manualActivityType, { dialog = null }) { start, end, type, notes, name -> onAddActivity(id, start, end, type, notes, name); dialog = null } }
         EditorKind.SolidFood -> childId?.let { id -> SolidFoodDialog(id, null, { dialog = null }, historyEvents ?: events, onOpenList = { hundredFoodsOpen = true }) { onSaveHealthRecord(it); dialog = null } }
         null -> Unit
     }
+    if (developmentOpen && child != null) dk.babyapp.ui.more.DevelopmentEntry(child, preferences.developmentChecks, onUpdateDevelopmentChecks, onUpdateChild) { developmentOpen = false }
     if (headSidePick && childId != null) HeadSidePickDialog(childEvents, childId, onSaveHealthRecord) { headSidePick = false }
     if (growthPick.isNotEmpty()) QuickChoiceDialog("Vækst", dk.babyapp.ui.theme.CareCategory.Measurement, growthPick.map { action -> QuickChoice(action.label) { dialog = EditorKind.valueOf(action.name) } }) { growthPick = emptyList() }
     // The whole 100 før 1 list opens from the Fast føde form, on top of it.
@@ -376,7 +389,7 @@ fun TodayScreen(
         CardButtonsDialog(category, QuickAction.entries.filterNot(::visible).map { it.name }.toSet(), { cardSettingsFor = null }) { hidden -> onUpdateHiddenQuickActions(hidden); cardSettingsFor = null }
     }
     if (summaryOpen) DaySummaryDialog(allChildEvents, overviewDate) { summaryOpen = false }
-    if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }, preferences.showBulletinBoard, onUpdateShowBulletinBoard) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
+    if (dashboardCustomizeOpen) DashboardMetricDialog(preferences.dashboardMetrics, { dashboardCustomizeOpen = false }, preferences.showBulletinBoard, onUpdateShowBulletinBoard, preferences.showDevelopmentStrip, onUpdateShowDevelopmentStrip) { metrics -> onUpdateDashboardMetrics(metrics); dashboardCustomizeOpen = false }
     if (sleepError) AlertDialog(
         onDismissRequest = { sleepError = false },
         title = { Text("Registreringen kan ikke startes") },
@@ -505,9 +518,10 @@ internal fun MedicineStatus(plans: List<MedicinePlan>, events: List<CareEventEnt
 }
 
 @Composable
-internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, board: Boolean = true, onBoardChange: (Boolean) -> Unit = {}, onSave: (List<DashboardMetric>) -> Unit) {
+internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: () -> Unit, board: Boolean = true, onBoardChange: (Boolean) -> Unit = {}, strip: Boolean = true, onStripChange: (Boolean) -> Unit = {}, onSave: (List<DashboardMetric>) -> Unit) {
     // Shown fields first in their order, then the hidden ones.
     var showBoard by remember { mutableStateOf(board) }
+    var showStrip by remember { mutableStateOf(strip) }
     var order by remember { mutableStateOf(current + DashboardMetric.entries.filterNot { it in current }) }
     var shown by remember { mutableStateOf(current.toSet()) }
     FormDialog(
@@ -516,15 +530,16 @@ internal fun DashboardMetricDialog(current: List<DashboardMetric>, onDismiss: ()
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Vælg felterne, og flyt dem op eller ned.", style = MaterialTheme.typography.bodyMedium)
-                // The opslagstavle always sits at the bottom of the card, so it can only be shown or hidden.
-                CustomizeRow("Opslagstavle", showBoard, { showBoard = it })
+                // The cards under I dag can only be shown or hidden.
+                CustomizeRow("Begivenheder", showBoard, { showBoard = it })
+                CustomizeRow("Udvikling", showStrip, { showStrip = it })
                 order.forEachIndexed { index, metric ->
                     val (up, down) = order.moveCallbacks(index) { order = it }
                     CustomizeRow(metric.displayLabel(), metric in shown, { on -> shown = if (on) shown + metric else shown - metric }, up, down)
                 }
             }
         },
-        confirmButton = { Button(enabled = shown.isNotEmpty(), onClick = { if (showBoard != board) onBoardChange(showBoard); onSave(order.filter { it in shown }) }) { Text("Gem") } },
+        confirmButton = { Button(enabled = shown.isNotEmpty(), onClick = { if (showBoard != board) onBoardChange(showBoard); if (showStrip != strip) onStripChange(showStrip); onSave(order.filter { it in shown }) }) { Text("Gem") } },
         dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
@@ -627,7 +642,7 @@ internal fun ActiveTimerCard(event: CareEventEntity, onToggle: (CareEventEntity)
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(event.runningSince) { while (event.runningSince != null) { now = System.currentTimeMillis(); delay(1_000) } }
     val elapsed = event.elapsedSeconds(now)
-    val title = listOfNotNull(childLabel, when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> "Søvn"; CareEventType.Activity -> event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }).joinToString(" · ")
+    val title = listOfNotNull(childLabel, when (event.type) { CareEventType.Breastfeeding -> "Amning – ${sideLabel(event.activeSide)}"; CareEventType.Sleep -> "Søvn"; CareEventType.Activity -> event.activityName.takeIf { event.activityType == ActivityType.Other && it.isNotBlank() } ?: event.activityType?.displayLabel() ?: "Aktivitet"; else -> "Pumpning" }).joinToString(" · ")
     val running = event.runningSince != null
     val category = MaterialTheme.babyColors.category(event.careCategory)
     val toggle: @Composable () -> Unit = {
@@ -871,7 +886,7 @@ internal fun SleepDialog(
 /** Common sleeping places as chips; anything else can still be written. */
 @Composable
 internal fun SleepPlaceField(value: String, onChange: (String) -> Unit) {
-    val places = listOf("Seng", "Barnevogn", "Lift", "Kontaktlur", "På arm", "Bil", "Bæresele")
+    val places = listOf("Seng", "Barnevogn", "Lift", "Kontaktlur", "Bil", "Bæresele")
     var other by remember { mutableStateOf(value.isNotBlank() && value !in places) }
     ChoiceChips(places.map { it to it } + ("" to "Andet"), if (other) "" else value.takeIf { it in places }, allowNone = true, label = "Sovested") { picked ->
         other = picked == ""
@@ -913,9 +928,10 @@ internal fun MeasurementDialog(
 internal fun ActivityDialog(
     initialType: ActivityType?,
     onDismiss: () -> Unit,
-    onSave: (Long, Long, ActivityType, String) -> Unit,
+    onSave: (Long, Long, ActivityType, String, String) -> Unit,
 ) {
     var start by remember { mutableLongStateOf(System.currentTimeMillis() - 300_000) }
+    var name by remember { mutableStateOf("") }
     var end by remember { mutableStateOf<Long?>(System.currentTimeMillis()) }
     var type by remember { mutableStateOf(initialType ?: ActivityType.TummyTime) }
     var notes by remember { mutableStateOf("") }
@@ -925,13 +941,14 @@ internal fun ActivityDialog(
         title = { Text(if (availableTypes.size > 1) "Diverse" else type.displayLabel()) },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (availableTypes.size > 1) ChoiceChips(availableTypes.map { it to it.displayLabel() }, type) { it?.let { type = it } }
+            if (type == ActivityType.Other) ActivityNameField(name) { name = it }
             OptionalEndField(end, { end = it }) { maxOf(start + 300_000, System.currentTimeMillis()) }
             MoreDetails("starttidspunkt, noter") {
                 Text(if (end == null) "Tidspunkt" else "Start", style = MaterialTheme.typography.labelMedium); DateTimeFields(start) { start = it }
                 RegistrationTextField(notes, { notes = it }, label = { Text("Noter") })
             }
         } },
-        confirmButton = { Button(enabled = (end ?: start) >= start, onClick = { onSave(start, end ?: start, type, notes) }) { Text("Gem") } },
+        confirmButton = { Button(enabled = (end ?: start) >= start, onClick = { onSave(start, end ?: start, type, notes, if (type == ActivityType.Other) name.trim() else "") }) { Text("Gem") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
     )
 }
@@ -1087,7 +1104,10 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
                     if (type == MeasurementType.Weight) WeightUnitSelector(unit, value) { newUnit, newValue -> unit = newUnit; value = newValue }
                     RegistrationTextField(value, { value = it.replace(',', '.') }, label = { Text("Værdi ($unit) *") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal))
                 }
-                CareEventType.Activity -> ChoiceChips(ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }, draft.activityType ?: ActivityType.Other) { it?.let { draft = draft.copy(activityType = it) } }
+                CareEventType.Activity -> {
+                    ChoiceChips(ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }, draft.activityType ?: ActivityType.Other) { it?.let { draft = draft.copy(activityType = it) } }
+                    if ((draft.activityType ?: ActivityType.Other) == ActivityType.Other) ActivityNameField(draft.activityName) { draft = draft.copy(activityName = it) }
+                }
                 else -> Unit
             }
             MoreDetails("noter", draft.notes.isNotBlank()) { RegistrationTextField(draft.notes, { draft = draft.copy(notes = it) }, label = { Text("Noter") }) }
@@ -1110,7 +1130,7 @@ private fun HealthNoteDialog(childId: String, onDismiss: () -> Unit, onSave: (Ca
 }
 
 @Composable
-internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null, onPrevious: (() -> Unit)? = null, onNext: (() -> Unit)? = null, onOpenSummary: (() -> Unit)? = null, board: (@Composable () -> Unit)? = null) {
+internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<DashboardMetric>, date: LocalDate, onCustomize: (() -> Unit)? = null, onPrevious: (() -> Unit)? = null, onNext: (() -> Unit)? = null, onOpenSummary: (() -> Unit)? = null, collapsed: Boolean = false, onCollapse: ((Boolean) -> Unit)? = null) {
             val breastMinutes = todayEvents.filter { it.type == CareEventType.Breastfeeding }.sumOf { it.elapsedSeconds() } / 60
             val lastNursing = dk.babyapp.domain.lastNursingInterval(todayEvents)
             val lastSide = lastNursing?.second
@@ -1172,8 +1192,11 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                         }
                         if (onPrevious != null) IconButton(onClick = { onNext?.invoke() }, enabled = onNext != null) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Næste dags overblik") }
                         if (onCustomize != null) IconButton(onClick = onCustomize) { Icon(Icons.Outlined.Tune, "Tilpas overblikket") }
+                        if (onCollapse != null) IconButton(onClick = { onCollapse(!collapsed) }) {
+                            Icon(if (collapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, if (collapsed) "Fold I dag ud" else "Fold I dag sammen")
+                        }
                     }
-                    Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (!collapsed) Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     overviewItems.chunked(2).forEachIndexed { rowIndex, row ->
                         Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEachIndexed { columnIndex, item ->
@@ -1198,8 +1221,12 @@ internal fun DailyOverview(todayEvents: List<CareEventEntity>, metrics: List<Das
                             if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                         }
                     }
-                    board?.invoke()
                     }
                 }
             }
 }
+
+/** What "Andet" was, e.g. babysvømning; shown as the registration's title. */
+@Composable
+internal fun ActivityNameField(value: String, onChange: (String) -> Unit) =
+    RegistrationTextField(value, onChange, label = { Text("Hvad?") }, placeholder = { Text("Fx babysvømning") }, singleLine = true)

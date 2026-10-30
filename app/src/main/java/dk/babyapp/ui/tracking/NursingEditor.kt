@@ -56,6 +56,7 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
     var awakenings by remember(event.id) { mutableStateOf(event.awakenings?.toString().orEmpty()) }
     var quality by remember(event.id) { mutableStateOf(event.sleepQuality) }
     var activityType by remember(event.id) { mutableStateOf(event.activityType ?: ActivityType.Other) }
+    var activityName by remember(event.id) { mutableStateOf(event.activityName) }
     var pumpingMethod by remember(event.id) { mutableStateOf(event.pumpingMethod) }
     var pumped by remember(event.id) { mutableStateOf(event.pumpedAmountMl?.toString().orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -75,7 +76,7 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
         val edited = event.editTimerIntervals(intervals, System.currentTimeMillis()).copy(notes = notes)
         when (event.type) {
             CareEventType.Breastfeeding -> edited.copy(breastfeedingIssue = issue)
-            CareEventType.Activity -> edited.copy(activityType = activityType)
+            CareEventType.Activity -> edited.copy(activityType = activityType, activityName = if (activityType == ActivityType.Other) activityName.trim() else event.activityName)
             CareEventType.Pumping -> edited.copy(pumpingMethod = pumpingMethod, pumpedAmountMl = pumped.toIntOrNull())
             else -> edited.copy(sleepLocation = location, settlingMethod = settling, awakenings = awakenings.toIntOrNull(), sleepQuality = quality)
         }
@@ -107,7 +108,10 @@ internal fun NursingEditor(event: CareEventEntity, onDismiss: () -> Unit, onSave
                 AmountField(pumped, { pumped = it }, "Pumpet (ml)")
                 PumpingMethodChips(pumpingMethod) { pumpingMethod = it }
             }
-            else -> ChoiceChips(ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }, activityType) { it?.let { activityType = it } }
+            else -> {
+                ChoiceChips(ActivityType.entries.filter { it != ActivityType.Medicine }.map { it to it.displayLabel() }, activityType) { it?.let { activityType = it } }
+                if (activityType == ActivityType.Other) ActivityNameField(activityName) { activityName = it }
+            }
         }
         // Everything else, opening below.
         MoreDetails(if (sleep) "intervaller, puttemetode, opvågninger, noter" else "intervaller, noter",

@@ -34,7 +34,7 @@ class BabyAppNavigationTest {
         val child = ChildProfile(id = "child", name = "Freja")
         var selected: dk.babyapp.data.tracking.ActivityType? = null
         composeRule.setContent { BabyAppNavigation(profiles = listOf(child), activeChild = child, onSelectChild = {}, onSaveProfile = { _, _ -> }, onDeleteProfile = {}, photoFile = { null }, onPhotoSelected = { "" }, preferences = AppPreferences(hasSeenGettingStarted = true),
-            onStartActivity = { _, type, done -> selected = type; done(true) }, onAddActivity = { _, _, _, type, _ -> selected = type }) }
+            onStartActivity = { _, type, done -> selected = type; done(true) }, onAddActivity = { _, _, _, type, _, _ -> selected = type }) }
         val options = listOf("Mavetid" to dk.babyapp.data.tracking.ActivityType.TummyTime, "Bad" to dk.babyapp.data.tracking.ActivityType.Bath, "Leg" to dk.babyapp.data.tracking.ActivityType.Play, "Udetid" to dk.babyapp.data.tracking.ActivityType.OutdoorTime, "Andet" to dk.babyapp.data.tracking.ActivityType.Other)
         options.forEach { (label, type) ->
             composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label) and SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role, androidx.compose.ui.semantics.Role.Button))

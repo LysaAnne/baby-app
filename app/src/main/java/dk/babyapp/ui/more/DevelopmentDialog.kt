@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.runtime.remember
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
@@ -78,6 +80,7 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
     val mine = checks.filter { it.childId == child.id }.associateBy { it.key }
     fun toggle(key: String) = onUpdateChecks(mine[key]?.let { checks - it } ?: (checks + DevelopmentCheck(child.id, key, today.toString())))
     var tab by rememberSaveable { mutableStateOf(DevelopmentTab.Now) }
+    var info by remember { mutableStateOf<dk.babyapp.domain.Milestone?>(null) }
     val colors = MaterialTheme.babyColors.category(CareCategory.Measurement)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         CategoryFormTheme(CareCategory.Measurement) {
@@ -143,6 +146,7 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                                 Text(listOfNotNull(milestone.window(), "typisk nu".takeIf { now && check == null }, check?.let { "kunne den ${LocalDate.parse(it.date).format(dateFormat)}" }).joinToString(" · "),
                                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
+                                            IconButton(onClick = { info = milestone }) { Icon(Icons.AutoMirrored.Outlined.HelpOutline, "Om ${milestone.title.lowercase()}", tint = colors.accent) }
                                         }
                                     }
                                 }
@@ -157,6 +161,14 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                 }
             }
         }
+    }
+    info?.let { milestone ->
+        dk.babyapp.ui.tracking.FormDialog(category = CareCategory.Measurement, onDismissRequest = { info = null }, title = { Text(milestone.title) }, subtitle = milestone.window(), text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(milestone.about)
+                if (milestone.who) Text("Vinduet er WHO's: den alder, hvor 1 % til 99 % af raske børn når milepælen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }, confirmButton = { androidx.compose.material3.TextButton(onClick = { info = null }) { Text("Luk") } })
     }
 }
 
@@ -195,7 +207,7 @@ private fun CheckMark(done: Boolean, accent: Color) {
 
 /** Weeks 0–80 as a strip: each spurt's unsettled period as a block, and a line where the child is now. */
 @Composable
-private fun LeapStrip(weeks: Double, accent: Color, light: Color) {
+internal fun LeapStrip(weeks: Double, accent: Color, light: Color) {
     val end = 80.0
     Canvas(Modifier.fillMaxWidth().height(28.dp).semantics { contentDescription = "Tidslinje over de ti spring, med barnets alder markeret" }) {
         val h = 14.dp.toPx()

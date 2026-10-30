@@ -62,6 +62,9 @@ class FamilyViewModel @Inject constructor(
         }
     }
 
+    /** Saves one changed field of a child, such as the due date or colour profile; parents and care team are left as they are. */
+    fun updateChild(profile: ChildProfile) = viewModelScope.launch { profilesRepository.save(profile) }
+
     fun deleteProfile(profile: ChildProfile) {
         viewModelScope.launch {
             val next = profilesRepository.profiles.first().firstOrNull { it.id != profile.id }

@@ -85,6 +85,7 @@ fun ProfileForm(
     onPhotoSelected: suspend (Uri) -> String,
     units: MeasurementUnits = MeasurementUnits.Metric,
     colorProfiles: List<ColorProfile>,
+    onSaveColorProfile: (ColorProfile) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -147,7 +148,7 @@ fun ProfileForm(
                 }
             }
         }
-        item { ChildThemePicker(draft.colorTheme, colorProfiles) { onDraftChange(draft.copy(colorTheme = it)) } }
+        item { ChildThemePicker(draft.colorTheme, colorProfiles, onSaveColorProfile) { onDraftChange(draft.copy(colorTheme = it)) } }
         item { Text(stringResource(R.string.basic_information), style = MaterialTheme.typography.titleLarge) }
         item { FormField(draft.name, { onDraftChange(draft.copy(name = it)) }, R.string.child_name, true) }
         item { FormField(draft.nickname, { onDraftChange(draft.copy(nickname = it)) }, R.string.nickname) }
@@ -288,33 +289,32 @@ private fun BirthStatusDropdown(value: BirthStatus, onChange: (BirthStatus) -> U
 }
 
 @Composable
-private fun ChildThemePicker(value: String, profiles: List<ColorProfile>, onChange: (String) -> Unit) {
-    Text(stringResource(R.string.child_color_theme), style = MaterialTheme.typography.labelLarge)
-    listOf(false, true).forEach { dark ->
-        Text(
-            stringResource(if (!dark) R.string.light_color_profiles else R.string.dark_color_profiles),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(profiles.filter { it.isDark == dark }) { theme ->
-                val label = theme.name
-                Surface(
-                    onClick = { onChange(theme.id) },
-                    modifier = Modifier.size(50.dp).semantics { contentDescription = label },
-                    shape = CircleShape,
-                    color = Color.Transparent,
-                    border = BorderStroke(if (theme.id == value) 3.dp else 1.dp, if (theme.id == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
-                ) {
-                    Row(Modifier.clip(CircleShape)) {
-                        childThemeSwatches(theme).forEach { swatch ->
-                            Surface(Modifier.size(width = 13.dp, height = 50.dp), color = swatch) {}
-                        }
+private fun ChildThemePicker(value: String, profiles: List<ColorProfile>, onSaveProfile: (ColorProfile) -> Unit, onChange: (String) -> Unit) {
+    var creating by remember { mutableStateOf<ColorProfile?>(null) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.child_color_theme), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        // A new profile is made here and chosen for the child at once.
+        TextButton(onClick = { creating = dk.babyapp.ui.theme.newColorProfile(profiles) }) { Text("+ Lav en farveprofil") }
+    }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(profiles) { theme ->
+            val label = theme.name
+            Surface(
+                onClick = { onChange(theme.id) },
+                modifier = Modifier.size(50.dp).semantics { contentDescription = label },
+                shape = CircleShape,
+                color = Color.Transparent,
+                border = BorderStroke(if (theme.id == value) 3.dp else 1.dp, if (theme.id == value) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                Row(Modifier.clip(CircleShape)) {
+                    childThemeSwatches(theme).forEach { swatch ->
+                        Surface(Modifier.size(width = 13.dp, height = 50.dp), color = swatch) {}
                     }
                 }
             }
         }
     }
+    creating?.let { profile -> dk.babyapp.ui.theme.ColorProfileEditDialog(profile, onSave = { saved -> onSaveProfile(saved); onChange(saved.id); creating = null }, onDismiss = { creating = null }) }
     Text(stringResource(R.string.selected_color_theme, profiles.firstOrNull { it.id == value }?.name ?: stringResource(R.string.color_neutral_light)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

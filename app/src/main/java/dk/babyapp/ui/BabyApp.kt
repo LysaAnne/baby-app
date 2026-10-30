@@ -65,6 +65,7 @@ fun BabyApp(
                     activeChild = state.activeChild,
                     onSelectChild = viewModel::selectChild,
                     onSaveProfile = family::saveProfile,
+                    onUpdateChild = family::updateChild,
                     onDeleteProfile = family::deleteProfile,
                     photoFile = family::photoFile,
                     onPhotoSelected = family::importPhoto,
@@ -89,6 +90,10 @@ fun BabyApp(
                     onUpdateInsightRange = settings::updateInsightRange,
                     onUpdateSimpleQuickRegistration = settings::updateSimpleQuickRegistration,
                     onUpdateShowBulletinBoard = settings::updateShowBulletinBoard,
+                    onUpdateShowDevelopmentStrip = settings::updateShowDevelopmentStrip,
+                    onUpdateCustomReminders = settings::updateCustomReminders,
+                    onUpdateDevelopmentReminders = settings::updateDevelopmentReminders,
+                    onUpdateCollapsedCards = settings::updateCollapsedCards,
                     onBackupSaved = settings::markBackupSaved,
                     onUpdateHealthQuestions = settings::updateHealthQuestions,
                     onUpdateBoardNotes = settings::updateBoardNotes,
@@ -137,8 +142,6 @@ fun BabyApp(
                     onSaveColorProfile = { settings.saveColorProfile(it) },
                     onDeleteColorProfile = settings::deleteColorProfile,
                     onMoveColorProfile = settings::moveColorProfile,
-                    exportColorProfiles = settings::exportColorProfiles,
-                    importColorProfiles = settings::importColorProfiles,
                     onDismissGettingStarted = viewModel::dismissGettingStarted,
                 )
             }

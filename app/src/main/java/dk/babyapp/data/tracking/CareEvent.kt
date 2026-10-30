@@ -87,6 +87,8 @@ data class CareEventEntity(
     @androidx.room.ColumnInfo(defaultValue = "''") val foodAmount: String = "",
     @androidx.room.ColumnInfo(defaultValue = "''") val foodReaction: String = "",
     @androidx.room.ColumnInfo(defaultValue = "''") val medicineId: String = "",
+    /** What "Andet" under Diverse was, written by the user. */
+    @androidx.room.ColumnInfo(defaultValue = "''") val activityName: String = "",
     val deletedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),

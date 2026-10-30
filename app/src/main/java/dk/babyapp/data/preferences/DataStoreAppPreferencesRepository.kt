@@ -60,6 +60,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             insightThrough = values[INSIGHT_THROUGH],
             simpleQuickRegistration = values[SIMPLE_QUICK] ?: false,
             showBulletinBoard = values[SHOW_BULLETIN_BOARD] ?: true,
+            showDevelopmentStrip = values[SHOW_DEVELOPMENT_STRIP] ?: true,
+            developmentRemindersEnabled = values[DEVELOPMENT_REMINDERS] ?: false,
+            customReminders = values[CUSTOM_REMINDERS]?.let { runCatching { Json.decodeFromString<List<CustomReminder>>(it) }.getOrNull() } ?: emptyList(),
+            collapsedCards = values[COLLAPSED_CARDS] ?: emptySet(),
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
             developmentChecks = values[DEVELOPMENT_CHECKS]?.let { runCatching { Json.decodeFromString<List<DevelopmentCheck>>(it) }.getOrNull() } ?: emptyList(),
@@ -214,6 +218,22 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[SIMPLE_QUICK] = enabled }
     }
 
+    override suspend fun updateDevelopmentReminders(enabled: Boolean) {
+        context.appPreferencesDataStore.edit { it[DEVELOPMENT_REMINDERS] = enabled }
+    }
+
+    override suspend fun updateCustomReminders(reminders: List<CustomReminder>) {
+        context.appPreferencesDataStore.edit { it[CUSTOM_REMINDERS] = Json.encodeToString(reminders) }
+    }
+
+    override suspend fun updateShowDevelopmentStrip(shown: Boolean) {
+        context.appPreferencesDataStore.edit { it[SHOW_DEVELOPMENT_STRIP] = shown }
+    }
+
+    override suspend fun updateCollapsedCards(cards: Set<String>) {
+        context.appPreferencesDataStore.edit { it[COLLAPSED_CARDS] = cards }
+    }
+
     override suspend fun updateShowBulletinBoard(shown: Boolean) {
         context.appPreferencesDataStore.edit { it[SHOW_BULLETIN_BOARD] = shown }
     }
@@ -256,6 +276,10 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val INSIGHT_CARDS_KNOWN = stringPreferencesKey("insight_cards_known")
         val SIMPLE_QUICK = booleanPreferencesKey("simple_quick_registration")
         val SHOW_BULLETIN_BOARD = booleanPreferencesKey("show_bulletin_board")
+        val SHOW_DEVELOPMENT_STRIP = booleanPreferencesKey("show_development_strip")
+        val DEVELOPMENT_REMINDERS = booleanPreferencesKey("development_reminders")
+        val CUSTOM_REMINDERS = stringPreferencesKey("custom_reminders")
+        val COLLAPSED_CARDS = androidx.datastore.preferences.core.stringSetPreferencesKey("collapsed_cards")
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
         val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")
         val BOARD_NOTES = stringPreferencesKey("board_notes")

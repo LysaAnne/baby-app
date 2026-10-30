@@ -36,6 +36,14 @@ data class AppPreferences(
     val simpleQuickRegistration: Boolean = false,
     /** The opslagstavle at the bottom of the I dag card. */
     val showBulletinBoard: Boolean = true,
+    /** The development strip on I dag. */
+    val showDevelopmentStrip: Boolean = true,
+    /** A notification when a development spurt begins or a milestone's usual window opens. */
+    val developmentRemindersEnabled: Boolean = false,
+    /** Own reminders, e.g. mavetid on weekdays at 10. */
+    val customReminders: List<CustomReminder> = emptyList(),
+    /** Cards on I dag that are folded together: "today", "events", "development". */
+    val collapsedCards: Set<String> = emptySet(),
     /** When an encrypted backup was last saved to a file, or null if never. */
     val lastBackupAt: Long? = null,
     /** Questions for the next health visit, per child; attached to a visit when it is registered. */
@@ -49,6 +57,10 @@ data class AppPreferences(
     /** Reminders a week before and on the day of examinations and vaccinations in the Danish programme. */
     val healthRemindersEnabled: Boolean = true,
 )
+
+/** An own reminder: [title] on the chosen weekdays ([days], 1 = Monday) at [hour]:[minute]. */
+@kotlinx.serialization.Serializable
+data class CustomReminder(val id: String = java.util.UUID.randomUUID().toString(), val title: String, val days: Set<Int>, val hour: Int, val minute: Int, val enabled: Boolean = true)
 
 /** [key] is a leap item or a milestone; [date] is when it was ticked off, as yyyy-mm-dd. */
 @kotlinx.serialization.Serializable
@@ -68,7 +80,7 @@ data class MeasurementChartSettings(val period: String = "Month", val from: Stri
 
 enum class QuickAction(val label: String, val category: QuickActionCategory) {
     Breastfeeding("Amning", QuickActionCategory.Feeding), Bottle("Flaske", QuickActionCategory.Feeding), Pumping("Pumpning", QuickActionCategory.Feeding),
-    HeadSide("Liggeside", QuickActionCategory.Sleep), Diaper("Ble", QuickActionCategory.Diaper), Nap("Søvn", QuickActionCategory.Sleep), Night("Nattesøvn", QuickActionCategory.Sleep),
+    Nap("Søvn", QuickActionCategory.Sleep), Night("Nattesøvn", QuickActionCategory.Sleep), HeadSide("Liggeside", QuickActionCategory.Sleep), Diaper("Ble", QuickActionCategory.Diaper),
     Weight("Vægt", QuickActionCategory.Measurements), Height("Højde", QuickActionCategory.Measurements), HeadCircumference("Hovedomkreds", QuickActionCategory.Measurements), Temperature("Temperatur", QuickActionCategory.Measurements),
     HealthVisit("Sundhedsbesøg", QuickActionCategory.Health), Vaccination("Vaccination", QuickActionCategory.Health), Medicine("Medicin", QuickActionCategory.Health), HealthNote("Helbredsnotat", QuickActionCategory.Health),
     SolidFood("Fast føde", QuickActionCategory.Feeding), TummyTime("Mavetid", QuickActionCategory.Misc), Bath("Bad", QuickActionCategory.Misc), Play("Leg", QuickActionCategory.Misc), OutdoorTime("Udetid", QuickActionCategory.Misc), Activity("Andet", QuickActionCategory.Misc),
