@@ -1872,4 +1872,197 @@ val songLyrics: Map<String, String> = mapOf(
         nye sko med spænder, -
         så sover barnet længer.
     """.trimIndent(),
+    "ugle-abc" to """
+        A B C D E F G
+        H I J K L M N
+        A B C D E F G
+        H I J K L M N
+        O P Q R S T U
+        O P Q R S T U
+        V X Y Z Æ og Ø
+        nu kan jeg min ABC
+    """.trimIndent(),
+    "ugle-fra-engeland-til-skotland" to """
+        Fra Engeland til Skotland,
+        der sejlede en brig,
+        med læk i begge ender
+        og med rådden mast og rig,
+        og helledusseda,
+        vi kommer langvejs fra,
+        hurra for skippers kone,
+        når vi ser Amerika.
+
+        Vi havde ingen anker
+        og heller ingen rat,
+        vi sejled efter bølgerne
+        og skippers gamle hat,
+        og helledusseda,
+        vi kommer langvejs fra,
+        hurra for skippers kone,
+        når vi ser Amerika.
+
+        Lanternerne i stavnen
+        vi aldrig hængte ud,
+        vi klared os med lygten
+        på kaptajnens røde tud,
+        og helledusseda,
+        vi kommer langvejs fra,
+        hurra for skippers kone,
+        når vi ser Amerika.
+
+        Hver morgen og hver aften
+        så fik vi mælkegrød,
+        men det var den slags mælk,
+        som udi Nordsøen der flød,
+        og helledusseda,
+        vi kommer langvejs fra,
+        hurra for skippers kone,
+        når vi ser Amerika.
+
+        Kahytten, som vi boede i,
+        det var et brændeskur,
+        kompasset det var skiven
+        af et gammelt kukkeur,
+        og helledusseda,
+        vi kommer langvejs fra,
+        hurra for skippers kone,
+        når vi ser Amerika.
+
+        Vor skipper prygled konen
+        båd' gul og blå hver dag,
+        så blev hun hejst i mastens top,
+        det var det svenske flag,
+        og helledusseda,
+        vi kommer langvejs fra,
+        hurra for skippers kone,
+        når vi ser Amerika.
+    """.trimIndent(),
+    "ugle-kom-min-lille" to """
+        Kom, min lille, nu vi ville
+        rask til skolen gå.
+        Kom, min lille, nu vi ville
+        rask til skolen gå.
+        Synge, læse, skrive,
+        så at vi kan blive
+        raske drenge, flinke piger.
+        Ih, hvor det skal gå.
+
+        Ja, vi ville gerne være
+        kække, muntre små,
+        ja, vi ville gerne være
+        kække, muntre små,
+        som småfugle sjunge,
+        medens vi er unge.
+        Rigtig mange kønne sange
+        far og mor skal få.
+    """.trimIndent(),
+    "ugle-mae-sir-det-lille-lam" to """
+        Mæ, si'r det lille lam,
+        mor, jeg fryser, jeg vil hjem!
+        Mæ, si'r det store får,
+        vent, til aftenklokken slår,
+        så skal du nok komme hjem, mæ!
+
+        Rap, siger ænderne små,
+        nu skal det lystigt hjemad gå.
+        Sove vi skal, til sol står op,
+        så skal i vandet vi pjaske vor krop.
+        Rap, siger ænderne små, rap!
+
+        Mjav, si'r den lille kat,
+        nu vil jeg sove så sødt i nat.
+        I morgen skal vi lege igen,
+        for jeg vil helst lege dagen hen.
+        Mjav, si'r den lille kat, mjav!
+
+        Prrr, si'r den gamle hest,
+        jeg vil trække, som jeg kan bedst.
+        Gid jeg stod i den varme stald,
+        og hørte i dag ej flere knald.
+        Prrr, si'r den gamle hest, prrr!
+
+        Vov, si'r den store hund,
+        våge må jeg endnu en stund,
+        fare om og passe på,
+        at de trygt til ro kan gå.
+        Vov, si'r den store hund, vov!
+    """.trimIndent(),
+    "ugle-og-hoer-lille-mor" to """
+        Og hør, lille mo'er, hvad har hun i sin kurv i dag,
+        og hør, lille mo'er, hvad har hun i sin kurv i dag?
+        Kyllinger, kyllinger, gæs og høns,
+        kyllinger, kyllinger, gæs og høns,
+        og en dejlig hane med sporer,
+        og en dejlig hane med sporer.
+        Hvad siger kylling? - Pip, pip, pip!
+        Hvad siger gåsen? - Gæk, gæk, gæk!
+        Hvad siger hønen? - Kluk, kluk, kluk!
+        Hvad siger hanen, hanen med sporer? - Kykliky!
+
+        Og hør, studedriver, hvad har han i sit reb i dag,
+        og hør, studedriver, hvad har han i sit reb i dag?
+        Fedekøer, fedekøer, grise og får,
+        fedekøer, fedekøer, grise og får,
+        og et gammelt æsel med ører,
+        og et gammelt æsel med ører.
+        Hvad siger fedeko? - Buh, buh buh!
+        Hvad siger grisen? - Gys, gys, gys!
+        Hvad siger fåret? - Mæh, mæh, mæh!
+        Hvad siger æslet, æslet med øren? - Ia, ia, ia!
+
+        Og hør, fuglefænger, hvad har han i sit net i dag,
+        og hør, fuglefænger, hvad har han i sit net i dag?
+        Vildænder, vildænder, krager og stær,
+        vildænder, vildænder, krager og stær,
+        og en lystig gøg hist fra skoven,
+        og en lystig gøg hist fra skoven.
+        Hvad siger vildand? - Rap, rap, rap!
+        Hvad siger kragen? - Kra, kra, kra!
+        Hvad siger stæren? - (fløjtes 3 gange)
+        Hvad siger gøgen, gøgen fra skoven? - Kuk, kuk, kuk!
+    """.trimIndent(),
+    "ugle-op-min-lille-ole" to """
+        Op, min lille Ole!
+        Nu skal du i skole.
+        Alle mand er oppe nu,
+        ingen ligger uden du.
+        Tavlen længes, bogen venter,
+        spørger om du snart den henter.
+        Nu et hop! og en, to, tre,
+        er du færdig, skal du se.
+
+        Se, nu sidder Ole
+        henne i sin skole,
+        sidder pænt og passer på
+        mellem sine venner små.
+        Han kan svare rask i klassen,
+        han kan køre hest på pladsen.
+        han kan springe som en kat,
+        ingen kan få Ole fat.
+
+        Bomme, lomme, lomme!
+        Ole slår på tromme.
+        Ole er en rask krabat,
+        han vil være landsoldat.
+        Han vil foran med sin tromme,
+        Bomme, lomme, lomme, lomme!
+        Han slog til, så skindet sprak,
+        ja, så skindet sprak, ak, ak!
+    """.trimIndent(),
+    "ugle-sov-soedelig-sov-bloedelig" to """
+        Sov sødelig, sov blødelig,
+        luk dine øjne til!
+        Gud Fader udi Himmerig
+        din vogter være vil.
+
+        Dig Kristus gav et evigt håb,
+        han og for dig er død,
+        og til hans liv du i din dåb
+        ved ånden er genfødt.
+
+        Han sender sine engle ned
+        om vuggen kreds at slå,
+        thi luk dit øje, barn, med fred!
+        Guds øjne åbne stå.
+    """.trimIndent(),
 )

@@ -1,6 +1,6 @@
 # Sangtekster fra ugle.dk
 
-Kontrolleret 30. oktober 2026. 53 af de 61 linkede sange har fået indbygget tekst.
+Kontrolleret 30. oktober 2026. 60 af de 61 linkede sange har fået indbygget tekst.
 
 Kun sangtekster er kopieret, ikke Jørgen Eberts kommentarer eller indspilninger. Se [kildens ophavsretsoplysninger](https://ugle.dk/ophavsret.html). Teksterne følger kildens stavning, tegnsætning, linjer og vers. HTML-formatering er fjernet.
 
@@ -63,16 +63,20 @@ For **Moar, jeg skal tisse** og **Nu lukker sig mit øje** bruges kun den først
 | [Tornerose var et vakkert barn](https://ugle.dk/tornerose_var_et_vakkert_barn.html) | Gammel sangleg |
 | [Tre katte krøb op på taget engang](https://ugle.dk/tre_katte_kroeb_op.html) | G. Rode; [forfatter død 1878](https://ugle.dk/g_rode.html). |
 | [Visselul, mit lille barn](https://ugle.dk/visselul_mit_lille_barn.html) | Gammel vuggesang |
+| [ABC-visen](https://ugle.dk/abc.html) | Anonym, gammel alfabetvise fra før 1948 ifølge kildens historiske note. Dette er ikke revyvisen fra 1929. |
+| [Fra Engeland til Skotland](https://ugle.dk/fra_engeland_til_skotland.html) | Traditionel svensk vise; også den danske version er angivet som traditionel hos [Aarhus-Abruzzo](https://www.aarhus-abruzzo.eu/hjemmeside-for-kulturforeningen-aarhus-abruzzo-aarhus-scanno/levende-sangtekster/sø-og-folk/fra-engeland-til-skotland). |
+| [Kom, min lille, nu vi ville](https://ugle.dk/kom_min_lille.html) | Traditionel norsk sang; den danske tekst registreres som Volkslieder hos [LiederNet](https://www.lieder.net/lieder/get_settings.html?ComposerId=193). |
+| [Mæ, si'r det lille lam](https://ugle.dk/mae_sir_det_lille_lam.html) | Traditionel tekst; [udgiverens kreditering](https://www.youtube.com/watch?v=dqTmLxuTO-c) og [ODS-dokumentation fra 1865](https://www.ordnet.dk/ods/ordbog/60093043). |
+| [Og hør, lille mo'er](https://ugle.dk/og_hoer_lille_mor.html) | Gammel sjællandsk sangleg fra ca. 1860 ifølge kildens historiske note. |
+| [Op, min lille Ole](https://ugle.dk/op_min_lille_ole.html) | [Teksten tilskrives H. C. Frederiksen](https://sangetilboern.dk/op-min-lille-ole-nu-skal-du-i-skole/), [død 1921](https://biografiskleksikon.lex.dk/H.C._Frederiksen). Ugle.dk-versionens ordlyd er bevaret. |
+| [Sov sødelig, sov blødelig](https://ugle.dk/sov_soedelig_sov_bloedelig.html) | Bearbejdelse fra 1850 ifølge kildens historiske note; ældre dansk version fra 1586. |
+
+## Supplerende gennemgang
+
+Syv tidligere udeladte sange er tilføjet efter yderligere kildekontrol. Den første gennemgang overså de historiske noter for ABC-visen, Og hør, lille mo’er og Sov sødelig, sov blødelig. Alle tekster kommer fortsat fra sangenes eksisterende ugle.dk-links.
 
 ## Sprunget over
 
-- [ABC-visen](https://ugle.dk/abc.html): Tekstforfatter angivet som ?. Den konkrete teksts frie status er ikke tilstrækkeligt dokumenteret.
-- [Fra Engeland til Skotland](https://ugle.dk/fra_engeland_til_skotland.html): Kun svensk oprindelse angivet; den danske teksts forfatter/oversætter og alder er uafklaret.
 - [Julekalender på vers](https://ugle.dk/julekalender_paa_vers.html): Niels Jessen (født 1914) var i live i 1982; opfylder derfor ikke kravet om mere end 70 år siden dødsåret.
-- [Kom, min lille, nu vi ville](https://ugle.dk/kom_min_lille.html): Kun norsk oprindelse angivet; den konkrete teksts forfatter og alder er uafklaret.
-- [Mæ, si'r det lille lam](https://ugle.dk/mae_sir_det_lille_lam.html): Tekstforfatter angivet som ?; fri status ikke tilstrækkeligt dokumenteret.
-- [Og hør, lille mo'er](https://ugle.dk/og_hoer_lille_mor.html): Tekstforfatter angivet som ?; fri status ikke tilstrækkeligt dokumenteret.
-- [Op, min lille Ole](https://ugle.dk/op_min_lille_ole.html): Tekstforfatter angivet som ?; fri status ikke tilstrækkeligt dokumenteret.
-- [Sov sødelig, sov blødelig](https://ugle.dk/sov_soedelig_sov_bloedelig.html): Tekstforfatter angivet som ?; fri status ikke tilstrækkeligt dokumenteret.
 
 De 17 sange uden ugle.dk-link ligger uden for opgaven og er uændrede. Familiens egne tekster, favoritter og sange bevares.

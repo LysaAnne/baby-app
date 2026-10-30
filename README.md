@@ -891,3 +891,6 @@ Phone checks: correct an active nursing start; stop and edit/delete a side inter
 - Song IDs, titles, links, DataStore keys and existing data are unchanged.
 - Verified: checkCodeStyle, 136 unit tests (including SongbookImportTest), lintDebug and all 87 Pixel_8 instrumentation tests passed. Independent HTML comparison checked all 53 texts; git diff --check passed.
 - Phone checks: open a built-in song, edit/cancel/save, save empty to restore, search within lyrics, restart to check family text/favourites, and follow the original source link. Physical-phone layout remains a manual check.
+
+- October 30 follow-up: added seven previously omitted lyrics after further source review, bringing the total to 60. Julekalender på vers remains excluded because its copyright has not expired. See the updated source review for each decision.
+- Follow-up verification: checkCodeStyle, 136 unit tests, lintDebug and all 87 Pixel_8 instrumentation tests passed; all seven added texts match the source HTML.
