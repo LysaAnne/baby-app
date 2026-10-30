@@ -32,6 +32,8 @@ interface AppPreferencesRepository {
     suspend fun markBackupSaved(at: Long)
     suspend fun updateHealthQuestions(questions: List<HealthQuestion>)
     suspend fun updateBoardNotes(notes: List<BoardNote>)
+    suspend fun updateDevelopmentChecks(checks: List<DevelopmentCheck>)
+    suspend fun updateSongbook(songbook: dk.babyapp.domain.SongbookData)
     suspend fun updateHealthReminders(enabled: Boolean)
     suspend fun updateQuickActionCategoryOrder(order: List<QuickActionCategory>)
     suspend fun updateDefaultNippleShield(enabled: Boolean)

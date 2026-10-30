@@ -117,6 +117,8 @@ fun BabyAppNavigation(
     onBackupSaved: () -> Unit = {},
     onUpdateHealthQuestions: (List<dk.babyapp.data.preferences.HealthQuestion>) -> Unit = {},
     onUpdateBoardNotes: (List<dk.babyapp.data.preferences.BoardNote>) -> Unit = {},
+    onUpdateDevelopmentChecks: (List<dk.babyapp.data.preferences.DevelopmentCheck>) -> Unit = {},
+    onUpdateSongbook: (dk.babyapp.domain.SongbookData) -> Unit = {},
     onUpdateHealthReminders: (Boolean) -> Unit = {},
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
@@ -395,14 +397,22 @@ fun BabyAppNavigation(
             }
             composable<AppDestination.Guide> {
                 var foodsOpen by remember { mutableStateOf(false) }
+                var developmentOpen by remember { mutableStateOf(false) }
+                var songbookOpen by remember { mutableStateOf(false) }
                 val history = activeChild?.let { childHistory() }.orEmpty()
                 val tasted = remember(history, activeChild?.id) { activeChild?.let { dk.babyapp.domain.hundredFoodsProgress(history, it.id).size } ?: 0 }
                 val feeding = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Feeding)
                 val book = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Misc)
+                val growth = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Measurement)
+                val sleep = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Sleep)
                 dk.babyapp.ui.more.MoreScreen(listOf(
                     dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.book, "Barnets bog", "Måned for måned, billeder og minder", book.accent, book.container) { navController.navigate(BookDestination) },
                     dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.food, "100 før 1", "$tasted af 100 smagt · madliste og gode råd", feeding.accent, feeding.container) { foodsOpen = true },
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.development, "Udvikling", developmentLine(activeChild), growth.accent, growth.container) { developmentOpen = true },
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.songs, "Sangbog", "${dk.babyapp.domain.songs.size + preferences.songbook.ownSongs.size} danske børnesange", sleep.accent, sleep.container) { songbookOpen = true },
                 ), contentPadding)
+                if (developmentOpen && activeChild != null) dk.babyapp.ui.more.DevelopmentDialog(activeChild, preferences.developmentChecks, onUpdateDevelopmentChecks) { developmentOpen = false }
+                if (songbookOpen) dk.babyapp.ui.more.SongbookDialog(preferences.songbook, onUpdateSongbook) { songbookOpen = false }
                 if (foodsOpen && activeChild != null) dk.babyapp.ui.tracking.HundredFoodsDialog(activeChild.id, activeChild, history, { event -> onUpdateCareEvent(event) {} }) { foodsOpen = false }
             }
             composable<BookDestination> {
@@ -471,4 +481,13 @@ fun BabyAppNavigation(
         importColorProfiles = importColorProfiles,
         onDismiss = { settingsOpen = false },
     )
+}
+
+/** The line under Udvikling on Mere: where the child is in the spurts. */
+private fun developmentLine(child: dk.babyapp.data.profile.ChildProfile?): String {
+    val weeks = child?.let { dk.babyapp.domain.weeksFromDue(it) } ?: return "Spring og milepæle"
+    return "Uge ${weeks.toInt().coerceAtLeast(0)} · " + when (val phase = dk.babyapp.domain.leapPhase(weeks)) {
+        is dk.babyapp.domain.LeapPhase.InLeap -> "spring ${phase.leap.number} er i gang"
+        is dk.babyapp.domain.LeapPhase.Calm -> phase.next?.let { "spring ${it.number} om ca. ${Math.ceil(phase.weeksToNext ?: 0.0).toInt()} uger" } ?: "alle spring er overstået"
+    }
 }

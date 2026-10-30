@@ -52,6 +52,8 @@ class SettingsViewModel @Inject constructor(
     fun updateSimpleQuickRegistration(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateSimpleQuickRegistration(enabled) }
     fun updateShowBulletinBoard(shown: Boolean) = viewModelScope.launch { preferencesRepository.updateShowBulletinBoard(shown) }
     fun updateHealthQuestions(questions: List<dk.babyapp.data.preferences.HealthQuestion>) = viewModelScope.launch { preferencesRepository.updateHealthQuestions(questions) }
+    fun updateDevelopmentChecks(checks: List<dk.babyapp.data.preferences.DevelopmentCheck>) = viewModelScope.launch { preferencesRepository.updateDevelopmentChecks(checks) }
+    fun updateSongbook(songbook: dk.babyapp.domain.SongbookData) = viewModelScope.launch { preferencesRepository.updateSongbook(songbook) }
     fun updateBoardNotes(notes: List<dk.babyapp.data.preferences.BoardNote>) = viewModelScope.launch { preferencesRepository.updateBoardNotes(notes) }
     fun updateHealthReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateHealthReminders(enabled) }
 

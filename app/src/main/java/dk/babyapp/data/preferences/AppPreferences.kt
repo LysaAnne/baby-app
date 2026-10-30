@@ -42,9 +42,17 @@ data class AppPreferences(
     val healthQuestions: List<HealthQuestion> = emptyList(),
     /** Own messages on the I dag opslagstavle. */
     val boardNotes: List<BoardNote> = emptyList(),
+    /** Skills, games and milestones ticked off under Udvikling. */
+    val developmentChecks: List<DevelopmentCheck> = emptyList(),
+    /** Favourites, own lyrics and own songs in Sangbog; shared by the family, not per child. */
+    val songbook: dk.babyapp.domain.SongbookData = dk.babyapp.domain.SongbookData(),
     /** Reminders a week before and on the day of examinations and vaccinations in the Danish programme. */
     val healthRemindersEnabled: Boolean = true,
 )
+
+/** [key] is a leap item or a milestone; [date] is when it was ticked off, as yyyy-mm-dd. */
+@kotlinx.serialization.Serializable
+data class DevelopmentCheck(val childId: String, val key: String, val date: String)
 
 @kotlinx.serialization.Serializable
 data class BoardNote(val id: String = java.util.UUID.randomUUID().toString(), val childId: String, val text: String, val createdAt: Long = System.currentTimeMillis())

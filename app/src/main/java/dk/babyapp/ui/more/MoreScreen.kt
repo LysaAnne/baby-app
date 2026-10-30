@@ -17,7 +17,9 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -65,4 +67,6 @@ fun MoreScreen(items: List<MoreItem>, contentPadding: PaddingValues) {
 object MoreIcons {
     val book = Icons.AutoMirrored.Outlined.MenuBook
     val food = Icons.Outlined.Restaurant
+    val development = Icons.Outlined.TrendingUp
+    val songs = Icons.Outlined.MusicNote
 }

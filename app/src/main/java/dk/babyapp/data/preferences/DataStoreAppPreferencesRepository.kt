@@ -62,6 +62,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
             showBulletinBoard = values[SHOW_BULLETIN_BOARD] ?: true,
             lastBackupAt = values[LAST_BACKUP_AT],
             healthQuestions = values[HEALTH_QUESTIONS]?.let { runCatching { Json.decodeFromString<List<HealthQuestion>>(it) }.getOrNull() } ?: emptyList(),
+            developmentChecks = values[DEVELOPMENT_CHECKS]?.let { runCatching { Json.decodeFromString<List<DevelopmentCheck>>(it) }.getOrNull() } ?: emptyList(),
+            songbook = values[SONGBOOK]?.let { runCatching { Json.decodeFromString<dk.babyapp.domain.SongbookData>(it) }.getOrNull() } ?: dk.babyapp.domain.SongbookData(),
             boardNotes = values[BOARD_NOTES]?.let { runCatching { Json.decodeFromString<List<BoardNote>>(it) }.getOrNull() } ?: emptyList(),
             healthRemindersEnabled = values[HEALTH_REMINDERS_ENABLED] ?: true,
             hiddenQuickActions = values[HIDDEN_QUICK_ACTIONS]?.split(',')?.filter(String::isNotBlank)?.toSet() ?: emptySet(),
@@ -180,6 +182,14 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         context.appPreferencesDataStore.edit { it[HEALTH_QUESTIONS] = Json.encodeToString(questions) }
     }
 
+    override suspend fun updateDevelopmentChecks(checks: List<DevelopmentCheck>) {
+        context.appPreferencesDataStore.edit { it[DEVELOPMENT_CHECKS] = Json.encodeToString(checks) }
+    }
+
+    override suspend fun updateSongbook(songbook: dk.babyapp.domain.SongbookData) {
+        context.appPreferencesDataStore.edit { it[SONGBOOK] = Json.encodeToString(songbook) }
+    }
+
     override suspend fun updateBoardNotes(notes: List<BoardNote>) {
         context.appPreferencesDataStore.edit { it[BOARD_NOTES] = Json.encodeToString(notes) }
     }
@@ -249,6 +259,8 @@ class DataStoreAppPreferencesRepository @Inject constructor(
         val LAST_BACKUP_AT = androidx.datastore.preferences.core.longPreferencesKey("last_backup_at")
         val HEALTH_QUESTIONS = stringPreferencesKey("health_questions")
         val BOARD_NOTES = stringPreferencesKey("board_notes")
+        val DEVELOPMENT_CHECKS = stringPreferencesKey("development_checks")
+        val SONGBOOK = stringPreferencesKey("songbook")
         val HEALTH_REMINDERS_ENABLED = booleanPreferencesKey("health_reminders_enabled")
     }
 }
