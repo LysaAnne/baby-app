@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SongbookImportTest {
-    // Made-up words; the app holds no real lyrics.
+    // Made-up words keep import assertions independent of built-in lyrics.
     @Test fun splitsPastedTextIntoKnownAndNewSongs() {
         val text = """
             Noter fra min telefon

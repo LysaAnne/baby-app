@@ -9,9 +9,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import dk.babyapp.data.preferences.DevelopmentCheck
 import dk.babyapp.data.profile.ChildProfile
 import dk.babyapp.domain.SongbookData
+import dk.babyapp.domain.songLyrics
 import dk.babyapp.ui.more.DevelopmentDialog
 import dk.babyapp.ui.more.SongbookDialog
 import dk.babyapp.ui.theme.BabyAppTheme
@@ -22,6 +24,53 @@ import org.junit.Test
 
 class MoreScreensTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun builtInLyricsOpenForReadingAndCancelDiscardsEdits() {
+        val data = SongbookData()
+        compose.setContent { BabyAppTheme { SongbookDialog(data, { error("Cancel must not save") }) {} } }
+        compose.onNodeWithText("Søg sang").performTextInput("Der bor en bager")
+        compose.onNodeWithText("tekst tilføjet", substring = true).assertExists()
+        compose.onNode(androidx.compose.ui.test.hasText("Der bor en bager") and !hasSetTextAction()).performClick()
+        val lyrics = songLyrics.getValue("ugle-der-bor-en-bager")
+        compose.onNodeWithText(lyrics).assertExists()
+        compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Sangtekst")).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Rediger sangteksten").performClick()
+        compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText(lyrics)).assertExists()
+        compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Sangtekst")).performTextReplacement("Kasseret ændring")
+        compose.onNodeWithText("Annuller").performClick()
+        compose.onNodeWithText(lyrics).assertExists()
+        compose.onNodeWithText("Kasseret ændring").assertDoesNotExist()
+    }
+
+    @Test fun ownLyricsOverrideBuiltInLyricsAndEmptySaveRestoresThem() {
+        val id = "ugle-der-bor-en-bager"
+        var data by mutableStateOf(SongbookData(favorites = setOf(id), lyrics = mapOf(id to "Familiens bagersang", "mester-jakob" to "Bevar mig")))
+        compose.setContent { BabyAppTheme { SongbookDialog(data, { data = it }) {} } }
+        compose.onNodeWithText("Søg sang").performTextInput("Der bor en bager")
+        compose.onNode(androidx.compose.ui.test.hasText("Der bor en bager") and !hasSetTextAction()).performClick()
+        compose.onNodeWithText("Familiens bagersang").assertExists()
+        compose.onNodeWithText(songLyrics.getValue(id)).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Rediger sangteksten").performClick()
+        compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Sangtekst")).performTextReplacement("")
+        compose.onNodeWithText("Gem").performClick()
+        compose.runOnIdle {
+            assertEquals(mapOf("mester-jakob" to "Bevar mig"), data.lyrics)
+            assertEquals(setOf(id), data.favorites)
+        }
+        compose.onNode(androidx.compose.ui.test.hasText("Der bor en bager") and !hasSetTextAction()).performClick()
+        compose.onNodeWithText(songLyrics.getValue(id)).assertExists()
+    }
+
+    @Test fun searchMatchesTheDisplayedLyrics() {
+        val data = SongbookData(lyrics = mapOf("bro-bro-brille" to "Familiens hemmelige brovers"))
+        compose.setContent { BabyAppTheme { SongbookDialog(data, {}) {} } }
+        compose.onNodeWithText("Søg sang").performTextInput("sukkersager")
+        compose.onNodeWithText("Der bor en bager").assertExists()
+        compose.onNodeWithText("Søg sang").performTextReplacement("hemmelige brovers")
+        compose.onNodeWithText("Bro, bro, brille").assertExists()
+        compose.onNodeWithText("Søg sang").performTextReplacement("kejseren")
+        compose.onNodeWithText("Bro, bro, brille").assertDoesNotExist()
+    }
 
     @Test fun developmentShowsTheCurrentSpurtAndTicksMilestones() {
         val child = ChildProfile(id = "c", name = "Freja", birthDate = LocalDate.now().minusWeeks(18), dueDate = LocalDate.now().minusWeeks(18))
@@ -54,7 +103,7 @@ class MoreScreensTest {
         var data by mutableStateOf(SongbookData())
         compose.setContent { BabyAppTheme { SongbookDialog(data, { data = it }) {} } }
         compose.onNodeWithContentDescription("Importér sangtekster").performClick()
-        // Made-up words; the app holds no real lyrics.
+        // Made-up words keep import assertions independent of built-in lyrics.
         compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Eller indsæt teksten her")).performTextInput("Mester Jakob\nvores vers\n# Ny sang\nla la")
         compose.onNodeWithText("Importér").performClick()
         compose.runOnIdle {

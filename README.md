@@ -883,3 +883,11 @@ Phone checks: correct an active nursing start; stop and edit/delete a side inter
 - October 15 refinement: Journal’s Søvn filter includes Favoritside observations. Favorite-side quick registration shows only the heading and left/right count buttons, without explanatory or post-tap confirmation text.
 
 - October 15 refinement: Nøgletal is now named Favoritside. A graph icon beside the Favoritside quick-registration heading opens the same overview, sharing saved period and correction settings with Overblik.
+
+### Built-in song lyrics — October 30, 2026
+
+- Added 53 public-domain song texts from the existing ugle.dk links; [source review and skipped songs](docs/SONG-LYRICS.md).
+- Family lyrics take priority. The pencil starts with the displayed text; Cancel discards edits, and saving an empty text restores the built-in version. Search includes displayed lyrics, and the list marks both built-in and family texts.
+- Song IDs, titles, links, DataStore keys and existing data are unchanged.
+- Verified: checkCodeStyle, 136 unit tests (including SongbookImportTest), lintDebug and all 87 Pixel_8 instrumentation tests passed. Independent HTML comparison checked all 53 texts; git diff --check passed.
+- Phone checks: open a built-in song, edit/cancel/save, save empty to restore, search within lyrics, restart to check family text/favourites, and follow the original source link. Physical-phone layout remains a manual check.

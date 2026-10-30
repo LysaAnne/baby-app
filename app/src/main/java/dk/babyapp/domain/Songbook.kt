@@ -3,7 +3,7 @@ package dk.babyapp.domain
 enum class SongCategory(val label: String) { Bedtime("Godnat"), Actions("Fagter"), Rhymes("Rim og lege"), Christmas("Jul") }
 
 /**
- * A song in the songbook. The app has no lyrics; the family can add the words themselves.
+ * A song in the songbook. Public-domain lyrics can be overridden by the family.
  * [origin] is the author or "Traditionel" where that is well known, otherwise empty; [actions] describes
  * the movements in the app's own words; [link] is a page with the words, opened from the song.
  */
@@ -39,7 +39,7 @@ val songs = listOf(
     Song("bag-skaermen", "Hvem sidder der bag skærmen", SongCategory.Rhymes, "Christian Winther", ""),
     Song("hoejt-fra-traeets", "Højt fra træets grønne top", SongCategory.Christmas, "Peter Faber", "Gå om juletræet, mens I synger."),
     Song("tusind-julelys", "Nu tændes tusind julelys", SongCategory.Christmas, "Emmy Köhler", ""),
-    // Gamle danske børnesange from ugle.dk (Jørgen Ebert): titles only, each with a link to its page with the words.
+    // Gamle danske børnesange from ugle.dk (Jørgen Ebert): each with a link to its page with the words.
     Song("ugle-abc", "ABC-visen", SongCategory.Rhymes, link = "https://ugle.dk/abc.html"),
     Song("ugle-den-lille-ole", "Den lille Ole med paraplyen", SongCategory.Bedtime, link = "https://ugle.dk/den_lille_ole.html"),
     Song("ugle-der-bor-en-bager", "Der bor en bager", SongCategory.Actions, link = "https://ugle.dk/der_bor_en_bager.html"),

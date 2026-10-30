@@ -49,6 +49,7 @@ import dk.babyapp.domain.OwnSong
 import dk.babyapp.domain.Song
 import dk.babyapp.domain.SongCategory
 import dk.babyapp.domain.SongbookData
+import dk.babyapp.domain.songLyrics
 import dk.babyapp.domain.songs
 import dk.babyapp.ui.theme.CareCategory
 import dk.babyapp.ui.theme.babyColors
@@ -62,8 +63,7 @@ import dk.babyapp.ui.tracking.formBody
 private const val FAVORITES = "favorites"
 
 /**
- * Sangbog: Danish children's songs with where they come from and the movements in our own words. The app holds no
- * lyrics; the family can write or paste the words for each song, mark favourites and add their own songs.
+ * Danish songs with public-domain lyrics. Families can override the words, mark favourites and add songs.
  */
 @Composable
 internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit, onDismiss: () -> Unit) {
@@ -76,7 +76,8 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
     // Own songs are shown like the others; their id starts with "own-".
     val all = songs + data.ownSongs.map { Song("own-${it.id}", it.title, runCatching { SongCategory.valueOf(it.category) }.getOrDefault(SongCategory.Rhymes), "Egen sang") }
     val shown = all.filter { song ->
-        (query.isBlank() || song.title.contains(query.trim(), ignoreCase = true)) &&
+        (query.isBlank() || song.title.contains(query.trim(), ignoreCase = true) ||
+            (data.lyrics[song.id] ?: songLyrics[song.id]).orEmpty().contains(query.trim(), ignoreCase = true)) &&
             when (filter) { null -> true; FAVORITES -> song.id in data.favorites; else -> song.category.name == filter }
     }.sortedBy { it.title }
     fun toggleFavorite(id: String) = onUpdate(data.copy(favorites = if (id in data.favorites) data.favorites - id else data.favorites + id))
@@ -103,7 +104,7 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
                                 Row(Modifier.clickable { open = song }.padding(start = 12.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Text(song.title, style = MaterialTheme.typography.bodyLarge)
-                                        Text(listOf(song.origin, song.category.label, "tekst tilføjet".takeIf { !data.lyrics[song.id].isNullOrBlank() }).filter { !it.isNullOrBlank() }.joinToString(" · "),
+                                        Text(listOf(song.origin, song.category.label, "tekst tilføjet".takeIf { !(data.lyrics[song.id] ?: songLyrics[song.id]).isNullOrBlank() }).filter { !it.isNullOrBlank() }.joinToString(" · "),
                                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     IconButton(onClick = { toggleFavorite(song.id) }) {
@@ -120,7 +121,7 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
         }
     }
     open?.let { song ->
-        SongDialog(song, data.lyrics[song.id].orEmpty(), onDismiss = { open = null },
+        SongDialog(song, (data.lyrics[song.id] ?: songLyrics[song.id]).orEmpty(), onDismiss = { open = null },
             onDelete = if (song.id.startsWith("own-")) ({ val id = song.id.removePrefix("own-"); onUpdate(data.copy(ownSongs = data.ownSongs.filterNot { it.id == id }, lyrics = data.lyrics - song.id, favorites = data.favorites - song.id)); open = null }) else null,
         ) { lyrics -> onUpdate(data.copy(lyrics = if (lyrics.isBlank()) data.lyrics - song.id else data.lyrics + (song.id to lyrics))); open = null }
     }
@@ -134,7 +135,7 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
     if (adding) OwnSongDialog({ adding = false }) { own, words -> onUpdate(data.copy(ownSongs = data.ownSongs + own, lyrics = if (words.isBlank()) data.lyrics else data.lyrics + ("own-${own.id}" to words))); adding = false }
 }
 
-/** One song: where it is from, the movements, and the family's own words for it. */
+/** One song with its source, movements and resolved lyrics. */
 @Composable
 private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDelete: (() -> Unit)?, onSave: (String) -> Unit) {
     var text by remember { mutableStateOf(lyrics) }
@@ -152,7 +153,7 @@ private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDele
                 placeholder = { Text("Skriv eller indsæt teksten, som I synger den") })
             else Text(lyrics.ifBlank { "Ingen tekst endnu. Tryk på blyanten for at skrive eller indsætte den." }, style = MaterialTheme.typography.bodyLarge,
                 color = if (lyrics.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-            // The song's own page with the words when there is one, otherwise a Google search for "<titel> lyrik"; the app itself has no lyrics.
+            // The song's own page with the words when there is one, otherwise a Google search for "<titel> lyrik".
             val page = song.link.ifBlank { "https://www.google.com/search?q=" + Uri.encode("${song.title} lyrik") }
             FilledTonalButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) } }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.Search, null); Text(if (song.link.isNotBlank()) " Åbn teksten på ${Uri.parse(song.link).host}" else " Søg efter teksten")
