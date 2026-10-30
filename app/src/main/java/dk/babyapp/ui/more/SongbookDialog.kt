@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Search
@@ -68,6 +70,7 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var open by remember { mutableStateOf<Song?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
     val accent = MaterialTheme.babyColors.category(CareCategory.Sleep).accent
     // Own songs are shown like the others; their id starts with "own-".
     val all = songs + data.ownSongs.map { Song("own-${it.id}", it.title, runCatching { SongCategory.valueOf(it.category) }.getOrDefault(SongCategory.Rhymes), "Egen sang") }
@@ -83,6 +86,7 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
                     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onDismiss) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Tilbage") }
                         Text("Sangbog", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { importing = true }) { Icon(Icons.Outlined.ContentPaste, "Importér sangtekster") }
                         IconButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, "Tilføj egen sang") }
                     }
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -118,6 +122,13 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
         SongDialog(song, data.lyrics[song.id].orEmpty(), onDismiss = { open = null },
             onDelete = if (song.id.startsWith("own-")) ({ val id = song.id.removePrefix("own-"); onUpdate(data.copy(ownSongs = data.ownSongs.filterNot { it.id == id }, lyrics = data.lyrics - song.id, favorites = data.favorites - song.id)); open = null }) else null,
         ) { lyrics -> onUpdate(data.copy(lyrics = if (lyrics.isBlank()) data.lyrics - song.id else data.lyrics + (song.id to lyrics))); open = null }
+    }
+    if (importing) ImportLyricsDialog(all, data.lyrics, { importing = false }) { found ->
+        // Songs already in the book get the words; new titles become own songs.
+        val newSongs = found.filter { it.songId == null }.map { OwnSong(title = it.title) }
+        val words = found.mapNotNull { song -> song.songId?.let { it to song.words } } + newSongs.zip(found.filter { it.songId == null }).map { (own, song) -> "own-${own.id}" to song.words }
+        onUpdate(data.copy(ownSongs = data.ownSongs + newSongs, lyrics = data.lyrics + words))
+        importing = false
     }
     if (adding) OwnSongDialog({ adding = false }) { own, words -> onUpdate(data.copy(ownSongs = data.ownSongs + own, lyrics = if (words.isBlank()) data.lyrics else data.lyrics + ("own-${own.id}" to words))); adding = false }
 }
@@ -157,4 +168,34 @@ private fun OwnSongDialog(onDismiss: () -> Unit, onSave: (OwnSong, String) -> Un
         }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
         confirmButton = { Button(enabled = title.isNotBlank(), onClick = { onSave(OwnSong(title = title.trim(), category = category.name), words.trim()) }) { Text("Tilføj") } })
+}
+
+/**
+ * Paste many songs' words at once, or pick a text file: a line with a song's title starts that song, and a line
+ * starting with # starts a new song of your own. Shows what was found before anything is saved.
+ */
+@Composable
+private fun ImportLyricsDialog(known: List<Song>, existing: Map<String, String>, onDismiss: () -> Unit, onImport: (List<dk.babyapp.domain.ImportedSong>) -> Unit) {
+    val context = LocalContext.current
+    var text by remember { mutableStateOf("") }
+    val file = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()?.let { text = it }
+    }
+    val found = remember(text, known) { dk.babyapp.domain.parseLyricsImport(text, known) }
+    val replaced = found.count { song -> song.songId?.let { !existing[it].isNullOrBlank() } == true }
+    FormDialog(category = CareCategory.Sleep, onDismissRequest = onDismiss, title = { Text("Importér sangtekster") }, text = {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Skriv sangens titel på én linje og teksten nedenunder. Start en linje med # for en ny sang, der ikke er i sangbogen.", style = MaterialTheme.typography.bodySmall)
+            FilledTonalButton(onClick = { file.launch(arrayOf("text/plain", "text/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Vælg tekstfil") }
+            RegistrationTextField(text, { text = it }, label = { Text("Eller indsæt teksten her") }, minLines = 6, maxLines = 14)
+            if (text.isNotBlank()) {
+                val newCount = found.count { it.songId == null }
+                Text(if (found.isEmpty()) "Ingen sange fundet endnu. Tjek at titlerne står på deres egen linje."
+                    else "Fundet ${found.size} ${if (found.size == 1) "sang" else "sange"}: ${found.size - newCount} i sangbogen og $newCount nye." +
+                        if (replaced > 0) " Teksten erstattes for $replaced." else "", style = MaterialTheme.typography.titleSmall)
+                found.forEach { Text("• ${it.title}" + if (it.songId == null) " (ny)" else "", style = MaterialTheme.typography.bodySmall) }
+            }
+        }
+    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
+        confirmButton = { Button(enabled = found.isNotEmpty(), onClick = { onImport(found) }) { Text("Importér") } })
 }

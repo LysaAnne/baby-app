@@ -51,3 +51,37 @@ data class SongbookData(
 
 @kotlinx.serialization.Serializable
 data class OwnSong(val id: String = java.util.UUID.randomUUID().toString(), val title: String, val category: String = SongCategory.Rhymes.name)
+
+/** One song found in an import: [songId] for a song already in the book, otherwise a new own song with [title]. */
+data class ImportedSong(val title: String, val songId: String?, val words: String)
+
+private fun normalizeTitle(value: String) = value.lowercase().replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+
+/**
+ * Splits pasted text into songs. A song starts at a line that is the title of a song in the book (spelling and
+ * punctuation may differ), or at a line starting with "#" for a new song. The lines below it are its words;
+ * text before the first title is ignored. Songs without words are left out.
+ */
+fun parseLyricsImport(text: String, known: List<Song>): List<ImportedSong> {
+    val byTitle = known.associateBy { normalizeTitle(it.title) }
+    val result = mutableListOf<ImportedSong>()
+    var title: String? = null
+    var songId: String? = null
+    val lines = mutableListOf<String>()
+    fun finish() {
+        val words = lines.joinToString("\n").trim('\n', ' ')
+        title?.let { if (words.isNotBlank()) result += ImportedSong(it, songId, words) }
+        lines.clear()
+    }
+    text.replace("\r\n", "\n").lines().forEach { line ->
+        val trimmed = line.trim()
+        val match = byTitle[normalizeTitle(trimmed.removePrefix("#"))]
+        when {
+            trimmed.isNotEmpty() && match != null -> { finish(); title = match.title; songId = match.id }
+            trimmed.startsWith("#") && trimmed.removePrefix("#").isNotBlank() -> { finish(); title = trimmed.removePrefix("#").trim(); songId = null }
+            title != null -> lines += line.trimEnd()
+        }
+    }
+    finish()
+    return result
+}

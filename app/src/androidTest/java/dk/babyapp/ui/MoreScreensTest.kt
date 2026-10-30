@@ -47,4 +47,18 @@ class MoreScreensTest {
             assertEquals("Vores vers", data.lyrics["mester-jakob"])
         }
     }
+
+    @Test fun importedWordsGoToTheirSongsAndNewSongsAreAdded() {
+        var data by mutableStateOf(SongbookData())
+        compose.setContent { BabyAppTheme { SongbookDialog(data, { data = it }) {} } }
+        compose.onNodeWithContentDescription("Importér sangtekster").performClick()
+        // Made-up words; the app holds no real lyrics.
+        compose.onNode(hasSetTextAction() and androidx.compose.ui.test.hasText("Eller indsæt teksten her")).performTextInput("Mester Jakob\nvores vers\n# Ny sang\nla la")
+        compose.onNodeWithText("Importér").performClick()
+        compose.runOnIdle {
+            assertEquals("vores vers", data.lyrics["mester-jakob"])
+            assertEquals(listOf("Ny sang"), data.ownSongs.map { it.title })
+            assertEquals("la la", data.lyrics["own-${data.ownSongs.single().id}"])
+        }
+    }
 }
