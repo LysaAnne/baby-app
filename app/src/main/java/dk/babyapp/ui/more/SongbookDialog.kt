@@ -141,7 +141,6 @@ private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDele
     var text by remember { mutableStateOf(lyrics) }
     // The words are read, not edited; the pencil opens them for editing.
     var editing by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     FormDialog(category = CareCategory.Sleep, onDismissRequest = onDismiss, title = { Text(song.title) }, subtitle = listOf(song.origin, song.category.label).filter(String::isNotBlank).joinToString(" · "), text = {
         Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (song.actions.isNotBlank()) Text(song.actions, style = MaterialTheme.typography.bodyMedium)
@@ -153,11 +152,8 @@ private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDele
                 placeholder = { Text("Skriv eller indsæt teksten, som I synger den") })
             else Text(lyrics.ifBlank { "Ingen tekst endnu. Tryk på blyanten for at skrive eller indsætte den." }, style = MaterialTheme.typography.bodyLarge,
                 color = if (lyrics.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-            // The song's own page with the words when there is one, otherwise a Google search for "<titel> lyrik".
-            val page = song.link.ifBlank { "https://www.google.com/search?q=" + Uri.encode("${song.title} lyrik") }
-            FilledTonalButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) } }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Search, null); Text(if (song.link.isNotBlank()) " Åbn teksten på ${Uri.parse(song.link).host}" else " Søg efter teksten")
-            }
+            // Only while there are no words yet: the song's own page when set, otherwise a Google search for "<titel> lyrik".
+            if (lyrics.isBlank()) LyricsSearchButton(song.title, song.link)
         }
     }, dismissButton = if (onDelete != null) ({ IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Slet sangen", tint = MaterialTheme.colorScheme.error) }; Spacer(Modifier.weight(1f)) }) else null,
         confirmButton = {
@@ -178,6 +174,7 @@ private fun OwnSongDialog(onDismiss: () -> Unit, onSave: (OwnSong, String) -> Un
             RegistrationTextField(title, { title = it }, label = { Text("Titel") }, singleLine = true)
             ChoiceChips(SongCategory.entries.map { it to it.label }, category, label = "Slags") { it?.let { category = it } }
             RegistrationTextField(words, { words = it }, label = { Text("Sangtekst") }, minLines = 4)
+            if (words.isBlank() && title.isNotBlank()) LyricsSearchButton(title.trim())
         }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
         confirmButton = { Button(enabled = title.isNotBlank(), onClick = { onSave(OwnSong(title = title.trim(), category = category.name), words.trim()) }) { Text("Tilføj") } })
@@ -211,4 +208,14 @@ private fun ImportLyricsDialog(known: List<Song>, existing: Map<String, String>,
         }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } },
         confirmButton = { Button(enabled = found.isNotEmpty(), onClick = { onImport(found) }) { Text("Importér") } })
+}
+
+/** Opens [link] when set, otherwise a Google search for "<title> lyrik", to find the words for a song. */
+@Composable
+private fun LyricsSearchButton(title: String, link: String = "") {
+    val context = LocalContext.current
+    val page = link.ifBlank { "https://www.google.com/search?q=" + Uri.encode("$title lyrik") }
+    FilledTonalButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) } }, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.Outlined.Search, null); Text(" Søg efter teksten")
+    }
 }

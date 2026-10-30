@@ -413,9 +413,9 @@ fun BabyAppNavigation(
                 val growth = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Measurement)
                 val sleep = androidx.compose.material3.MaterialTheme.babyColors.category(dk.babyapp.ui.theme.CareCategory.Sleep)
                 dk.babyapp.ui.more.MoreScreen(listOf(
-                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.book, "Barnets bog", "Måned for måned, billeder og minder", book.accent, book.container) { navController.navigate(BookDestination) },
-                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.food, "100 før 1", "$tasted af 100 smagt · madliste og gode råd", feeding.accent, feeding.container) { foodsOpen = true },
-                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.development, "Udvikling", developmentLine(activeChild), growth.accent, growth.container) { developmentOpen = true },
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.book, "Barnets bog", if (activeChild == null) "Tilføj et barn under Familie først" else "Måned for måned, billeder og minder", book.accent, book.container, enabled = activeChild != null) { navController.navigate(BookDestination) },
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.food, "100 før 1", if (activeChild == null) "Tilføj et barn under Familie først" else "$tasted af 100 smagt · madliste og gode råd", feeding.accent, feeding.container, enabled = activeChild != null) { foodsOpen = true },
+                    dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.development, "Udvikling", developmentLine(activeChild), growth.accent, growth.container, enabled = activeChild != null) { developmentOpen = true },
                     dk.babyapp.ui.more.MoreItem(dk.babyapp.ui.more.MoreIcons.songs, "Sangbog", "${dk.babyapp.domain.songs.size + preferences.songbook.ownSongs.size} danske børnesange", sleep.accent, sleep.container) { songbookOpen = true },
                 ), contentPadding)
                 if (developmentOpen && activeChild != null) dk.babyapp.ui.more.DevelopmentEntry(activeChild, preferences.developmentChecks, onUpdateDevelopmentChecks, onUpdateChild) { developmentOpen = false }
@@ -495,7 +495,8 @@ fun BabyAppNavigation(
 
 /** The line under Udvikling on Mere: where the child is in the spurts. */
 private fun developmentLine(child: dk.babyapp.data.profile.ChildProfile?): String {
-    val weeks = child?.let { dk.babyapp.domain.weeksFromDue(it) } ?: return "Spring og milepæle"
+    if (child == null) return "Tilføj et barn under Familie først"
+    val weeks = dk.babyapp.domain.weeksFromDue(child) ?: return "Spring og milepæle"
     return "Uge ${weeks.toInt().coerceAtLeast(0)} · " + when (val phase = dk.babyapp.domain.leapPhase(weeks)) {
         is dk.babyapp.domain.LeapPhase.InLeap -> "spring ${phase.leap.number} er i gang"
         is dk.babyapp.domain.LeapPhase.Calm -> phase.next?.let { "spring ${it.number} om ca. ${Math.ceil(phase.weeksToNext ?: 0.0).toInt()} uger" } ?: "alle spring er overstået"

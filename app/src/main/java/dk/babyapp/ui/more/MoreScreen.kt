@@ -27,12 +27,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /** One thing on Mere: an icon in its colours, a title and a line about it. */
-class MoreItem(val icon: ImageVector, val title: String, val subtitle: String, val accent: Color, val container: Color, val onOpen: () -> Unit)
+/** [enabled] is false for items that need a child, while no child has been added; they are shown greyed out. */
+class MoreItem(val icon: ImageVector, val title: String, val subtitle: String, val accent: Color, val container: Color, val enabled: Boolean = true, val onOpen: () -> Unit)
 
 /** Mere: the extra parts of the app beside the daily registrations, such as Barnets bog and 100 før 1. */
 @Composable
@@ -45,8 +47,8 @@ fun MoreScreen(items: List<MoreItem>, contentPadding: PaddingValues) {
         item { Text("Mere", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)) }
         items.forEach { entry ->
             item {
-                Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = Color.White, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Row(Modifier.clickable(onClick = entry.onOpen).heightIn(min = 72.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+                Surface(Modifier.fillMaxWidth().alpha(if (entry.enabled) 1f else 0.45f), shape = MaterialTheme.shapes.large, color = Color.White, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Row(Modifier.clickable(enabled = entry.enabled, onClick = entry.onOpen).heightIn(min = 72.dp).padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Box(Modifier.size(44.dp).background(entry.container, CircleShape), contentAlignment = Alignment.Center) {
                             Icon(entry.icon, null, tint = entry.accent)

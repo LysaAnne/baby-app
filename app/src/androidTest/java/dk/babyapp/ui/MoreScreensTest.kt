@@ -112,4 +112,16 @@ class MoreScreensTest {
             assertEquals("la la", data.lyrics["own-${data.ownSongs.single().id}"])
         }
     }
+
+    @Test fun searchForWordsIsOnlyShownWithoutWords() {
+        compose.setContent { BabyAppTheme { SongbookDialog(SongbookData(), {}) {} } }
+        // A song with built-in words has no search; one without words has.
+        compose.onNodeWithText("Søg sang").performTextInput("Der bor en bager")
+        compose.onNode(androidx.compose.ui.test.hasText("Der bor en bager") and !hasSetTextAction()).performClick()
+        compose.onNodeWithText("Søg efter teksten", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Luk").performClick()
+        compose.onNodeWithText("Søg sang").performTextReplacement("Mester Jakob")
+        compose.onNode(androidx.compose.ui.test.hasText("Mester Jakob") and !hasSetTextAction()).performClick()
+        compose.onNodeWithText("Søg efter teksten", substring = true).assertExists()
+    }
 }
