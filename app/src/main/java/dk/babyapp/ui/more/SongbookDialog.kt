@@ -143,10 +143,11 @@ private fun SongDialog(song: Song, lyrics: String, onDismiss: () -> Unit, onDele
             if (song.actions.isNotBlank()) Text(song.actions, style = MaterialTheme.typography.bodyMedium)
             RegistrationTextField(text, { text = it }, label = { Text("Sangtekst") }, minLines = 4,
                 placeholder = { Text("Skriv eller indsæt teksten, som I synger den") })
-            FilledTonalButton(onClick = {
-                // A web search for the words; the app itself has no lyrics.
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode("${song.title} sangtekst")))) }
-            }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Search, null); Text(" Find teksten") }
+            // The song's own page with the words when there is one, otherwise a web search; the app itself has no lyrics.
+            val page = song.link.ifBlank { "https://www.google.com/search?q=" + Uri.encode("${song.title} sangtekst") }
+            FilledTonalButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) } }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Search, null); Text(if (song.link.isNotBlank()) " Åbn teksten på ${Uri.parse(song.link).host}" else " Find teksten")
+            }
         }
     }, dismissButton = if (onDelete != null) ({ IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Slet sangen", tint = MaterialTheme.colorScheme.error) }; Spacer(Modifier.weight(1f)) }) else null,
         confirmButton = {

@@ -27,4 +27,10 @@ class SongbookImportTest {
         assertEquals(null, songs[1].songId)
         assertEquals("la la la", songs[1].words)
     }
+
+    @Test fun theUgleSongsHaveLinksAndTheListHasNoDuplicates() {
+        assertEquals(songs.size, songs.map { it.id }.distinct().size)
+        assertEquals(songs.size, songs.map { it.title.lowercase() }.distinct().size)
+        assertEquals(61, songs.count { it.link.startsWith("https://ugle.dk/") })
+    }
 }
