@@ -16,7 +16,8 @@ class StoredKeysTest {
     )
 
     @Test fun everyOldJournalLabelBecomesAnIdShowingTheSameFilter() {
-        assertEquals(journalFilters.size, legacyJournalLabels.size)
+        // November 2026 added more filters (bad, våd ble, sovested …); the old ones are all still there.
+        assertEquals(19 + 16, journalFilters.size)
         // Lur and Nattesøvn became plain Søvn.
         listOf("Lur", "Nattesøvn", "nap", "night-sleep").forEach { assertEquals("Søvn", journalFilterLabel(JournalFilterKeys.normalize(it))) }
         legacyJournalLabels.forEach { (stored, shown) ->
@@ -41,5 +42,13 @@ class StoredKeysTest {
         assertEquals(null, QuickActionCategory.fromStored("ukendt"))
         // Fast føde moved into the Madning card in October 2026.
         assertEquals(old - "Fast føde", orderedQuickActionCategories(emptyList()).map { it.label })
+    }
+
+    @Test fun bathFilterOnlyShowsBaths() {
+        val bath = journalFilters.first { it.id == JournalFilterKeys.activity(dk.babyapp.data.tracking.ActivityType.Bath) }
+        fun activity(type: dk.babyapp.data.tracking.ActivityType) = dk.babyapp.data.tracking.CareEventEntity(childId = "a", type = dk.babyapp.data.tracking.CareEventType.Activity, startedAt = 0, activityType = type)
+        assertEquals("Bad", bath.label)
+        assertEquals(true, bath.matches(activity(dk.babyapp.data.tracking.ActivityType.Bath)))
+        assertEquals(false, bath.matches(activity(dk.babyapp.data.tracking.ActivityType.Play)))
     }
 }

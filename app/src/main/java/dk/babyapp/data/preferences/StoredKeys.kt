@@ -1,6 +1,9 @@
 package dk.babyapp.data.preferences
 
+import dk.babyapp.data.tracking.ActivityType
 import dk.babyapp.data.tracking.CareEventType
+import dk.babyapp.data.tracking.DiaperType
+import dk.babyapp.data.tracking.HealthVisitType
 import dk.babyapp.data.tracking.MeasurementType
 
 /** Categories on the Today screen. The stored value is [name]; [label] can change freely. */
@@ -35,6 +38,11 @@ object JournalFilterKeys {
     const val TUMMY_TIME = "tummy-time"
     fun type(type: CareEventType) = "type:${type.name}"
     fun measurement(type: MeasurementType) = "measurement:${type.name}"
+    fun activity(type: ActivityType) = "activity:${type.name}"
+    fun diaper(type: DiaperType) = "diaper:${type.name}"
+    fun sleepPlace(place: String) = "sleep-place:$place"
+    fun visit(type: HealthVisitType) = "visit:${type.name}"
+    const val WITH_NOTES = "with-notes"
 
     val defaults = listOf(FEEDING_ALL, type(CareEventType.Diaper), type(CareEventType.Sleep), HEALTH_ALL, MEDICINE)
 

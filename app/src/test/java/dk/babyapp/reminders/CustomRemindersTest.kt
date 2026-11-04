@@ -35,4 +35,11 @@ class CustomRemindersTest {
         assertTrue(DevelopmentReminderScheduler.newsFor(due, firstDay).any { it.startsWith("Spring 4") })
         assertTrue(DevelopmentReminderScheduler.newsFor(due, firstDay.plusDays(1)).none { it.startsWith("Spring") })
     }
+
+    @Test fun registeringAReminderSavesTheMatchingActivity() {
+        assertEquals(dk.babyapp.data.tracking.ActivityType.Bath to "", reminderActivity("Bad"))
+        assertEquals(dk.babyapp.data.tracking.ActivityType.Bath to "", reminderActivity("Badedag for Freja"))
+        assertEquals(dk.babyapp.data.tracking.ActivityType.TummyTime to "", reminderActivity("Husk mavetid"))
+        assertEquals(dk.babyapp.data.tracking.ActivityType.Other to "Klip negle", reminderActivity(" Klip negle "))
+    }
 }

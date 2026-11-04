@@ -233,7 +233,7 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                                 current && status == PageStatus.Empty -> "Nu · ${child.name} er ${monthsLabel(months!!)}"
                                 status != PageStatus.Empty -> {
                                     val answered = saved!!.answers().values.count(String::isNotBlank)
-                                    val fields = (template.prompts + saved.answers().keys).distinct().size
+                                    val fields = (template.prompts + saved.answers().filterValues(String::isNotBlank).keys).distinct().size
                                     val photos = saved.photos().size
                                     "$answered af $fields felter · $photos ${if (photos == 1) "billede" else "billeder"}"
                                 }
@@ -448,7 +448,9 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
                         val birth = mapOf("Dato" to child.birthDate?.toString().orEmpty(), "Klokkeslæt" to child.birthTime?.toString().orEmpty(), "Fødested" to child.hospital, "Graviditetsuge" to listOfNotNull(child.gestationalWeeks?.toString(), child.gestationalDays?.toString()).joinToString(" + "), "Vægt (g)" to child.birthWeightGrams?.toString().orEmpty(), "Længde (cm)" to child.birthLengthCm?.toString().orEmpty(), "Hovedomfang (cm)" to child.birthHeadCircumferenceCm?.toString().orEmpty())
                         answersJson = Json.encodeToString(birth + answers.filterValues(String::isNotBlank))
                     }, label = { Text("Udfyld tomme felter fra barnets profil") })
-                    (template.prompts + answers.keys).distinct().forEach { prompt -> OutlinedTextField(value = answers[prompt].orEmpty(), onValueChange = { answersJson = Json.encodeToString(answers + (prompt to it)) }, label = { Text(prompt) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, minLines = if (isShortBookPrompt(prompt)) 1 else 3, enabled = !saving) }
+                    // Old questions stay as long as something is written under them; empty ones give way to the new questions.
+                    val kept = remember(template.id) { saved?.answers()?.filterValues(String::isNotBlank)?.keys.orEmpty() }
+                    (template.prompts + kept).distinct().forEach { prompt -> OutlinedTextField(value = answers[prompt].orEmpty(), onValueChange = { answersJson = Json.encodeToString(answers + (prompt to it)) }, label = { Text(prompt) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, minLines = if (isShortBookPrompt(prompt)) 1 else 3, enabled = !saving) }
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

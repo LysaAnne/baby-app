@@ -46,9 +46,23 @@ class PeriodInsightsTest {
         assertEquals(2, insights.averagedDays)
         assertEquals(1.5, insights.avgFeedings, 0.001)
         assertEquals(150, insights.avgBottleMl)
-        assertEquals(0.5, insights.avgDiapers, 0.001)
-        assertEquals(0.5, insights.avgWet, 0.001)
-        assertEquals(0.5, insights.avgDirty, 0.001)
+        // Diapers were only registered on one of the two days.
+        assertEquals(1.0, insights.avgDiapers, 0.001)
+        assertEquals(1.0, insights.avgWet, 0.001)
+        assertEquals(1.0, insights.avgDirty, 0.001)
+    }
+
+    @Test fun sleepAveragesOnlyCountDaysWithSleepRegistered() {
+        val events = listOf(
+            event(CareEventType.Sleep, at(today.minusDays(3), 10), at(today.minusDays(3), 12)),
+            event(CareEventType.Sleep, at(today.minusDays(3), 14), at(today.minusDays(3), 15)),
+            event(CareEventType.Bottle, at(today.minusDays(2), 8)).copy(amountConsumedMl = 100),
+            event(CareEventType.Sleep, at(today.minusDays(1), 13), at(today.minusDays(1), 14)),
+        )
+        val insights = periodInsights(events, "child", 7, today, zone, now)
+        assertEquals(120, insights.avgSleepMinutes)
+        assertEquals(1.5, insights.sleepsPerDay, 0.001)
+        assertEquals(1.0, insights.avgFeedings, 0.001)
     }
 
     @Test fun bedtimeIsTheMiddleOfEveningStartsAndNeedsThreeNights() {

@@ -253,11 +253,13 @@ fun TimelineScreen(
         title = { Text("Filtrér journalen") },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { editQuickFilters = true; filtersOpen = false }) { Text("Rediger hurtigfiltre") }
-            Text("Registreringstyper", style = MaterialTheme.typography.titleSmall)
-            journalFilters.forEach { filter ->
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    androidx.compose.material3.Checkbox(filter.id in typeFilters, { selected -> typeFilters = if (selected) typeFilters + filter.id else typeFilters - filter.id })
-                    Text(journalFilterLabel(filter.id))
+            journalFilters.groupBy { it.group }.forEach { (group, filters) ->
+                Text(group, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
+                filters.forEach { filter ->
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(filter.id in typeFilters, { selected -> typeFilters = if (selected) typeFilters + filter.id else typeFilters - filter.id })
+                        Text(filter.label)
+                    }
                 }
             }
             TextButton(onClick = { typeFilters = emptySet() }) { Text("Nulstil filtre") }

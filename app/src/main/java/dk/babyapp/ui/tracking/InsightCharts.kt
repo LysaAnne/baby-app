@@ -76,14 +76,16 @@ internal data class Bar(val label: String, val value: Float, val detail: String)
 
 /**
  * Groups [days] for a chart. Weekday, month and year show the average per day over the period's finished
- * days, so a short month or a part-year is not under-counted. Today, which isn't over, only counts in Pr. døgn.
+ * days where that kind was registered, so a short month, a part-year or a day without registrations is not under-counted. Today, which isn't over, only counts in Pr. døgn.
  */
 internal fun groupBars(days: List<DayInsight>, grouping: Grouping, value: (DayInsight) -> Float, format: (Float) -> String): List<Bar> {
     val today = LocalDate.now()
     val finished = days.filter { it.date < today }.ifEmpty { days }
     fun averaged(groups: Map<*, List<DayInsight>>, label: (Any?) -> String) = groups.map { (key, list) ->
-        val avg = list.map(value).average().toFloat()
-        Bar(label(key), avg, "${label(key)}: ${format(avg)} i snit (${list.size} ${if (list.size == 1) "dag" else "dage"})")
+        // Only days where something of this kind was registered count in the average.
+        val registered = list.filter { value(it) > 0f }
+        val avg = if (registered.isEmpty()) 0f else registered.map(value).average().toFloat()
+        Bar(label(key), avg, "${label(key)}: ${format(avg)} i snit (${registered.size} ${if (registered.size == 1) "dag" else "dage"} med registreringer)")
     }
     return when (grouping) {
         Grouping.Day -> days.map { day ->

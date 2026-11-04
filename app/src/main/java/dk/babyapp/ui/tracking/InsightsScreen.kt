@@ -466,7 +466,7 @@ private fun InsightDetail(card: InsightCard, insights: PeriodInsights, events: L
                         else -> Unit
                     }
                     Text(
-                        "Gennemsnit er beregnet over ${insights.averagedDays} hele ${if (insights.averagedDays == 1) "dag" else "dage"} med registreringer. Tallene viser mønstre i dine egne registreringer og er ikke en vurdering af, hvad der er normalt.",
+                        "Gennemsnit er beregnet over hele dage, hvor der er registreret noget af den slags – fx tæller søvn i snit kun de dage, hvor søvn er registreret. Tallene viser mønstre i dine egne registreringer og er ikke en vurdering af, hvad der er normalt.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

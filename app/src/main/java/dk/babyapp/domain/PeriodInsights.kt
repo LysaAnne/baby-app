@@ -113,7 +113,13 @@ fun periodInsights(
     val firstRegistration = own.minOfOrNull { it.startedAt }?.let(::dayOf)
     val averaged = perDay.filter { it.date < today && (firstRegistration == null || it.date >= firstRegistration) }
         .ifEmpty { perDay.filter { it.date == today } }
-    fun avg(value: (DayInsight) -> Number) = if (averaged.isEmpty()) 0.0 else averaged.sumOf { value(it).toDouble() } / averaged.size
+    // Each average only counts the days where that kind was registered, so a day without sleep registered
+    // doesn't pull the sleep average down.
+    fun daysWith(registered: (DayInsight) -> Boolean) = averaged.filter(registered).ifEmpty { perDay.filter { it.date == today && registered(it) } }
+    fun avg(registered: (DayInsight) -> Boolean, value: (DayInsight) -> Number) = daysWith(registered).let { list ->
+        if (list.isEmpty()) 0.0 else list.sumOf { value(it).toDouble() } / list.size
+    }
+    val sleepDays = daysWith { it.sleepMinutes > 0 }
 
     val periodStart = start(first)
     val inPeriod = own.filter { it.startedAt >= periodStart }
@@ -129,19 +135,19 @@ fun periodInsights(
     return PeriodInsights(
         days = perDay,
         averagedDays = averaged.size,
-        avgSleepMinutes = avg { it.sleepMinutes }.toLong(),
-        sleepsPerDay = if (averaged.isEmpty()) 0.0 else periodSleeps.count { dayOf(it.startedAt) in averaged.map(DayInsight::date) }.toDouble() / averaged.size,
+        avgSleepMinutes = avg({ it.sleepMinutes > 0 }) { it.sleepMinutes }.toLong(),
+        sleepsPerDay = if (sleepDays.isEmpty()) 0.0 else sleepDays.map(DayInsight::date).toSet().let { dates -> periodSleeps.count { dayOf(it.startedAt) in dates }.toDouble() / sleepDays.size },
         longestSleepMinutes = (periodSleeps.maxOfOrNull { it.elapsedSeconds(now) } ?: 0) / 60,
         avgAwakenings = periodSleeps.mapNotNull { it.awakenings }.takeIf { it.isNotEmpty() }?.average(),
         // The middle half of the evening bedtimes, so one late night doesn't move it.
         bedtime = bedtimes.takeIf { it.size >= 3 }?.let { it[it.size / 4]..it[(it.size * 3 / 4).coerceAtMost(it.size - 1)] },
-        avgFeedings = avg { it.feedings },
-        avgNursingMinutes = avg { it.nursingMinutes }.toLong(),
-        avgBottleMl = avg { it.bottleMl }.toLong(),
-        avgActivityMinutes = avg { it.activityMinutes }.toLong(),
-        avgDiapers = avg { it.diapers },
-        avgWet = avg { it.wetDiapers },
-        avgDirty = avg { it.dirtyDiapers },
+        avgFeedings = avg({ it.feedings > 0 }) { it.feedings },
+        avgNursingMinutes = avg({ it.nursingMinutes > 0 }) { it.nursingMinutes }.toLong(),
+        avgBottleMl = avg({ it.bottleMl > 0 }) { it.bottleMl }.toLong(),
+        avgActivityMinutes = avg({ it.activityMinutes > 0 }) { it.activityMinutes }.toLong(),
+        avgDiapers = avg({ it.diapers > 0 }) { it.diapers },
+        avgWet = avg({ it.diapers > 0 }) { it.wetDiapers },
+        avgDirty = avg({ it.diapers > 0 }) { it.dirtyDiapers },
         latest = latest,
         weightChange = if (weightNow != null && weightBefore != null && weightNow.at >= periodStart && weightBefore.measurementUnit == weightNow.unit) weightNow.value - weightBefore.measurementValue!! else null,
         headLeft = heads.count { it.headSide == HeadSide.Left },

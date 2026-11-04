@@ -16,6 +16,10 @@ import dk.babyapp.R
 import dk.babyapp.data.preferences.CustomReminder
 import dk.babyapp.data.preferences.DataStoreAppPreferencesRepository
 import dk.babyapp.data.profile.ChildProfileRepository
+import dk.babyapp.data.tracking.ActivityType
+import dk.babyapp.data.tracking.CareEventEntity
+import dk.babyapp.data.tracking.CareEventRepository
+import dk.babyapp.data.tracking.CareEventType
 import dk.babyapp.domain.developmentStart
 import dk.babyapp.domain.leaps
 import dk.babyapp.domain.milestones
@@ -46,6 +50,17 @@ object CustomReminderScheduler {
         return next
     }
 
+    /** Shows [reminder] again in one day, on top of its usual times. */
+    fun snooze(context: Context, reminder: CustomReminder, now: Long = System.currentTimeMillis()) {
+        val alarm = context.getSystemService(AlarmManager::class.java)
+        val at = now + java.util.concurrent.TimeUnit.DAYS.toMillis(1)
+        val intent = PendingIntent.getBroadcast(context, 0,
+            Intent(context, CustomReminderReceiver::class.java).setData(Uri.parse("babyapp://reminder/${reminder.id}/snoozed")), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        if (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()) {
+            try { alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent) } catch (_: SecurityException) { alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent) }
+        } else alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
+    }
+
     /** Cancels the [previous] alarms and sets one for each enabled reminder in [reminders]. */
     fun update(context: Context, previous: List<CustomReminder>, reminders: List<CustomReminder>) {
         val alarm = context.getSystemService(AlarmManager::class.java)
@@ -60,27 +75,80 @@ object CustomReminderScheduler {
     }
 }
 
+/**
+ * What "Registrer" on a reminder saves: an activity whose kind is read from the title ("Bad", "Mavetid",
+ * "Udetid", "Leg"), otherwise "Andet" named after the reminder, so "Klip negle" is saved as Andet: Klip negle.
+ */
+fun reminderActivity(title: String): Pair<ActivityType, String> {
+    val words = title.lowercase().split(Regex("[^\\p{L}]+")).filter(String::isNotBlank)
+    fun has(vararg starts: String) = words.any { word -> starts.any { word.startsWith(it) } }
+    return when {
+        has("bad", "bade") -> ActivityType.Bath to ""
+        has("mavetid", "maveleg") -> ActivityType.TummyTime to ""
+        has("udetid", "gåtur") -> ActivityType.OutdoorTime to ""
+        words == listOf("leg") -> ActivityType.Play to ""
+        else -> ActivityType.Other to title.trim()
+    }
+}
+
+@AndroidEntryPoint
 class CustomReminderReceiver : BroadcastReceiver() {
+    @Inject lateinit var events: CareEventRepository
+    @Inject lateinit var children: ChildProfileRepository
+
     override fun onReceive(context: Context, intent: Intent?) {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val reminders = DataStoreAppPreferencesRepository(context.applicationContext).preferences.first().customReminders
+                val preferences = DataStoreAppPreferencesRepository(context.applicationContext).preferences.first()
+                val reminders = preferences.customReminders
                 if (intent?.action == Intent.ACTION_BOOT_COMPLETED) { CustomReminderScheduler.update(context, reminders, reminders); return@launch }
-                val id = intent?.data?.lastPathSegment
+                val id = intent?.data?.pathSegments?.firstOrNull()
                 val reminder = reminders.firstOrNull { it.id == id && it.enabled } ?: return@launch
                 val manager = context.getSystemService(NotificationManager::class.java)
+                val notificationId = 7600 + (reminder.id.hashCode() and 0xfff)
+                when (intent?.action) {
+                    ACTION_REGISTER -> {
+                        manager.cancel(notificationId)
+                        val childId = preferences.activeChildId ?: children.profiles.first().firstOrNull()?.id ?: return@launch
+                        val occurrence = intent?.getLongExtra(EXTRA_OCCURRENCE, 0L) ?: 0L
+                        val eventId = "reminder-${reminder.id}-$occurrence"
+                        val (type, name) = reminderActivity(reminder.title)
+                        val now = System.currentTimeMillis()
+                        if (events.get(eventId) == null) events.save(CareEventEntity(id = eventId, childId = childId, type = CareEventType.Activity,
+                            startedAt = now, endedAt = now, timeSpecified = true, activityType = type, activityName = name))
+                        return@launch
+                    }
+                    ACTION_SNOOZE -> {
+                        manager.cancel(notificationId)
+                        CustomReminderScheduler.snooze(context, reminder)
+                        return@launch
+                    }
+                }
                 manager.createNotificationChannel(NotificationChannel(CUSTOM_REMINDER_CHANNEL, "Egne påmindelser", NotificationManager.IMPORTANCE_DEFAULT))
                 val open = PendingIntent.getActivity(context, 7600, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-                if (manager.areNotificationsEnabled()) manager.notify(7600 + (reminder.id.hashCode() and 0xfff), NotificationCompat.Builder(context, CUSTOM_REMINDER_CHANNEL)
+                val occurrence = System.currentTimeMillis()
+                fun action(name: String) = PendingIntent.getBroadcast(context, 0,
+                    Intent(context, CustomReminderReceiver::class.java).setAction(name).setData(Uri.parse("babyapp://reminder/${reminder.id}/$occurrence"))
+                        .putExtra(EXTRA_OCCURRENCE, occurrence), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                if (manager.areNotificationsEnabled()) manager.notify(notificationId, NotificationCompat.Builder(context, CUSTOM_REMINDER_CHANNEL)
                     .setSmallIcon(R.drawable.ic_timer_notification).setContentTitle(reminder.title).setContentText("Påmindelse fra Baby Tracker")
-                    .setContentIntent(open).setAutoCancel(true).build())
-                // The next time for this reminder.
+                    .setContentIntent(open).setAutoCancel(true)
+                    .addAction(0, "Registrer", action(ACTION_REGISTER))
+                    .addAction(0, "Snooze 1 dag", action(ACTION_SNOOZE))
+                    .build())
+                // The next time for this reminder. A snoozed one keeps its usual times as well.
                 CustomReminderScheduler.update(context, listOf(reminder), listOf(reminder))
             } catch (error: Exception) {
-                android.util.Log.w("CustomReminder", "Could not show a reminder", error)
+                android.util.Log.w("CustomReminder", "Could not handle a reminder", error)
             } finally { pending.finish() }
         }
+    }
+
+    companion object {
+        const val ACTION_REGISTER = "reminder.register"
+        const val ACTION_SNOOZE = "reminder.snooze"
+        const val EXTRA_OCCURRENCE = "occurrence"
     }
 }
 
