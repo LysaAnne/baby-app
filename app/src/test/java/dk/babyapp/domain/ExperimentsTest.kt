@@ -30,4 +30,9 @@ class ExperimentsTest {
         assertEquals(50, homeExperiments.count { it.bookRef != null })
         assertEquals(29, homeExperiments.first { it.title == "Broccoli eller kiks" }.bookRef?.first)
     }
+
+    @Test fun numbersFollowTheTimelineFromOne() {
+        assertEquals((1..90).toList(), experimentTimeline.map { experimentOrder.getValue(it.number) })
+        assertEquals(1, experimentOrder.getValue(homeExperiments.first { it.title == "Mors duft" }.number))
+    }
 }

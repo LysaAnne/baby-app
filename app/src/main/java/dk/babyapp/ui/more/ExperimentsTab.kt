@@ -29,13 +29,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import dk.babyapp.data.preferences.DevelopmentCheck
 import dk.babyapp.domain.HomeExperiment
-import dk.babyapp.domain.bookRef
+import dk.babyapp.domain.experimentOrder
 import dk.babyapp.domain.experimentIntro
 import dk.babyapp.domain.experimentTimeline
 import dk.babyapp.domain.experimentsNow
 import dk.babyapp.domain.homeExperiments
 import dk.babyapp.domain.psychAgeBand
-import dk.babyapp.ui.tracking.ChoiceChips
 import dk.babyapp.ui.tracking.WhiteCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -55,22 +54,13 @@ internal fun experimentItems(scope: LazyListScope, months: Double, checks: Map<S
         now.forEach { item(key = "exp-now-${it.number}") { ExperimentCard(it, true, checks[it.key], accent) { onToggle(it.key) } } }
     }
     item { Text("Tidslinje", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) }
-    item { BookFilter() }
-    experimentTimeline.filter { !bookOnly.value || it.bookRef != null }.groupBy { psychAgeBand(it.fromMonths) }.forEach { (band, list) ->
+    experimentTimeline.groupBy { psychAgeBand(it.fromMonths) }.forEach { (band, list) ->
         item(key = "exp-band-$band") {
             Text(band, style = MaterialTheme.typography.titleSmall, color = if (list.any { it.isActive(months) }) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, top = 6.dp))
         }
         list.forEach { item(key = "exp-${it.number}") { ExperimentCard(it, it.isActive(months), checks[it.key], accent, past = months > it.toMonths) { onToggle(it.key) } } }
     }
-}
-
-/** "Fra bogen" shows only the 50 from Experimenting with Babies; kept for the session like the area filter in Psykologi. */
-private val bookOnly = mutableStateOf(false)
-
-@Composable
-private fun BookFilter() {
-    ChoiceChips(listOf(false to "Alle", true to "Fra bogen (50)"), bookOnly.value) { bookOnly.value = it ?: false }
 }
 
 @Composable
@@ -101,8 +91,8 @@ private fun ExperimentCard(item: HomeExperiment, now: Boolean, done: Development
                 }
                 Row(Modifier.weight(1f).clickable { open = !open }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(item.title, style = MaterialTheme.typography.titleSmall)
-                        Text(listOfNotNull(item.ageLabel, item.bookRef?.let { "bog nr. ${it.first}" }, "nu".takeIf { now }, "tidligere".takeIf { past && done == null },
+                        Text("${experimentOrder.getValue(item.number)}. ${item.title}", style = MaterialTheme.typography.titleSmall)
+                        Text(listOfNotNull(item.ageLabel, "nu".takeIf { now }, "tidligere".takeIf { past && done == null },
                             done?.let { "lavet ${LocalDate.parse(it.date).format(doneFormat)}" }).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall, color = if (now) accent else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -110,9 +100,6 @@ private fun ExperimentCard(item: HomeExperiment, now: Boolean, done: Development
                 }
             }
             if (open) Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                item.bookRef?.let { (nr, title) ->
-                    Text("Experimenting with Babies nr. $nr: ‘$title’", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
                 DetailHeading("Hvad undersøger det?")
                 Text(item.idea, style = MaterialTheme.typography.bodyMedium)
                 DetailHeading("Du skal bruge")

@@ -132,7 +132,7 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                 if (experiments.isNotEmpty()) item {
                                     WhiteCard {
                                         Text("Eksperimenter at prøve nu", style = MaterialTheme.typography.titleSmall)
-                                        experiments.forEach { Text("• ${it.title}", style = MaterialTheme.typography.bodyMedium) }
+                                        experiments.forEach { Text("${dk.babyapp.domain.experimentOrder.getValue(it.number)}. ${it.title}", style = MaterialTheme.typography.bodyMedium) }
                                         androidx.compose.material3.TextButton(onClick = { tab = DevelopmentTab.Experiments }) { Text("Se eksperimenterne") }
                                     }
                                 }

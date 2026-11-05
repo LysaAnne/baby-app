@@ -31,7 +31,8 @@ data class HomeExperiment(
 /** Shared reminder shown at the top: there are no right answers, and the child's mood comes first. */
 val experimentIntro = listOf(
     "Små, hjemmelavede udgaver af kendte forsøg fra udviklingspsykologien. Beskrivelserne er skrevet til appen ud fra de oprindelige studier.",
-    "De forsøg, der svarer til de 50 i Shaun Gallaghers bog Experimenting with Babies, er mærket med bogens nummer og titel. Studiet bag hvert af dem er fundet ud fra titlen og er et kvalificeret bud; bogens egen fremgangsmåde kan afvige.",
+    "Forsøgene er nummereret i den rækkefølge, de passer til barnets alder, så nr. 1 er det første at prøve.",
+    "De 50 forsøg fra Shaun Gallaghers bog Experimenting with Babies er med. Studiet bag hvert af dem er fundet ud fra bogens titler og er et kvalificeret bud; bogens egen fremgangsmåde kan afvige.",
     "Der er ingen rigtige eller forkerte svar. Et barn, der ‘fejler’, viser præcis det, forskerne fandt, og børn udvikler sig i hvert sit tempo.",
     "Lav kun forsøgene, når barnet er udhvilet og har lyst, og stop, hvis det bliver træt eller ked af det.",
     "Aldrene regnes fra terminsdatoen og er omtrentlige. Hak et forsøg af, når I har lavet det; datoen bliver gemt.",
@@ -560,4 +561,6 @@ val homeExperiments: List<HomeExperiment> by lazy { classicExperiments + bookExp
 
 /** The experiments in the order they become relevant. */
 val experimentTimeline: List<HomeExperiment> get() = homeExperiments.sortedWith(compareBy({ it.fromMonths }, { it.toMonths }, { it.number }))
+/** The number shown before each title: its place on the timeline, so 1 is the first to try. */
+val experimentOrder: Map<Int, Int> by lazy { experimentTimeline.withIndex().associate { (i, e) -> e.number to i + 1 } }
 fun experimentsNow(months: Double) = experimentTimeline.filter { it.isActive(months) }
