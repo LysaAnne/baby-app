@@ -29,4 +29,16 @@ class PsychologyTest {
         assertEquals(psychTimeline.map { it.fromMonths }.sorted(), psychTimeline.map { it.fromMonths })
         assertEquals("1–2 år", psychAgeBand(psychPhenomena.first { it.title == "Årsag og virkning" }.fromMonths))
     }
+
+    @Test fun everyPhenomenonHasAFullTextWithStudiesStepsAndFindings() {
+        assertEquals((1..46).toSet(), psychDetails.keys)
+        psychDetails.forEach { (number, d) ->
+            assertTrue("$number summary", d.summary.isNotBlank())
+            assertTrue("$number theory", d.theory.isNotEmpty() && d.theory.all { it.isNotBlank() })
+            assertTrue("$number concepts", d.concepts.isNotEmpty())
+            assertTrue("$number studies", d.studies.isNotEmpty())
+            d.studies.forEach { assertTrue("$number ${it.name}", it.who.isNotBlank() && it.steps.isNotEmpty() && it.findings.isNotEmpty()) }
+            assertTrue("$number meaning/home/caveats", d.meaning.isNotEmpty() && d.atHome.isNotEmpty() && d.caveats.isNotEmpty())
+        }
+    }
 }
