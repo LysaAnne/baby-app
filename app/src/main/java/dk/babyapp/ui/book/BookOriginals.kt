@@ -21,13 +21,16 @@ object BookOriginals {
 
     private fun clean(text: String) = text.replace(Regex("[\\\\/:*?\"<>|…]"), "").replace(Regex("\\s+"), " ").trim()
 
+    // Pages the family added go in a folder after the book's own chapters.
+    private fun chapterNumber(template: BookPageTemplate) = chapters.indexOf(template.chapter).let { if (it < 0) chapters.size else it } + 1
+
     fun folder(child: ChildProfile, template: BookPageTemplate): String {
-        val chapter = chapters.indexOf(template.chapter) + 1
+        val chapter = chapterNumber(template)
         return "${clean(child.name).ifBlank { "Barn" }}/%02d ${clean(template.chapter)}".format(chapter)
     }
 
     fun fileName(template: BookPageTemplate, number: Int, extension: String): String {
-        val chapter = chapters.indexOf(template.chapter) + 1
+        val chapter = chapterNumber(template)
         val page = babyBookTemplates.filter { it.chapter == template.chapter }.indexOfFirst { it.id == template.id } + 1
         return "%02d-%02d ${clean(template.title)} - $number.$extension".format(chapter, page)
     }

@@ -128,6 +128,7 @@ fun BabyAppNavigation(
     onUpdateHealthReminders: (Boolean) -> Unit = {},
     bookPages: List<dk.babyapp.data.book.BabyBookPage> = emptyList(),
     onSaveBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
+    onDeleteBookPage: suspend (dk.babyapp.data.book.BabyBookPage) -> Unit = {},
     colorProfiles: List<ColorProfile> = emptyList(),
     onStartBreastfeeding: (String, BreastSide) -> Unit = { _, _ -> },
     onResumeBreastfeeding: (CareEventEntity, BreastSide, (Boolean) -> Unit) -> Unit = { _, _, result -> result(false) },
@@ -405,7 +406,7 @@ fun BabyAppNavigation(
             composable<BookPageDestination> { entry ->
                 val target = entry.toRoute<BookPageDestination>()
                 dk.babyapp.ui.book.BabyBookScreen(child = profiles.firstOrNull { it.id == target.childId }, pages = bookPages, contentPadding = contentPadding,
-                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
+                    onSave = onSaveBookPage, onDelete = onDeleteBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
                     reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, onUpdateHealthReminders, dismiss) }, initialPageId = target.pageId)
             }
             composable<AppDestination.Guide> {
@@ -430,7 +431,7 @@ fun BabyAppNavigation(
             }
             composable<BookDestination> {
                 dk.babyapp.ui.book.BabyBookScreen(child = activeChild, pages = bookPages, contentPadding = contentPadding,
-                    onSave = onSaveBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
+                    onSave = onSaveBookPage, onDelete = onDeleteBookPage, photoFile = photoFile, onPhotoSelected = onPhotoSelected,
                     reminderSettings = { dismiss -> dk.babyapp.ui.settings.ReminderSettingsDialog(preferences, onUpdateDailyReminder, onUpdateBookReminders, onUpdateBookReminderFrequency, onUpdateCustomReminders, onUpdateDevelopmentReminders, onUpdateHealthReminders, dismiss) })
 
             }

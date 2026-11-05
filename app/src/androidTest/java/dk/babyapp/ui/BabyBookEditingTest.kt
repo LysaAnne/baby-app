@@ -25,7 +25,7 @@ class BabyBookEditingTest {
         var saves = 0
         var dismissed = false
         compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), babyBookTemplates.first(), null, { saves++ }, { null }, { "photo" }, { dismissed = true }) } }
-        compose.onNodeWithText("Barnets navn").performTextInput("Freja")
+        compose.onNodeWithText("Barnets fulde navn").performTextInput("Freja")
         compose.onNodeWithContentDescription("Tilbage").performClick()
         compose.onNodeWithText("Kassér ændringer?").assertExists()
         compose.onNodeWithText("Kassér").performClick()
@@ -46,10 +46,32 @@ class BabyBookEditingTest {
         val cover = babyBookTemplates.first()
         compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), cover, null, { saved = it }, { null }, { "photo" }, onDismiss = {}, onOpenPage = { opened = it }) } }
         compose.onNodeWithText("side 1 af", substring = true).assertExists()
-        compose.onNodeWithText("Barnets navn").performTextInput("Freja")
+        compose.onNodeWithText("Barnets fulde navn").performTextInput("Freja")
         compose.onNodeWithText(babyBookTemplates[1].title).performClick()
-        compose.runOnIdle { assertEquals("Freja", saved?.answers()?.get("Barnets navn")); assertEquals(babyBookTemplates[1].id, opened) }
+        compose.runOnIdle { assertEquals("Freja", saved?.answers()?.get("Barnets fulde navn")); assertEquals(babyBookTemplates[1].id, opened) }
     }
 
+    @Test fun aQuestionCanBeSkippedAndMarkedForFollowUp() {
+        var saved: BabyBookPage? = null
+        compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), babyBookTemplates.first(), null, { saved = it }, { null }, { "photo" }, {}) } }
+        compose.onNodeWithContentDescription("Mere om Hvem har lavet denne bog til dig?").performClick()
+        compose.onNodeWithText("Spring over").performClick()
+        compose.onNodeWithText("Sprunget over").assertExists()
+        compose.onNodeWithText("Tag med").assertExists()
+        compose.onNodeWithText("En hilsen til dig").performTextInput("Kære Freja")
+        compose.onNodeWithContentDescription("Mere om En hilsen til dig").performClick()
+        compose.onNodeWithText("Følg op på").performClick()
+        compose.onNodeWithText("Gem", useUnmergedTree = true).performClick()
+        compose.runOnIdle {
+            assertEquals(setOf("Hvem har lavet denne bog til dig?"), saved?.skipped())
+            assertEquals(setOf("En hilsen til dig"), saved?.followUps())
+        }
+    }
 
+    @Test fun anOldAnswerMovesIntoTheRewordedQuestion() {
+        val old = BabyBookPage("freja", "cover", "{\"Barnets navn\":\"Freja Marie\"}")
+        compose.setContent { MaterialTheme { BookPageEditor(ChildProfile(id = "freja", name = "Freja"), babyBookTemplates.first(), old, {}, { null }, { "photo" }, {}) } }
+        compose.onNodeWithText("Freja Marie").assertExists()
+        compose.onNodeWithText("Barnets navn").assertDoesNotExist()
+    }
 }

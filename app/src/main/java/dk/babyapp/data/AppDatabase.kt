@@ -14,7 +14,7 @@ import dk.babyapp.data.tracking.CareEventEntity
 
 @Database(
     entities = [ChildProfileEntity::class, ParentProfileEntity::class, ChildParentLink::class, CareProviderEntity::class, CareEventEntity::class, dk.babyapp.data.book.BabyBookPage::class, dk.babyapp.data.medicine.MedicinePlanEntity::class, dk.babyapp.data.teeth.ToothRecordEntity::class],
-    version = 29,
+    version = 30,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

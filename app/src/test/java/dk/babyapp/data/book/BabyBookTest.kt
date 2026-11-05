@@ -24,10 +24,36 @@ class BabyBookTest {
         assertTrue(exportBabyBook("Freja", listOf(page)).contains("Mors gamle historie"))
         val mother = babyBookTemplates.first { it.id == "before-0" }
         val name = babyBookTemplates.first { it.title == "Dit navn" }
-        // Few, short writing starters per page.
-        assertTrue(mother.prompts.size in 1..3)
+        // The questions Anne chose for the page.
+        assertEquals("Mors fulde navn, og hvor hun er vokset op", mother.prompts.first())
         assertNotEquals(mother.prompts, name.prompts)
         assertFalse("Fortæl historien" in mother.prompts)
     }
 
+    @Test fun rewordedQuestionsKeepTheirAnswersAndRetiredPagesShowOnlyWhatIsWritten() {
+        val cover = babyBookTemplates.first()
+        assertEquals(mapOf("Barnets fulde navn" to "Freja"), normalizeBookAnswers(cover.prompts, mapOf("Barnets navn" to "Freja")))
+        // A new answer wins; the old one is kept as it is.
+        assertEquals(mapOf("Barnets navn" to "Gammel", "Barnets fulde navn" to "Ny"), normalizeBookAnswers(cover.prompts, mapOf("Barnets navn" to "Gammel", "Barnets fulde navn" to "Ny")))
+        val retired = babyBookTemplates.first { it.title == "En hårlok" }
+        assertTrue(retired.retired)
+        assertEquals(emptyList<String>(), retired.prompts)
+        assertEquals(listOf("Hvem klippede?"), retired.questionsFor(BabyBookPage("a", retired.id, Json.encodeToString(mapOf("Hvem klippede?" to "Mormor")))))
+        assertEquals("Dine forældre", babyBookTemplates.first { it.id == "before-3" }.title)
+    }
+
+    @Test fun ownPagesJoinTheirChapterAndExportWithoutSkippedQuestions() {
+        val own = BabyBookPage("a", "custom-1", Json.encodeToString(mapOf("Hvem var med?" to "Mormor", "Hvad spiste vi?" to "Kage")),
+            skippedJson = Json.encodeToString(listOf("Hvad spiste vi?")), customTitle = "Første tur til Skagen", customChapter = "De første gange",
+            customPromptsJson = Json.encodeToString(listOf("Hvem var med?", "Hvad spiste vi?")))
+        val templates = bookTemplatesFor("a", listOf(own))
+        val firsts = templates.filter { it.chapter == "De første gange" }
+        assertEquals("custom-1", firsts.last().id)
+        assertEquals(babyBookTemplates.size + 1, templates.size)
+        val export = exportBabyBook("Freja", listOf(own))
+        assertTrue(export.contains("## Første tur til Skagen"))
+        assertTrue(export.contains("Mormor"))
+        assertFalse(export.contains("Kage"))
+        assertEquals(listOf("Min side"), own.copy(customTitle = "Min side", customPromptsJson = "[]").customTemplate().prompts)
+    }
 }

@@ -10,6 +10,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +25,10 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -85,19 +91,25 @@ private fun chapterIcon(chapter: String): ImageVector = when (chapter) {
 
 private enum class PageStatus { Empty, Started, Done }
 
-/** Done when every question has an answer; started when anything is written or a photo is added. */
+/**
+ * Done when every question that isn't skipped has an answer and nothing is marked "Følg op på";
+ * started when anything is written or a photo is added.
+ */
 private fun pageStatus(template: BookPageTemplate, page: BabyBookPage?): PageStatus {
     if (!bookPageHasContent(page)) return PageStatus.Empty
-    val answers = page!!.answers()
-    return if (template.prompts.all { answers[it]?.isNotBlank() == true }) PageStatus.Done else PageStatus.Started
+    val answers = normalizeBookAnswers(template.prompts, page!!.answers())
+    val skipped = page.skipped()
+    if (page.followUps().isNotEmpty()) return PageStatus.Started
+    return if (template.prompts.filter { it !in skipped }.all { answers[it]?.isNotBlank() == true }) PageStatus.Done else PageStatus.Started
 }
 
 private fun monthsLabel(months: Int) = when (months) { 0 -> "nyfødt"; 1 -> "1 måned"; else -> "$months måneder" }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPadding: PaddingValues,
     onSave: suspend (BabyBookPage) -> Unit, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String, initialPageId: String? = null,
-    reminderSettings: (@Composable (onDismiss: () -> Unit) -> Unit)? = null) {
+    reminderSettings: (@Composable (onDismiss: () -> Unit) -> Unit)? = null, onDelete: suspend (BabyBookPage) -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val childPages = pages.filter { it.childId == child?.id }
@@ -130,8 +142,13 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
         }
     }
     fun pageOf(template: BookPageTemplate) = childPages.firstOrNull { it.pageId == template.id }
+    // The book's own pages and the ones this family added.
+    val bookTemplates = remember(child?.id, pages) { bookTemplatesFor(child?.id, pages) }
+    var pageForm by remember { mutableStateOf<CustomPageForm?>(null) }
+    var pageMenu by remember { mutableStateOf<BabyBookPage?>(null) }
+    var deleting by remember { mutableStateOf<BabyBookPage?>(null) }
     // Retired pages only show when something is written on them.
-    val chapters = bookChapters.mapValues { (_, templates) -> templates.filter { !it.retired || bookPageHasContent(pageOf(it)) } }
+    val chapters = bookTemplates.groupBy { it.chapter }.mapValues { (_, templates) -> templates.filter { !it.retired || bookPageHasContent(pageOf(it)) } }
     val allPages = chapters.values.flatten()
     val bookListState = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(child?.id, chapter) { bookListState.scrollToItem(0) }
@@ -165,6 +182,23 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                             Text("${child.name} · det første år", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             Text("$started af ${allPages.size} sider · $photoCount ${if (photoCount == 1) "billede" else "billeder"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             LinearProgressIndicator(progress = { started / allPages.size.toFloat() }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), trackColor = MaterialTheme.colorScheme.surface, drawStopIndicator = {})
+                        }
+                    }
+                }
+            }
+            val followUps = bookTemplates.flatMap { template -> pageOf(template)?.followUps().orEmpty().map { template to it } }
+            if (followUps.isNotEmpty()) item {
+                Surface(shape = MaterialTheme.shapes.large, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)), color = MaterialTheme.colorScheme.surface) {
+                    Column(Modifier.fillMaxWidth().padding(vertical = BabySpacing.s)) {
+                        Row(Modifier.padding(horizontal = BabySpacing.m), horizontalArrangement = Arrangement.spacedBy(BabySpacing.s), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Flag, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Text("Følg op på (${followUps.size})", style = MaterialTheme.typography.titleMedium)
+                        }
+                        followUps.forEach { (template, question) ->
+                            Column(Modifier.fillMaxWidth().clickable { chapter = template.chapter; editingId = template.id }.padding(horizontal = BabySpacing.m, vertical = BabySpacing.xs)) {
+                                Text(question, style = MaterialTheme.typography.bodyMedium)
+                                Text(template.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -203,6 +237,11 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
+            item {
+                OutlinedButton(onClick = { pageForm = CustomPageForm(null, OWN_PAGES_CHAPTER) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(BabySpacing.s)); Text("Tilføj egen side")
+                }
+            }
             item { Text("Skriv lidt ad gangen. Alle felter er frivillige, og kapitlerne kan udfyldes i den rækkefølge, du vil.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             val templates = chapters[open].orEmpty()
@@ -232,10 +271,12 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                             val subtitle = when {
                                 current && status == PageStatus.Empty -> "Nu · ${child.name} er ${monthsLabel(months!!)}"
                                 status != PageStatus.Empty -> {
-                                    val answered = saved!!.answers().values.count(String::isNotBlank)
-                                    val fields = (template.prompts + saved.answers().filterValues(String::isNotBlank).keys).distinct().size
+                                    val answers = normalizeBookAnswers(template.prompts, saved!!.answers())
+                                    val questions = template.questionsFor(saved).filter { it !in saved.skipped() }
+                                    val answered = questions.count { answers[it]?.isNotBlank() == true }
                                     val photos = saved.photos().size
-                                    "$answered af $fields felter · $photos ${if (photos == 1) "billede" else "billeder"}"
+                                    val followUp = saved.followUps().size
+                                    "$answered af ${questions.size} felter · $photos ${if (photos == 1) "billede" else "billeder"}" + if (followUp > 0) " · følg op på $followUp" else ""
                                 }
                                 !available && template.id.startsWith("month-") && child.birthDate != null -> {
                                     val days = ChronoUnit.DAYS.between(today, child.birthDate.plusMonths(template.id.removePrefix("month-").toLong()))
@@ -244,8 +285,13 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                                 !available -> "Kommer senere"
                                 else -> "Ikke skrevet endnu"
                             }
+                            Box {
                             Row(
-                                Modifier.fillMaxWidth().clickable { editingId = template.id }
+                                Modifier.fillMaxWidth().combinedClickable(
+                                    onClick = { editingId = template.id },
+                                    onLongClick = { if (template.custom) pageMenu = saved },
+                                    onLongClickLabel = if (template.custom) "Rediger eller slet siden" else null,
+                                )
                                     .background(if (current) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface)
                                     .padding(horizontal = BabySpacing.m, vertical = BabySpacing.s)
                                     .alpha(if (available || status != PageStatus.Empty) 1f else 0.55f),
@@ -258,9 +304,19 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
                                 }
                                 StatusDot(status)
                             }
+                            DropdownMenu(expanded = template.custom && pageMenu != null && pageMenu?.pageId == template.id, onDismissRequest = { pageMenu = null }) {
+                                DropdownMenuItem(text = { Text("Rediger siden") }, onClick = { pageForm = CustomPageForm(pageMenu, template.chapter); pageMenu = null })
+                                DropdownMenuItem(text = { Text("Slet siden") }, onClick = { deleting = pageMenu; pageMenu = null })
+                            }
+                            }
                             if (index < templates.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         }
                     }
+                }
+            }
+            item {
+                OutlinedButton(onClick = { pageForm = CustomPageForm(null, open) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(BabySpacing.s)); Text("Tilføj side")
                 }
             }
             item {
@@ -281,10 +337,25 @@ fun BabyBookScreen(child: ChildProfile?, pages: List<BabyBookPage>, contentPaddi
     }) { Text("Vælg placering") } }, dismissButton = { TextButton(onClick = { exportOpen = false }) { Text("Annuller") } })
     if (remindersOpen) reminderSettings?.invoke { remindersOpen = false }
     BackHandler(enabled = chapter != null && editingId == null) { chapter = null }
-    val template = babyBookTemplates.firstOrNull { it.id == editingId }
+    val template = bookTemplates.firstOrNull { it.id == editingId }
     if (template != null && child != null) key(child.id, template.id) {
+        val siblings = chapters[template.chapter].orEmpty().filter { !it.retired || it.id == template.id }
         BookPageEditor(child, template, childPages.firstOrNull { it.pageId == template.id }, onSave, photoFile, onPhotoSelected,
-            onDismiss = { editingId = null }, onOpenPage = { id -> editingId = id; chapter = babyBookTemplates.first { it.id == id }.chapter })
+            onDismiss = { editingId = null }, onOpenPage = { id -> editingId = id; chapter = bookTemplates.first { it.id == id }.chapter }, chapterPages = siblings)
+    }
+    pageForm?.let { form ->
+        if (child != null) CustomPageDialog(form, bookTemplates.map { it.chapter }.plus(OWN_PAGES_CHAPTER).distinct(), onDismiss = { pageForm = null }) { page ->
+            scope.launch {
+                runCatching { onSave(page.copy(childId = child.id)) }.onSuccess { pageForm = null; if (form.page == null) { chapter = page.customChapter; editingId = page.pageId } }
+                    .onFailure { message = "Siden kunne ikke gemmes. Prøv igen." }
+            }
+        }
+    }
+    deleting?.let { page ->
+        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Slet siden \"${page.customTitle}\"?") },
+            text = { Text("Siden og alt, der er skrevet og lagt af billeder på den, slettes fra bogen. Det kan ikke fortrydes.") },
+            confirmButton = { TextButton(onClick = { scope.launch { runCatching { onDelete(page) }.onFailure { message = "Siden kunne ikke slettes." }; deleting = null } }) { Text("Slet") } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Annuller") } })
     }
     message?.let { text -> AlertDialog(onDismissRequest = { message = null }, title = { Text("Eksport") }, text = { Text(text) }, confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } }) }
 }
@@ -372,9 +443,16 @@ private fun PhotoThumb(file: File?, icon: ImageVector, size: Dp, shape: androidx
 
 @Composable
 internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, saved: BabyBookPage?,
-    onSave: suspend (BabyBookPage) -> Unit, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String, onDismiss: () -> Unit, onOpenPage: (String) -> Unit = {}) {
-    var answersJson by rememberSaveable { mutableStateOf(saved?.answersJson ?: "{}") }
+    onSave: suspend (BabyBookPage) -> Unit, photoFile: (String?) -> File?, onPhotoSelected: suspend (Uri) -> String, onDismiss: () -> Unit, onOpenPage: (String) -> Unit = {},
+    chapterPages: List<BookPageTemplate> = bookChapters[template.chapter].orEmpty().filter { !it.retired || it.id == template.id }) {
+    // A reworded question shows the answer written under its old text; it is saved under the new text.
+    val initialAnswers = remember(template.id) { Json.encodeToString(normalizeBookAnswers(template.prompts, saved?.answers().orEmpty())) }
+    var answersJson by rememberSaveable { mutableStateOf(initialAnswers) }
     var photosJson by rememberSaveable { mutableStateOf(saved?.photosJson ?: "[]") }
+    var skippedJson by rememberSaveable { mutableStateOf(saved?.skippedJson ?: "[]") }
+    var followUpJson by rememberSaveable { mutableStateOf(saved?.followUpJson ?: "[]") }
+    val skipped = Json.decodeFromString<List<String>>(skippedJson)
+    val followUps = Json.decodeFromString<List<String>>(followUpJson)
     var saving by remember { mutableStateOf(false) }
     var discard by remember { mutableStateOf(false) }
     var viewing by remember { mutableStateOf<String?>(null) }
@@ -382,9 +460,9 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
     val answers = Json.decodeFromString<Map<String, String>>(answersJson)
     val photos = Json.decodeFromString<List<String>>(photosJson)
     val scope = rememberCoroutineScope()
-    val chapterPages = bookChapters[template.chapter].orEmpty().filter { !it.retired || it.id == template.id }
     val position = chapterPages.indexOfFirst { it.id == template.id }
-    val changed = answersJson != (saved?.answersJson ?: "{}") || photosJson != (saved?.photosJson ?: "[]")
+    val changed = answersJson != initialAnswers || photosJson != (saved?.photosJson ?: "[]") ||
+        skippedJson != (saved?.skippedJson ?: "[]") || followUpJson != (saved?.followUpJson ?: "[]")
     val context = LocalContext.current
     var savedTo by remember { mutableStateOf<String?>(null) }
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -404,7 +482,8 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
     fun saveThen(next: () -> Unit) = scope.launch {
         if (!changed) { next(); return@launch }
         saving = true; error = null
-        runCatching { onSave(BabyBookPage(child.id, template.id, answersJson, photosJson)) }.onSuccess { next() }.onFailure { error = "Kunne ikke gemme. Prøv igen." }
+        val page = (saved ?: BabyBookPage(child.id, template.id)).copy(answersJson = answersJson, photosJson = photosJson, skippedJson = skippedJson, followUpJson = followUpJson)
+        runCatching { onSave(page) }.onSuccess { next() }.onFailure { error = "Kunne ikke gemme. Prøv igen." }
         saving = false
     }
     val dismiss = { if (!saving) { if (changed) discard = true else onDismiss() }; Unit }
@@ -449,8 +528,23 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
                         answersJson = Json.encodeToString(birth + answers.filterValues(String::isNotBlank))
                     }, label = { Text("Udfyld tomme felter fra barnets profil") })
                     // Old questions stay as long as something is written under them; empty ones give way to the new questions.
-                    val kept = remember(template.id) { saved?.answers()?.filterValues(String::isNotBlank)?.keys.orEmpty() }
-                    (template.prompts + kept).distinct().forEach { prompt -> OutlinedTextField(value = answers[prompt].orEmpty(), onValueChange = { answersJson = Json.encodeToString(answers + (prompt to it)) }, label = { Text(prompt) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, minLines = if (isShortBookPrompt(prompt)) 1 else 3, enabled = !saving) }
+                    val questions = remember(template.id) { (template.prompts + Json.decodeFromString<Map<String, String>>(initialAnswers).filterValues(String::isNotBlank).keys).distinct() }
+                    questions.filter { it !in skipped }.forEach { prompt ->
+                        BookQuestionField(prompt, answers[prompt].orEmpty(), followUp = prompt in followUps, enabled = !saving,
+                            onChange = { answersJson = Json.encodeToString(answers + (prompt to it)) },
+                            onToggleFollowUp = { followUpJson = Json.encodeToString(if (prompt in followUps) followUps - prompt else followUps + prompt) },
+                            onSkip = { skippedJson = Json.encodeToString(skipped + prompt); followUpJson = Json.encodeToString(followUps - prompt) })
+                    }
+                    val skippedHere = questions.filter { it in skipped }
+                    if (skippedHere.isNotEmpty()) {
+                        Text("Sprunget over", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = BabySpacing.s))
+                        skippedHere.forEach { prompt ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(prompt, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                                TextButton(enabled = !saving, onClick = { skippedJson = Json.encodeToString(skipped - prompt) }) { Text("Tag med") }
+                            }
+                        }
+                    }
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -480,4 +574,58 @@ internal fun BookPageEditor(child: ChildProfile, template: BookPageTemplate, sav
         }
     }
     if (discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Kassér ændringer?") }, text = { Text("Dine seneste ændringer er ikke gemt.") }, confirmButton = { TextButton(onClick = onDismiss) { Text("Kassér") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("Fortsæt med at skrive") } })
+}
+
+/** One question: the text box, with a menu for "Følg op på" and "Spring over". */
+@Composable
+private fun BookQuestionField(prompt: String, value: String, followUp: Boolean, enabled: Boolean, onChange: (String) -> Unit, onToggleFollowUp: () -> Unit, onSkip: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    OutlinedTextField(value = value, onValueChange = onChange, label = { Text(prompt) }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small,
+        minLines = if (isShortBookPrompt(prompt)) 1 else 3, enabled = enabled,
+        trailingIcon = {
+            Box {
+                IconButton(enabled = enabled, onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = "Mere om $prompt") }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text(if (followUp) "Fjern \"Følg op på\"" else "Følg op på") }, leadingIcon = { Icon(Icons.Outlined.Flag, null) }, onClick = { menu = false; onToggleFollowUp() })
+                    DropdownMenuItem(text = { Text("Spring over") }, onClick = { menu = false; onSkip() })
+                }
+            }
+        },
+        supportingText = if (followUp) ({
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Flag, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                Text("Følg op på", color = MaterialTheme.colorScheme.primary)
+            }
+        }) else null)
+}
+
+/** A page the family adds or edits: [page] is null for a new one; [chapter] is where it goes by default. */
+internal data class CustomPageForm(val page: BabyBookPage?, val chapter: String)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CustomPageDialog(form: CustomPageForm, chapters: List<String>, onDismiss: () -> Unit, onSave: (BabyBookPage) -> Unit) {
+    var title by rememberSaveable { mutableStateOf(form.page?.customTitle.orEmpty()) }
+    var chapter by rememberSaveable { mutableStateOf(form.page?.customChapter?.ifBlank { null } ?: form.chapter) }
+    var questions by rememberSaveable { mutableStateOf(form.page?.let { Json.decodeFromString<List<String>>(it.customPromptsJson).joinToString("\n") }.orEmpty()) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (form.page == null) "Tilføj side" else "Rediger siden") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(BabySpacing.s)) {
+                OutlinedTextField(title, { title = it }, label = { Text("Sidens titel") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Text("Kapitel", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    chapters.forEach { name -> FilterChip(selected = chapter == name, onClick = { chapter = name }, label = { Text(name) }) }
+                }
+                OutlinedTextField(questions, { questions = it }, label = { Text("Spørgsmål (ét pr. linje)") }, minLines = 3, modifier = Modifier.fillMaxWidth(),
+                    supportingText = { Text("Uden spørgsmål får siden én skriveboks.") })
+            }
+        },
+        confirmButton = {
+            Button(enabled = title.isNotBlank(), onClick = {
+                val prompts = questions.lines().map(String::trim).filter(String::isNotBlank).distinct()
+                val base = form.page ?: BabyBookPage("", CUSTOM_PAGE_PREFIX + "%013d-%s".format(System.currentTimeMillis(), java.util.UUID.randomUUID().toString().take(8)))
+                onSave(base.copy(customTitle = title.trim(), customChapter = chapter, customPromptsJson = Json.encodeToString(prompts)))
+            }) { Text("Gem") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuller") } })
 }

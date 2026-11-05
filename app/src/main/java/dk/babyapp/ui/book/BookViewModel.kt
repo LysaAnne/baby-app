@@ -17,6 +17,7 @@ class BookViewModel @Inject constructor(
     private val bookRepository: BabyBookRepository? = null,
 ) : ViewModel() {
     suspend fun saveBookPage(page: BabyBookPage) { requireNotNull(bookRepository).save(page) }
+    suspend fun deleteCustomPage(page: BabyBookPage) { requireNotNull(bookRepository).deleteCustomPage(page) }
     fun updateBookReminders(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateBookReminders(enabled) }
     fun updateBookReminderFrequency(frequency: BookReminderFrequency) = viewModelScope.launch { preferencesRepository.updateBookReminderFrequency(frequency) }
 }

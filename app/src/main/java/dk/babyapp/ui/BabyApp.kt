@@ -103,6 +103,7 @@ fun BabyApp(
                     onUpdateHealthReminders = settings::updateHealthReminders,
                     bookPages = state.bookPages,
                     onSaveBookPage = book::saveBookPage,
+                    onDeleteBookPage = book::deleteCustomPage,
                     colorProfiles = state.colorProfiles,
                     onStartBreastfeeding = tracking::startBreastfeeding,
                     onResumeBreastfeeding = tracking::resumeBreastfeeding,
