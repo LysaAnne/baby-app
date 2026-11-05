@@ -31,6 +31,7 @@ data class HomeExperiment(
 /** Shared reminder shown at the top: there are no right answers, and the child's mood comes first. */
 val experimentIntro = listOf(
     "Små, hjemmelavede udgaver af kendte forsøg fra udviklingspsykologien. Beskrivelserne er skrevet til appen ud fra de oprindelige studier.",
+    "De forsøg, der svarer til de 50 i Shaun Gallaghers bog Experimenting with Babies, er mærket med bogens nummer og titel. Studiet bag hvert af dem er fundet ud fra titlen og er et kvalificeret bud; bogens egen fremgangsmåde kan afvige.",
     "Der er ingen rigtige eller forkerte svar. Et barn, der ‘fejler’, viser præcis det, forskerne fandt, og børn udvikler sig i hvert sit tempo.",
     "Lav kun forsøgene, når barnet er udhvilet og har lyst, og stop, hvis det bliver træt eller ked af det.",
     "Aldrene regnes fra terminsdatoen og er omtrentlige. Hak et forsøg af, når I har lavet det; datoen bliver gemt.",
@@ -38,7 +39,7 @@ val experimentIntro = listOf(
 
 private fun y(years: Double) = years * 12
 
-val homeExperiments = listOf(
+private val classicExperiments = listOf(
     HomeExperiment(1, "Ansigter frem for alt", "0–2 måneder", 0.0, 2.0,
         "Om nyfødte foretrækker at kigge på noget, der ligner et ansigt.",
         listOf("To stykker pap på størrelse med et ansigt", "En tusch"),
@@ -71,7 +72,7 @@ val homeExperiments = listOf(
             "Byt om på siderne og gentag, så det ikke bare er barnets yndlingsside.",
         ),
         listOf("Om barnet oftere vender sig mod mors stof."),
-        "Aidan MacFarlane (1975) fandt, at mange 6 dage gamle spædbørn vendte hovedet mod deres egen mors ammeindlæg frem for en fremmed mors. Lugtesansen er godt udviklet fra fødslen."),
+        "Aidan MacFarlane (1975) fandt, at mange 6 dage gamle spædbørn vendte hovedet mod deres egen mors ammeindlæg frem for en fremmed mors. Lugtesansen er godt udviklet fra fødslen. Rattaz, Goubet og Bullinger (2005) fandt desuden, at duften af mors mælk dæmpede nyfødtes gråd under en hælprøve, mere end en ukendt duft."),
     HomeExperiment(4, "Medfødte reflekser", "0–3 måneder", 0.0, 3.0,
         "Nyfødtes automatiske reflekser, som forsvinder i løbet af de første måneder.",
         listOf("Et vågent, tilfreds barn"),
@@ -553,6 +554,9 @@ val homeExperiments = listOf(
         listOf("Om barnet siger ‘parken’ (Mia ved ikke, at Jens ved det)."),
         "Perner og Wimmer (1985) viste, at forståelsen af ‘hvad tror hun, han tror’ typisk kommer omkring 6–7 år, flere år efter den enkle falske overbevisning."),
 )
+
+/** All experiments: the app's own 50 and the 40 more from the book's list (see ExperimentsBook.kt). */
+val homeExperiments: List<HomeExperiment> by lazy { classicExperiments + bookExperiments }
 
 /** The experiments in the order they become relevant. */
 val experimentTimeline: List<HomeExperiment> get() = homeExperiments.sortedWith(compareBy({ it.fromMonths }, { it.toMonths }, { it.number }))

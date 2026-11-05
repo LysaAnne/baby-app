@@ -146,7 +146,7 @@ class MoreScreensTest {
         var checks by mutableStateOf(emptyList<DevelopmentCheck>())
         compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
         compose.onNodeWithText("Eksperimenter").performClick()
-        compose.onNodeWithText("0 af 50 lavet").assertExists()
+        compose.onNodeWithText("0 af 90 lavet").assertExists()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om Broccoli eller kiks"))
         compose.onNodeWithContentDescription("Læs om Broccoli eller kiks").performClick()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Du skal bruge"))
