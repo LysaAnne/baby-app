@@ -256,7 +256,7 @@ fun TodayScreen(
                     BulletinBoard(child, childId, historyEvents ?: events, preferences.boardNotes, onUpdateBoardNotes, onSaveHealthRecord, "events" in preferences.collapsedCards) { collapse("events", it) }
                 }
                 "development" -> if (child != null && preferences.showDevelopmentStrip) item(key = "card-development") {
-                    dk.babyapp.ui.more.DevelopmentStripCard(child, "development" in preferences.collapsedCards, { collapse("development", it) }) { developmentOpen = true }
+                    dk.babyapp.ui.more.DevelopmentStripCard(child, preferences.developmentChecks, "development" in preferences.collapsedCards, { collapse("development", it) }) { developmentOpen = true }
                 }
             }
         }

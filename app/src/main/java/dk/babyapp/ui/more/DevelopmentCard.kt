@@ -4,6 +4,8 @@ import android.app.DatePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
@@ -26,6 +28,7 @@ import dk.babyapp.data.preferences.DevelopmentCheck
 import dk.babyapp.data.profile.ChildProfile
 import dk.babyapp.domain.LeapPhase
 import dk.babyapp.domain.leapPhase
+import dk.babyapp.domain.plusWeekFraction
 import dk.babyapp.domain.weeksFromDue
 import dk.babyapp.ui.theme.CareCategory
 import dk.babyapp.ui.theme.babyColors
@@ -35,25 +38,54 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** The development strip on I dag: where the child is in the spurts. Tap to open Udvikling on Nu. */
+/**
+ * The development card on I dag: the spurt the child is in (or the next one), the strip of spurts with the child's
+ * week, and small counts for milestones, psychology and experiments at this age. Tap anywhere to open Udvikling.
+ */
 @Composable
-internal fun DevelopmentStripCard(child: ChildProfile, collapsed: Boolean, onCollapse: (Boolean) -> Unit, onOpen: () -> Unit) {
+internal fun DevelopmentStripCard(child: ChildProfile, checks: List<DevelopmentCheck>, collapsed: Boolean, onCollapse: (Boolean) -> Unit, onOpen: () -> Unit) {
     val colors = MaterialTheme.babyColors.category(CareCategory.Measurement)
     val weeks = weeksFromDue(child)
-    CollapsibleCard(Icons.Outlined.TrendingUp, "Udvikling", collapsed, onCollapse, onOpen = onOpen) {
-        Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Åbn Udvikling", onClick = onOpen), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    CollapsibleCard(Icons.Outlined.TrendingUp, "Udvikling", collapsed, onCollapse) {
+        Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Åbn Udvikling", onClick = onOpen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (weeks == null) Text("Angiv terminsdatoen for at se barnets udvikling.", style = MaterialTheme.typography.bodySmall)
             else {
-                Text("Uge ${weeks.toInt().coerceAtLeast(0)} · " + when (val phase = leapPhase(weeks)) {
-                    is LeapPhase.InLeap -> "spring ${phase.leap.number}: ${phase.leap.title}"
-                    is LeapPhase.Calm -> phase.next?.let { "rolig periode · spring ${it.number} om ca. ${Math.ceil(phase.weeksToNext ?: 0.0).toInt()} uger" } ?: "alle spring er overstået"
-                }, style = MaterialTheme.typography.bodyMedium)
+                val start = dk.babyapp.domain.developmentStart(child)
+                val week = weeks.toInt().coerceAtLeast(0)
+                when (val phase = leapPhase(weeks)) {
+                    is LeapPhase.InLeap -> {
+                        Text("Spring ${phase.leap.number} · ${phase.leap.title}", style = MaterialTheme.typography.titleSmall)
+                        Text("Uge $week · urolig periode" + (start?.let { " til ca. ${it.plusWeekFraction(phase.leap.calmFromWeek).format(shortDate)}" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    is LeapPhase.Calm -> {
+                        Text(phase.next?.let { "Næste: spring ${it.number} · ${it.title}" } ?: "Alle ti spring er overstået", style = MaterialTheme.typography.titleSmall)
+                        Text("Uge $week · rolig periode" + (phase.next?.let { " · om ca. ${Math.ceil(phase.weeksToNext ?: 0.0).toInt()} uger" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 LeapStrip(weeks, colors.accent, colors.container)
-                val psych = dk.babyapp.domain.psychNow(weeks * 7 / 30.44)
-                if (psych.isNotEmpty()) Text("Psykologi: ${psych.first().title.lowercase()}" + if (psych.size > 1) " og ${psych.size - 1} andre" else "",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val months = weeks * 7 / 30.44
+                val mine = checks.filter { it.childId == child.id }.map { it.key }.toSet()
+                val milestonesNow = dk.babyapp.domain.milestones.filter { it.isNow(months) }
+                val psych = dk.babyapp.domain.psychNow(months).size
+                val experiments = dk.babyapp.domain.experimentsNow(months).count { it.key !in mine }
+                FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (milestonesNow.isNotEmpty()) Chip("Milepæle ${milestonesNow.count { "milestone-${it.key}" in mine }}/${milestonesNow.size}", colors.container, colors.accent)
+                    if (psych > 0) Chip("Psykologi $psych", colors.container, colors.accent)
+                    if (experiments > 0) Chip("Eksperimenter $experiments", colors.container, colors.accent)
+                }
             }
         }
+    }
+}
+
+private val shortDate = DateTimeFormatter.ofPattern("d. MMM", Locale.forLanguageTag("da"))
+
+@Composable
+private fun Chip(text: String, background: androidx.compose.ui.graphics.Color, accent: androidx.compose.ui.graphics.Color) {
+    androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(50), color = background) {
+        Text(text, style = MaterialTheme.typography.labelMedium, color = accent, modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
     }
 }
 

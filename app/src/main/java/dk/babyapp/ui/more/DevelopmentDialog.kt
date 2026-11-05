@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import dk.babyapp.domain.psychAgeBand
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -64,7 +68,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class DevelopmentTab(val label: String) { Now("Nu"), Timeline("Tidslinje"), Milestones("Milepæle"), Psychology("Psykologi"), Experiments("Eksperimenter") }
+internal enum class DevelopmentTab(val label: String) { Now("Nu"), Leaps("Spring"), Milestones("Milepæle"), Psychology("Psykologi"), Experiments("Eksperimenter") }
 
 private val dateFormat = DateTimeFormatter.ofPattern("d. MMM yyyy", Locale.forLanguageTag("da"))
 
@@ -88,7 +92,6 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
         latestUpdate(if (existing != null) current - existing else current + DevelopmentCheck(child.id, key, today.toString()))
     }
     var tab by rememberSaveable { mutableStateOf(DevelopmentTab.Now) }
-    var info by remember { mutableStateOf<dk.babyapp.domain.Milestone?>(null) }
     val colors = MaterialTheme.babyColors.category(CareCategory.Measurement)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         CategoryFormTheme(CareCategory.Measurement) {
@@ -111,7 +114,7 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                     is LeapPhase.InLeap -> "Spring ${phase.leap.number} · ${phase.leap.title}. Ofte en urolig periode, til ca. ${start.plusWeekFraction(phase.leap.calmFromWeek).format(dateFormat)}."
                                     is LeapPhase.Calm -> phase.next?.let { "Rolig periode. Spring ${it.number} begynder ca. ${start.plusWeekFraction(it.fussyFromWeek).format(dateFormat)}." } ?: "Alle ti spring er overstået."
                                 }, style = MaterialTheme.typography.bodyMedium)
-                                LeapStrip(weeks, colors.accent, colors.container)
+                                LeapStrip(weeks, colors.accent, colors.container, legend = true)
                             }
                         }
                         // Five tabs don't fit on one row, so they sit in two: the leaps and milestones, then psychology and experiments.
@@ -122,69 +125,36 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                 }
                             }
                         }
+                        val months = weeks * 7 / 30.44
                         when (tab) {
-                            DevelopmentTab.Now -> {
-                                val leap = (phase as? LeapPhase.InLeap)?.leap ?: (phase as LeapPhase.Calm).next ?: leaps.last()
-                                item { Text(if (phase is LeapPhase.InLeap) "Spring ${leap.number} lige nu" else "Næste spring: ${leap.number}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp)) }
-                                item { LeapDetails(leap, mine, colors.accent, ::toggle) }
-                                // What developmental psychology describes at this age, with a way into the Psykologi tab.
-                                val current = dk.babyapp.domain.psychNow(weeks * 7 / 30.44)
-                                if (current.isNotEmpty()) item {
-                                    WhiteCard {
-                                        Text("Psykologisk udvikling lige nu", style = MaterialTheme.typography.titleSmall)
-                                        current.forEach { Text("• ${it.title}", style = MaterialTheme.typography.bodyMedium) }
-                                        androidx.compose.material3.TextButton(onClick = { tab = DevelopmentTab.Psychology }) { Text("Læs om forskningen") }
-                                    }
+                            DevelopmentTab.Now -> nowItems(this, phase, weeks, months, mine, colors.accent, ::toggle) { tab = it }
+                            DevelopmentTab.Leaps -> {
+                                val current = (phase as? LeapPhase.InLeap)?.leap ?: (phase as LeapPhase.Calm).next
+                                if (current != null) {
+                                    item { TabHeading(if (phase is LeapPhase.InLeap) "Lige nu" else "Næste spring") }
+                                    item(key = "leap-now") { LeapCard(current, "leap-now-${current.number}", start, weeks, mine, colors.accent, ::toggle) }
                                 }
-                                val experiments = dk.babyapp.domain.experimentsNow(weeks * 7 / 30.44).filter { mine[it.key] == null }
-                                if (experiments.isNotEmpty()) item {
-                                    WhiteCard {
-                                        Text("Eksperimenter at prøve nu", style = MaterialTheme.typography.titleSmall)
-                                        experiments.forEach { Text("${dk.babyapp.domain.experimentOrder.getValue(it.number)}. ${it.title}", style = MaterialTheme.typography.bodyMedium) }
-                                        androidx.compose.material3.TextButton(onClick = { tab = DevelopmentTab.Experiments }) { Text("Se eksperimenterne") }
-                                    }
-                                }
-                            }
-                            DevelopmentTab.Experiments -> experimentItems(this, weeks * 7 / 30.44, mine, colors.accent, ::toggle)
-                            DevelopmentTab.Psychology -> psychologyItems(this, weeks * 7 / 30.44, mine, colors.accent, ::toggle)
-                            DevelopmentTab.Timeline -> items(leaps, key = { it.number }) { leap ->
-                                var open by rememberSaveable(leap.number) { mutableStateOf(false) }
-                                val status = when {
-                                    weeks >= leap.calmFromWeek -> "Overstået"
-                                    weeks >= leap.fussyFromWeek -> "Nu"
-                                    else -> "Kommer"
-                                }
-                                WhiteCard {
-                                    Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-                                        Column(Modifier.weight(1f)) {
-                                            Text("Spring ${leap.number} · ${leap.title}", style = MaterialTheme.typography.titleSmall)
-                                            Text("Uge ${leap.fussyFromWeek.toInt()}–${leap.calmFromWeek.toInt()} · ${start.plusWeekFraction(leap.fussyFromWeek).format(dateFormat)} · $status",
-                                                style = MaterialTheme.typography.bodySmall, color = if (status == "Nu") colors.accent else MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                        Icon(Icons.Outlined.ExpandMore, if (open) "Skjul" else "Vis", modifier = Modifier.rotate(if (open) 180f else 0f))
-                                    }
-                                    if (open) LeapDetails(leap, mine, colors.accent, ::toggle, inCard = true)
+                                item { TabHeading("Tidslinje") }
+                                leaps.groupBy { psychAgeBand(it.fussyFromWeek * 7 / 30.44) }.forEach { (band, list) ->
+                                    item(key = "leap-band-$band") { BandHeading(band, list.any { weeks >= it.fussyFromWeek && weeks < it.calmFromWeek }, colors.accent) }
+                                    list.forEach { leap -> item(key = "leap-${leap.number}") { LeapCard(leap, "leap-${leap.number}", start, weeks, mine, colors.accent, ::toggle) } }
                                 }
                             }
                             DevelopmentTab.Milestones -> {
-                                val months = weeks * 7 / 30.44
-                                item { Text("Tryk på en milepæl, når barnet kan den. Vinduet viser, hvornår de fleste børn når den.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp)) }
-                                items(milestones, key = { it.key }) { milestone ->
-                                    val check = mine["milestone-${milestone.key}"]
-                                    val now = months >= milestone.fromMonths && months <= milestone.toMonths
-                                    Surface(shape = MaterialTheme.shapes.medium, color = Color.White, modifier = Modifier.fillMaxWidth()) {
-                                        Row(Modifier.clickable { toggle("milestone-${milestone.key}") }.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            CheckMark(check != null, colors.accent)
-                                            Column(Modifier.weight(1f)) {
-                                                Text(milestone.title, style = MaterialTheme.typography.bodyLarge)
-                                                Text(listOfNotNull(milestone.window(), "typisk nu".takeIf { now && check == null }, check?.let { "kunne den ${LocalDate.parse(it.date).format(dateFormat)}" }).joinToString(" · "),
-                                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                            IconButton(onClick = { info = milestone }) { Icon(Icons.AutoMirrored.Outlined.HelpOutline, "Om ${milestone.title.lowercase()}", tint = colors.accent) }
-                                        }
-                                    }
+                                item { Text("Kryds en milepæl af, når barnet kan den. Vinduet viser, hvornår de fleste børn når den.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp)) }
+                                val now = milestones.filter { it.isNow(months) }
+                                if (now.isNotEmpty()) {
+                                    item { TabHeading("Lige nu") }
+                                    now.forEach { m -> item(key = "ms-now-${m.key}") { MilestoneCard(m, "ms-now-${m.key}", months, mine, colors.accent, ::toggle) } }
+                                }
+                                item { TabHeading("Tidslinje") }
+                                milestones.sortedBy { it.fromMonths }.groupBy { psychAgeBand(it.fromMonths) }.forEach { (band, list) ->
+                                    item(key = "ms-band-$band") { BandHeading(band, list.any { it.isNow(months) }, colors.accent) }
+                                    list.forEach { m -> item(key = "ms-${m.key}") { MilestoneCard(m, "ms-${m.key}", months, mine, colors.accent, ::toggle) } }
                                 }
                             }
+                            DevelopmentTab.Psychology -> psychologyItems(this, months, mine, colors.accent, ::toggle)
+                            DevelopmentTab.Experiments -> experimentItems(this, months, mine, colors.accent, ::toggle)
                         }
                         item {
                             Text("Springene er en model: alle børn udvikler sig i deres eget tempo, og ugerne er kun omtrentlige. Tal med sundhedsplejersken, hvis du er bekymret.",
@@ -195,14 +165,6 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                 }
             }
         }
-    }
-    info?.let { milestone ->
-        dk.babyapp.ui.tracking.FormDialog(category = CareCategory.Measurement, onDismissRequest = { info = null }, title = { Text(milestone.title) }, subtitle = milestone.window(), text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(milestone.about)
-                if (milestone.who) Text("Vinduet er WHO's: den alder, hvor 1 % til 99 % af raske børn når milepælen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }, confirmButton = { androidx.compose.material3.TextButton(onClick = { info = null }) { Text("Luk") } })
     }
 }
 
@@ -239,25 +201,118 @@ private fun CheckMark(done: Boolean, accent: Color) {
     else Icon(Icons.Outlined.RadioButtonUnchecked, "Ikke endnu", tint = accent.copy(alpha = 0.45f))
 }
 
-/** Weeks 0–80 as a strip: each spurt's unsettled period as a block, and a line where the child is now. */
+/** Weeks 0–80 as a strip: each spurt's unsettled period as a block, a line where the child is now with its week above, and the weeks below. */
 @Composable
-internal fun LeapStrip(weeks: Double, accent: Color, light: Color) {
+internal fun LeapStrip(weeks: Double, accent: Color, light: Color, legend: Boolean = false) {
     val end = 80.0
-    Canvas(Modifier.fillMaxWidth().height(28.dp).semantics { contentDescription = "Tidslinje over de ti spring, med barnets alder markeret" }) {
-        val h = 14.dp.toPx()
-        val top = (size.height - h) / 2
-        drawRoundRect(light, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
-        leaps.forEach { leap ->
-            val x1 = (leap.fussyFromWeek / end * size.width).toFloat()
-            val x2 = (leap.calmFromWeek / end * size.width).toFloat()
-            drawRoundRect(if (weeks >= leap.fussyFromWeek && weeks < leap.calmFromWeek) accent else accent.copy(alpha = 0.45f), Offset(x1, top), Size((x2 - x1).coerceAtLeast(3f), h), CornerRadius(3.dp.toPx()))
+    val fraction = (weeks.coerceIn(0.0, end) / end).toFloat()
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val labelWidth = 52.dp
+            val x = (maxWidth * fraction - labelWidth / 2).coerceIn(0.dp, maxWidth - labelWidth)
+            Text("uge ${weeks.toInt().coerceAtLeast(0)}", style = MaterialTheme.typography.labelSmall, color = accent,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.width(labelWidth).offset(x = x))
         }
-        val x = (weeks.coerceIn(0.0, end) / end * size.width).toFloat()
-        drawLine(Color(0xFF1C1B1F), Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.dp.toPx())
+        Canvas(Modifier.fillMaxWidth().height(22.dp).semantics { contentDescription = "Tidslinje over de ti spring, med barnets alder markeret" }) {
+            val h = 12.dp.toPx()
+            val top = (size.height - h) / 2
+            drawRoundRect(light, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
+            leaps.forEach { leap ->
+                val x1 = (leap.fussyFromWeek / end * size.width).toFloat()
+                val x2 = (leap.calmFromWeek / end * size.width).toFloat()
+                drawRoundRect(if (weeks >= leap.fussyFromWeek && weeks < leap.calmFromWeek) accent else accent.copy(alpha = 0.45f), Offset(x1, top), Size((x2 - x1).coerceAtLeast(3f), h), CornerRadius(3.dp.toPx()))
+            }
+            val x = fraction * size.width
+            drawLine(Color(0xFF1C1B1F), Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.dp.toPx())
+        }
+        Row(Modifier.fillMaxWidth()) {
+            // Four equal quarters from the due date to week 80, with the last label at the end.
+            listOf("Termin", "20", "40", "60").forEach { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)) }
+            Text("80 uger", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (legend) Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            LegendMark("et spring") { drawRoundRect(accent.copy(alpha = 0.45f), cornerRadius = CornerRadius(2.dp.toPx())) }
+            LegendMark("springet nu") { drawRoundRect(accent, cornerRadius = CornerRadius(2.dp.toPx())) }
+            LegendMark("barnets alder") { drawLine(Color(0xFF1C1B1F), Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = 2.dp.toPx()) }
+        }
     }
-    Row(Modifier.fillMaxWidth()) {
-        // Four equal quarters from the due date to week 80, with the last label at the end.
-        listOf("Termin", "20 uger", "40 uger", "60 uger").forEach { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)) }
-        Text("80", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable
+private fun LegendMark(label: String, draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Canvas(Modifier.width(12.dp).height(10.dp), onDraw = draw)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+internal fun dk.babyapp.domain.Milestone.isNow(months: Double) = months >= fromMonths && months <= toMonths
+
+/** The keys of a spurt's games and skills, which can be ticked off. */
+internal fun Leap.tickKeys() = play.indices.map { key("play", it) } + skills.indices.map { key("skill", it) }
+
+/** Nu: one short card for each tab, all about the child's age right now, with a link into the tab. */
+private fun nowItems(scope: LazyListScope, phase: LeapPhase, weeks: Double, months: Double, mine: Map<String, DevelopmentCheck>, accent: Color, toggle: (String) -> Unit, open: (DevelopmentTab) -> Unit) = with(scope) {
+    val leap = (phase as? LeapPhase.InLeap)?.leap ?: (phase as LeapPhase.Calm).next
+    if (leap != null) item(key = "now-leap") {
+        NowCard(if (phase is LeapPhase.InLeap) "Spring ${leap.number} lige nu" else "Næste spring: ${leap.number}", "Se spring", { open(DevelopmentTab.Leaps) }) {
+            Text(leap.title, style = MaterialTheme.typography.bodyMedium)
+            leap.seen.take(2).forEach { DetailBullet(androidx.compose.ui.text.AnnotatedString(it)) }
+            val keys = leap.tickKeys()
+            Text("Lege og færdigheder: ${keys.count { mine[it] != null }} af ${keys.size}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    item(key = "now-milestones") {
+        NowCard("Milepæle typisk nu", "Se alle", { open(DevelopmentTab.Milestones) }) {
+            val now = milestones.filter { it.isNow(months) }
+            if (now.isEmpty()) {
+                val next = milestones.filter { it.fromMonths > months }.minByOrNull { it.fromMonths }
+                Text(next?.let { "Ingen lige nu. Næste: ${it.title.lowercase()} fra ${it.window().substringBefore("–")} mdr." } ?: "Alle milepæle er passeret.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else now.forEach { m -> TickRow(m.title, mine["milestone-${m.key}"] != null, accent) { toggle("milestone-${m.key}") } }
+        }
+    }
+    val psych = dk.babyapp.domain.psychNow(months)
+    if (psych.isNotEmpty()) item(key = "now-psych") {
+        NowCard("Psykologi nu", "Læs", { open(DevelopmentTab.Psychology) }) {
+            psych.forEach { DetailBullet(androidx.compose.ui.text.AnnotatedString(it.title)) }
+        }
+    }
+    item(key = "now-experiments") {
+        NowCard("Eksperimenter at prøve", "Se alle", { open(DevelopmentTab.Experiments) }) {
+            val todo = dk.babyapp.domain.experimentsNow(months).filter { mine[it.key] == null }.take(3)
+            if (todo.isEmpty()) Text("I har lavet alle eksperimenter, der passer til alderen lige nu.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else todo.forEach { e -> TickRow("${dk.babyapp.domain.experimentOrder.getValue(e.number)}. ${e.title}", false, accent, experimentTick) { toggle(e.key) } }
+        }
+    }
+}
+
+/** One spurt: when it is, whether it is now, how many games and skills are ticked; the arrow opens the details. */
+@Composable
+private fun LeapCard(leap: Leap, id: String, start: LocalDate, weeks: Double, mine: Map<String, DevelopmentCheck>, accent: Color, toggle: (String) -> Unit) {
+    val now = weeks >= leap.fussyFromWeek && weeks < leap.calmFromWeek
+    val status = when {
+        weeks >= leap.calmFromWeek -> "overstået"
+        now -> "nu"
+        else -> "kommer"
+    }
+    val keys = leap.tickKeys()
+    val done = keys.count { mine[it] != null }
+    val subtitle = listOfNotNull("Uge ${leap.fussyFromWeek.toInt()}–${leap.calmFromWeek.toInt()}", start.plusWeekFraction(leap.fussyFromWeek).format(dateFormat), status, "$done af ${keys.size} klaret".takeIf { done > 0 }).joinToString(" · ")
+    DevItemCard(id, "Spring ${leap.number} · ${leap.title}", subtitle, accent, now, checked = null) {
+        LeapDetails(leap, mine, accent, toggle, inCard = true)
+    }
+}
+
+/** One milestone: the circle ticks it off with the date, the arrow opens what it means. */
+@Composable
+private fun MilestoneCard(milestone: dk.babyapp.domain.Milestone, id: String, months: Double, mine: Map<String, DevelopmentCheck>, accent: Color, toggle: (String) -> Unit) {
+    val key = "milestone-${milestone.key}"
+    val check = mine[key]
+    val now = milestone.isNow(months)
+    val subtitle = listOfNotNull(milestone.window(), "typisk nu".takeIf { now && check == null }, check?.let { "kunne den ${developmentDate(it.date)}" }).joinToString(" · ")
+    DevItemCard(id, milestone.title, subtitle, accent, now && check == null, check != null, milestoneTick, { toggle(key) }) {
+        Text(milestone.about, style = MaterialTheme.typography.bodyMedium)
+        if (milestone.who) Text("Vinduet er WHO's: den alder, hvor 1 % til 99 % af raske børn når milepælen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -83,7 +83,7 @@ class MoreScreensTest {
         compose.onNodeWithText("Uge 18 fra termin").assertExists()
         compose.onNodeWithText("Spring 4 lige nu").assertExists()
         compose.onNodeWithText("Milepæle").performClick()
-        compose.onNodeWithText("Vender sig").performClick()
+        compose.onAllNodesWithContentDescription("Ikke endnu: Vender sig")[0].performClick()
         compose.runOnIdle { assertEquals(listOf("milestone-roll"), checks.map { it.key }) }
     }
 
@@ -137,7 +137,7 @@ class MoreScreensTest {
         compose.onNodeWithText("Lige nu").assertExists()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om Fælles opmærksomhed"))
         compose.onAllNodesWithContentDescription("Læs om Fælles opmærksomhed")[0].performClick()
-        compose.onNodeWithText("Markér som læst", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
+        compose.onAllNodesWithContentDescription("Ikke læst: Fælles opmærksomhed")[0].performClick()
         compose.runOnIdle { assertEquals(listOf("psych-10"), checks.map { it.key }) }
     }
 
@@ -145,12 +145,13 @@ class MoreScreensTest {
         val child = ChildProfile(id = "c", name = "Freja", birthDate = LocalDate.now().minusMonths(16), dueDate = LocalDate.now().minusMonths(16))
         var checks by mutableStateOf(emptyList<DevelopmentCheck>())
         compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
+        val broccoli = dk.babyapp.domain.homeExperiments.first { it.title == "Broccoli eller kiks" }.let { "${dk.babyapp.domain.experimentOrder.getValue(it.number)}. ${it.title}" }
         compose.onNodeWithText("Eksperimenter").performClick()
         compose.onNodeWithText("0 af 90 lavet").assertExists()
-        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om Broccoli eller kiks"))
-        compose.onNodeWithContentDescription("Læs om Broccoli eller kiks").performClick()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om $broccoli"))
+        compose.onNodeWithContentDescription("Læs om $broccoli").performClick()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Du skal bruge"))
-        compose.onNodeWithContentDescription("Ikke lavet: Broccoli eller kiks").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Ikke lavet: $broccoli").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(listOf("exp-26"), checks.map { it.key }) }
     }
 }
