@@ -78,7 +78,15 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
     val start = developmentStart(child)
     val weeks = weeksFromDue(child, today)
     val mine = checks.filter { it.childId == child.id }.associateBy { it.key }
-    fun toggle(key: String) = onUpdateChecks(mine[key]?.let { checks - it } ?: (checks + DevelopmentCheck(child.id, key, today.toString())))
+    // Always toggle against the latest list: the tick rows can hold on to an older toggle function, and toggling
+    // against an old list dropped earlier ticks and made a tick impossible to remove.
+    val latestChecks by androidx.compose.runtime.rememberUpdatedState(checks)
+    val latestUpdate by androidx.compose.runtime.rememberUpdatedState(onUpdateChecks)
+    fun toggle(key: String) {
+        val current = latestChecks
+        val existing = current.firstOrNull { it.childId == child.id && it.key == key }
+        latestUpdate(if (existing != null) current - existing else current + DevelopmentCheck(child.id, key, today.toString()))
+    }
     var tab by rememberSaveable { mutableStateOf(DevelopmentTab.Now) }
     var info by remember { mutableStateOf<dk.babyapp.domain.Milestone?>(null) }
     val colors = MaterialTheme.babyColors.category(CareCategory.Measurement)
