@@ -64,7 +64,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class DevelopmentTab(val label: String) { Now("Nu"), Timeline("Tidslinje"), Milestones("Milepæle"), Psychology("Psykologi") }
+private enum class DevelopmentTab(val label: String) { Now("Nu"), Timeline("Tidslinje"), Milestones("Milepæle"), Psychology("Psykologi"), Experiments("Eksperimenter") }
 
 private val dateFormat = DateTimeFormatter.ofPattern("d. MMM yyyy", Locale.forLanguageTag("da"))
 
@@ -106,7 +106,14 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                 LeapStrip(weeks, colors.accent, colors.container)
                             }
                         }
-                        item { PeriodBar(DevelopmentTab.entries.map { it.name to it.label }, tab.name) { tab = DevelopmentTab.valueOf(it) } }
+                        // Five tabs don't fit on one row, so they sit in two: the leaps and milestones, then psychology and experiments.
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf(DevelopmentTab.entries.take(3), DevelopmentTab.entries.drop(3)).forEach { row ->
+                                    PeriodBar(row.map { it.name to it.label }, tab.name) { tab = DevelopmentTab.valueOf(it) }
+                                }
+                            }
+                        }
                         when (tab) {
                             DevelopmentTab.Now -> {
                                 val leap = (phase as? LeapPhase.InLeap)?.leap ?: (phase as LeapPhase.Calm).next ?: leaps.last()
@@ -121,7 +128,16 @@ internal fun DevelopmentDialog(child: ChildProfile, checks: List<DevelopmentChec
                                         androidx.compose.material3.TextButton(onClick = { tab = DevelopmentTab.Psychology }) { Text("Læs om forskningen") }
                                     }
                                 }
+                                val experiments = dk.babyapp.domain.experimentsNow(weeks * 7 / 30.44).filter { mine[it.key] == null }
+                                if (experiments.isNotEmpty()) item {
+                                    WhiteCard {
+                                        Text("Eksperimenter at prøve nu", style = MaterialTheme.typography.titleSmall)
+                                        experiments.forEach { Text("• ${it.title}", style = MaterialTheme.typography.bodyMedium) }
+                                        androidx.compose.material3.TextButton(onClick = { tab = DevelopmentTab.Experiments }) { Text("Se eksperimenterne") }
+                                    }
+                                }
                             }
+                            DevelopmentTab.Experiments -> experimentItems(this, weeks * 7 / 30.44, mine, colors.accent, ::toggle)
                             DevelopmentTab.Psychology -> psychologyItems(this, weeks * 7 / 30.44, mine, colors.accent, ::toggle)
                             DevelopmentTab.Timeline -> items(leaps, key = { it.number }) { leap ->
                                 var open by rememberSaveable(leap.number) { mutableStateOf(false) }

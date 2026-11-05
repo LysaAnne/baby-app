@@ -5,9 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
@@ -132,8 +135,22 @@ class MoreScreensTest {
         compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
         compose.onNodeWithText("Psykologi").performClick()
         compose.onNodeWithText("Lige nu").assertExists()
-        compose.onNodeWithContentDescription("Læs om Fælles opmærksomhed").performClick()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om Fælles opmærksomhed"))
+        compose.onAllNodesWithContentDescription("Læs om Fælles opmærksomhed")[0].performClick()
         compose.onNodeWithText("Markér som læst", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         compose.runOnIdle { assertEquals(listOf("psych-10"), checks.map { it.key }) }
+    }
+
+    @Test fun experimentsCanBeReadAndTickedOff() {
+        val child = ChildProfile(id = "c", name = "Freja", birthDate = LocalDate.now().minusMonths(16), dueDate = LocalDate.now().minusMonths(16))
+        var checks by mutableStateOf(emptyList<DevelopmentCheck>())
+        compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
+        compose.onNodeWithText("Eksperimenter").performClick()
+        compose.onNodeWithText("0 af 50 lavet").assertExists()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om Broccoli eller kiks"))
+        compose.onNodeWithContentDescription("Læs om Broccoli eller kiks").performClick()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Du skal bruge"))
+        compose.onNodeWithContentDescription("Ikke lavet: Broccoli eller kiks").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(listOf("exp-26"), checks.map { it.key }) }
     }
 }

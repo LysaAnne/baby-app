@@ -128,13 +128,13 @@ private fun PsychCard(item: PsychPhenomenon, now: Boolean, read: Boolean, accent
                 val detail = psychDetails[item.number]
                 if (detail != null) PsychDetailText(detail, accent) else {
                     Text(item.definition, style = MaterialTheme.typography.bodyMedium)
-                    Heading("Eksperiment: ${item.experiment}")
+                    DetailHeading("Eksperiment: ${item.experiment}")
                     Text(item.method, style = MaterialTheme.typography.bodyMedium)
                     Text(item.finding, style = MaterialTheme.typography.bodyMedium)
-                    Heading("Konklusion")
+                    DetailHeading("Konklusion")
                     Text(item.conclusion, style = MaterialTheme.typography.bodyMedium)
                     if (item.nuance.isNotBlank()) {
-                        Heading("Forbehold")
+                        DetailHeading("Forbehold")
                         Text(item.nuance, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -150,50 +150,50 @@ private fun PsychCard(item: PsychPhenomenon, now: Boolean, read: Boolean, accent
 /** The full text under headings: summary, theory, key concepts, each study step by step, meaning, everyday life, caveats. */
 @Composable
 private fun PsychDetailText(detail: PsychDetail, accent: Color) {
-    Heading("Hvad er det?")
+    DetailHeading("Hvad er det?")
     Text(detail.summary, style = MaterialTheme.typography.bodyMedium)
     if (detail.theory.isNotEmpty()) {
-        Heading("Teorien bag")
+        DetailHeading("Teorien bag")
         detail.theory.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
     }
     if (detail.concepts.isNotEmpty()) {
-        Heading("Nøglebegreber")
-        detail.concepts.forEach { Bullet(conceptText(it)) }
+        DetailHeading("Nøglebegreber")
+        detail.concepts.forEach { DetailBullet(conceptText(it)) }
     }
     if (detail.studies.isNotEmpty()) {
-        Heading(if (detail.studies.size == 1) "Eksperimentet" else "Eksperimenterne")
+        DetailHeading(if (detail.studies.size == 1) "Eksperimentet" else "Eksperimenterne")
         detail.studies.forEach { study ->
             Surface(shape = MaterialTheme.shapes.small, color = accent.copy(alpha = 0.08f), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(study.name, style = MaterialTheme.typography.titleSmall)
                     Text(study.who, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Sådan foregik det", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 2.dp))
-                    study.steps.forEachIndexed { i, step -> Bullet(AnnotatedString(step), marker = "${i + 1}.") }
+                    study.steps.forEachIndexed { i, step -> DetailBullet(AnnotatedString(step), marker = "${i + 1}.") }
                     Text("Det fandt de", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 2.dp))
-                    study.findings.forEach { Bullet(AnnotatedString(it)) }
+                    study.findings.forEach { DetailBullet(AnnotatedString(it)) }
                 }
             }
         }
     }
     if (detail.meaning.isNotEmpty()) {
-        Heading("Hvad betyder det?")
-        detail.meaning.forEach { Bullet(AnnotatedString(it)) }
+        DetailHeading("Hvad betyder det?")
+        detail.meaning.forEach { DetailBullet(AnnotatedString(it)) }
     }
     if (detail.atHome.isNotEmpty()) {
-        Heading("Det kan du se i hverdagen")
-        detail.atHome.forEach { Bullet(AnnotatedString(it)) }
+        DetailHeading("Det kan du se i hverdagen")
+        detail.atHome.forEach { DetailBullet(AnnotatedString(it)) }
     }
     if (detail.caveats.isNotEmpty()) {
-        Heading("Forbehold")
-        detail.caveats.forEach { Bullet(AnnotatedString(it)) }
+        DetailHeading("Forbehold")
+        detail.caveats.forEach { DetailBullet(AnnotatedString(it)) }
     }
 }
 
 @Composable
-private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 6.dp))
+internal fun DetailHeading(text: String) = Text(text, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 6.dp))
 
 @Composable
-private fun Bullet(text: AnnotatedString, marker: String = "•") {
+internal fun DetailBullet(text: AnnotatedString, marker: String = "•") {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(marker, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(18.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
