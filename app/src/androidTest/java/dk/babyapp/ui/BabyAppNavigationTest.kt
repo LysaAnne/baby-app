@@ -242,11 +242,9 @@ class BabyAppNavigationTest {
             composeRule.onAllNodesWithText(destination).filter(hasClickAction()).assertCountEquals(1)
         }
 
-        composeRule
-            .onAllNodesWithText(context.getString(R.string.nav_family))
-            .filter(hasClickAction())
-            .onFirst()
-            .performClick()
+        // Familie is opened from the top of Indstillinger.
+        composeRule.onAllNodesWithText(context.getString(R.string.nav_family)).filter(isSelectable()).assertCountEquals(0)
+        openFamilyFromSettings(context)
         composeRule.onAllNodesWithText(context.getString(R.string.child_profiles)).assertCountEquals(1)
     }
 
@@ -267,7 +265,7 @@ class BabyAppNavigationTest {
             )
         }
 
-        composeRule.onAllNodesWithText(context.getString(R.string.nav_family)).filter(hasClickAction()).onFirst().performClick()
+        openFamilyFromSettings(context)
         composeRule.runOnIdle {
             child = ChildProfile(name = "Freja", birthDate = LocalDate.now(), sex = BiologicalSex.Female)
         }
@@ -305,5 +303,10 @@ class BabyAppNavigationTest {
         composeRule.onNodeWithContentDescription("Tilpas overblikket").assertIsNotDisplayed()
         composeRule.onAllNodesWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.nav_today)).filter(isSelectable()).onFirst().performClick()
         composeRule.onNodeWithContentDescription("Tilpas overblikket").assertIsDisplayed()
+    }
+
+    private fun openFamilyFromSettings(context: android.content.Context) {
+        composeRule.onAllNodesWithContentDescription(context.getString(R.string.settings)).onFirst().performClick()
+        composeRule.onAllNodesWithText("Børn, forældre og bedsteforældre").onFirst().performClick()
     }
 }

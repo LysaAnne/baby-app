@@ -34,7 +34,8 @@ import dk.babyapp.domain.PsychPhenomenon
 import dk.babyapp.domain.psychIntro
 import dk.babyapp.domain.psychKnowledgeTypes
 import dk.babyapp.domain.psychNow
-import dk.babyapp.domain.psychPhenomena
+import dk.babyapp.domain.psychAgeBand
+import dk.babyapp.domain.psychTimeline
 import dk.babyapp.domain.psychSoon
 import dk.babyapp.domain.psychSources
 import dk.babyapp.ui.tracking.ChoiceChips
@@ -56,16 +57,21 @@ internal fun psychologyItems(scope: LazyListScope, months: Double, checks: Map<S
         item { Text("Kommer snart", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) }
         soon.forEach { item(key = "soon-${it.number}") { PsychCard(it, false, checks[it.key] != null, accent) { onToggle(it.key) } } }
     }
-    item { Text("Alle fænomener", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) }
-    item { AreaList(months, checks, accent, onToggle) }
+    item { Text("Tidslinje", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) }
+    item { Timeline(months, checks, accent, onToggle) }
 }
 
+/** Every phenomenon in the order it begins, grouped by age like the leaps and milestones; filter by area. */
 @Composable
-private fun AreaList(months: Double, checks: Map<String, DevelopmentCheck>, accent: Color, onToggle: (String) -> Unit) {
+private fun Timeline(months: Double, checks: Map<String, DevelopmentCheck>, accent: Color, onToggle: (String) -> Unit) {
     var area by rememberSaveable { mutableStateOf<PsychArea?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChips(PsychArea.entries.map { it to it.label }, area, allowNone = true) { area = it }
-        psychPhenomena.filter { area == null || it.area == area }.forEach { PsychCard(it, it.isActive(months), checks[it.key] != null, accent) { onToggle(it.key) } }
+        psychTimeline.filter { area == null || it.area == area }.groupBy { psychAgeBand(it.fromMonths) }.forEach { (band, items) ->
+            val bandNow = items.any { it.isActive(months) }
+            Text(band, style = MaterialTheme.typography.titleSmall, color = if (bandNow) accent else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 6.dp))
+            items.forEach { PsychCard(it, it.isActive(months), checks[it.key] != null, accent, past = it.toMonths?.let { end -> months > end } == true) { onToggle(it.key) } }
+        }
     }
 }
 
@@ -97,20 +103,20 @@ private fun PsychIntroCard() {
 
 /** One phenomenon: tap to read the definition, the experiment, the finding and the reservations. */
 @Composable
-private fun PsychCard(item: PsychPhenomenon, now: Boolean, read: Boolean, accent: Color, onToggleRead: () -> Unit) {
+private fun PsychCard(item: PsychPhenomenon, now: Boolean, read: Boolean, accent: Color, past: Boolean = false, onToggleRead: () -> Unit) {
     var open by rememberSaveable(item.number) { mutableStateOf(false) }
     Surface(shape = MaterialTheme.shapes.medium, color = Color.White, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("${item.number}. ${item.title}", style = MaterialTheme.typography.titleSmall)
-                    Text(listOfNotNull(item.english, item.ageLabel, "nu".takeIf { now }, "læst".takeIf { read }).joinToString(" · "),
+                    Text(item.title, style = MaterialTheme.typography.titleSmall)
+                    Text(listOfNotNull(item.ageLabel, "nu".takeIf { now }, "tidligere".takeIf { past }, "læst".takeIf { read }).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall, color = if (now) accent else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Icon(Icons.Outlined.ExpandMore, if (open) "Skjul ${item.title}" else "Læs om ${item.title}", modifier = Modifier.rotate(if (open) 180f else 0f))
             }
             if (open) {
-                Text(item.area.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${item.english} · ${item.area.label}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(item.definition, style = MaterialTheme.typography.bodyMedium)
                 Text("Eksperiment: ${item.experiment}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
                 Text(item.method, style = MaterialTheme.typography.bodyMedium)

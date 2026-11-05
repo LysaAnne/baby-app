@@ -88,10 +88,11 @@ internal fun groupBars(days: List<DayInsight>, grouping: Grouping, value: (DayIn
         Bar(label(key), avg, "${label(key)}: ${format(avg)} i snit (${registered.size} ${if (registered.size == 1) "dag" else "dage"} med registreringer)")
     }
     return when (grouping) {
-        Grouping.Day -> days.map { day ->
+        // A long period ("Alt", 3M) starts at the first day something of this kind was registered, not at birth.
+        Grouping.Day -> (if (days.size <= 7) days else days.dropWhile { value(it) <= 0f }).let { shown -> shown.map { day ->
             val label = if (day.date == today) "i dag" else day.date.format(DateTimeFormatter.ofPattern("EEE d. MMM", danishLocale))
-            Bar(if (days.size <= 7) (if (day.date == today) "i dag" else day.date.format(DateTimeFormatter.ofPattern("EEE", danishLocale)).removeSuffix(".")) else "", value(day), "$label: ${format(value(day))}")
-        }
+            Bar(if (shown.size <= 7) (if (day.date == today) "i dag" else day.date.format(DateTimeFormatter.ofPattern("EEE", danishLocale)).removeSuffix(".")) else "", value(day), "$label: ${format(value(day))}")
+        } }
         Grouping.Weekday -> averaged(finished.groupBy { it.date.dayOfWeek }.toSortedMap()) { (it as DayOfWeek).getDisplayName(TextStyle.SHORT, danishLocale).removeSuffix(".") }
         Grouping.Month -> averaged(finished.groupBy { it.date.monthValue }.toSortedMap()) { java.time.Month.of(it as Int).getDisplayName(TextStyle.SHORT, danishLocale).removeSuffix(".") }
         Grouping.Year -> averaged(finished.groupBy { it.date.year }.toSortedMap()) { it.toString() }

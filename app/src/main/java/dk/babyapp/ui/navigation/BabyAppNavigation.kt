@@ -497,6 +497,7 @@ fun BabyAppNavigation(
         children = profiles,
         onUpdateChild = onUpdateChild,
         onDismiss = { settingsOpen = false },
+        onOpenFamily = { settingsOpen = false; navController.navigate(AppDestination.Family) { launchSingleTop = true } },
     )
 }
 

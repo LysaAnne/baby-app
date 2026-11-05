@@ -368,6 +368,7 @@ fun SettingsDialog(
     onUpdateChild: (ChildProfile) -> Unit = {},
     onBackupSaved: () -> Unit = {},
     onUpdateHealthReminders: (Boolean) -> Unit = {},
+    onOpenFamily: (() -> Unit)? = null,
 ) {
     var aboutOpen by remember { mutableStateOf(false) }
     var settings by remember(preferences) { mutableStateOf(OnboardingSettings(preferences.languageTag, preferences.region, preferences.units, preferences.theme)) }
@@ -391,6 +392,10 @@ fun SettingsDialog(
                     Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleLarge)
                 }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Familie moved from the bottom bar to the top of Indstillinger in November 2026.
+                    if (onOpenFamily != null) SettingsGroup("Familie") {
+                        SettingsRow(Icons.Outlined.FamilyRestroom, "Familie", subtitle = "Børn, forældre og bedsteforældre", divider = false, onClick = onOpenFamily)
+                    }
                     SettingsGroup("Udseende og enheder") {
                         SettingsRow(Icons.Outlined.Palette, "Farveprofiler", subtitle = "Farverne for hvert barn") { palettePreviewOpen = true }
                         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

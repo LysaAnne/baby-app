@@ -57,7 +57,7 @@ val psychPhenomena = listOf(
         "Et legetøj gemmes gentagne gange under klæde A, og barnet finder det. Derefter gemmes det synligt under klæde B.",
         "Mange spædbørn leder alligevel under A.",
         "Fejlen blev oprindeligt tolket som ufuldstændig objektforståelse. I dag forbindes den også med arbejdshukommelse, opmærksomhed, motoriske vaner og hæmningskontrol."),
-    PsychPhenomenon(3, "Årsag og virkning", "Causal reasoning", PsychArea.Cognition, "Fra spædbarnsalderen, tydelig udvikling 1–5 år", 0.0, y(5.0),
+    PsychPhenomenon(3, "Årsag og virkning", "Causal reasoning", PsychArea.Cognition, "Spirer i spædbarnsalderen, tydelig udvikling 1–5 år", 12.0, y(5.0),
         "Evnen til at forstå, at bestemte handlinger eller begivenheder frembringer bestemte konsekvenser.",
         "Rovee-Colliers mobile-paradigme",
         "En snor forbinder barnets ben med en uro, så uroen bevæger sig, når barnet sparker.",
@@ -95,7 +95,7 @@ val psychPhenomena = listOf(
         "Børn lærte størrelsesforhold mellem genstande og blev testet på forhold, de ikke direkte havde set.",
         "Børn kunne klare slutningerne tidligere end Piaget forudsagde, når hukommelseskravene blev håndteret.",
         "Logiske slutninger er mulige tidligt, når opgaven ikke belaster hukommelsen."),
-    PsychPhenomenon(9, "Metakognition", "Metacognition", PsychArea.Cognition, "Begynder ca. 3–5 år, udvikles gennem ungdommen", y(3.0), null,
+    PsychPhenomenon(9, "Metakognition", "Metacognition", PsychArea.Cognition, "Begynder ca. 3–5 år, udvikles gennem ungdommen", y(3.0), y(12.0),
         "Evnen til at tænke over og vurdere sin egen tænkning, viden og hukommelse.",
         "Flavells metamemory-studier",
         "Børn skulle vurdere, hvor godt de kunne huske noget, og om de havde brug for hjælpemidler.",
@@ -186,7 +186,7 @@ val psychPhenomena = listOf(
         "Disse følelser viser sig i takt med selvrepræsentation og forståelse af sociale standarder.",
         "Selvbevidste følelser følger udviklingen af selvet.",
         "Det er vanskeligt at afgøre en bestemt følelse alene ud fra barnets adfærd."),
-    PsychPhenomenon(23, "Autobiografisk hukommelse", "Autobiographical memory", PsychArea.Self, "Ca. 2–5 år og videre", y(2.0), null,
+    PsychPhenomenon(23, "Autobiografisk hukommelse", "Autobiographical memory", PsychArea.Self, "Ca. 2–5 år og videre", y(2.0), y(5.0),
         "Evnen til at huske personlige oplevelser som begivenheder i ens eget liv.",
         "Nelson og Fivush",
         "Forskerne undersøgte samtaler mellem forældre og børn om tidligere oplevelser og testede senere børnenes erindringer.",
@@ -201,7 +201,7 @@ val psychPhenomena = listOf(
         "De fire statusser er ikke faste, universelle trin, som alle gennemgår i samme rækkefølge."),
 
     // 4. Emotionel og relationel udvikling
-    PsychPhenomenon(25, "Tilknytning", "Attachment", PsychArea.Emotion, "Gennem første leveår og derefter", 0.0, null,
+    PsychPhenomenon(25, "Tilknytning", "Attachment", PsychArea.Emotion, "Fra fødslen, tydelig fra ca. 6–8 måneder og gennem de første år", 0.0, y(3.0),
         "Barnets følelsesmæssige relation til omsorgspersoner, som kan være kilde til tryghed og regulering.",
         "Ainsworths Strange Situation Procedure (1978)",
         "Et barn på typisk 12–18 måneder observeres gennem korte episoder med adskillelse fra og genforening med en omsorgsperson; især adfærden ved genforeningen.",
@@ -215,14 +215,14 @@ val psychPhenomena = listOf(
         "Reaktionerne ændrer sig med bl.a. genkendelse, hukommelse, mobilitet og erfaringer med adskillelse.",
         "Det er ikke ét universelt udviklingstrin.",
         "Fravær af synlig gråd betyder ikke nødvendigvis fravær af tilknytning."),
-    PsychPhenomenon(27, "Empati og prosocial adfærd", "Empathy and prosocial behaviour", PsychArea.Emotion, "Tidlige former fra 1–2 år, udvikles gennem barndommen", 12.0, null,
+    PsychPhenomenon(27, "Empati og prosocial adfærd", "Empathy and prosocial behaviour", PsychArea.Emotion, "Tidlige former fra 1–2 år, udvikles gennem barndommen", 12.0, y(6.0),
         "At reagere på andres følelser og handle for at hjælpe.",
         "Warneken og Tomasello (2006)",
         "En voksen taber en genstand ved et uheld eller har svært ved at nå noget.",
         "Børn omkring 18 måneder hjælper ofte spontant uden belønning.",
         "Tidlig hjælpeadfærd kan vises allerede i andet leveår.",
         "Man skal skelne mellem emotionel empati, forståelse af andres situation og egentlig hjælpeadfærd."),
-    PsychPhenomenon(28, "Følelsesregulering", "Emotional self-regulation", PsychArea.Emotion, "Fra spædbarnsalderen, markant 2–7 år og videre", 0.0, null,
+    PsychPhenomenon(28, "Følelsesregulering", "Emotional self-regulation", PsychArea.Emotion, "Spirer i spædbarnsalderen, markant 2–7 år og videre", y(2.0), y(7.0),
         "Evnen til at regulere følelsesmæssig aktivering, opmærksomhed og adfærd.",
         "Still-Face Paradigm, Tronick m.fl. (1978)",
         "En forælder leger normalt med sit spædbarn og bliver så i kort tid neutral og ikke-responsiv i ansigtet.",
@@ -243,7 +243,7 @@ val psychPhenomena = listOf(
         "Børn sorterer først kort efter farve og derefter efter form.",
         "Mange 3-årige fortsætter med den første regel, selvom de kan sige den nye; 4–5-årige klarer typisk skiftet.",
         "Evnen til at skifte mellem regler udvikles markant i førskolealderen."),
-    PsychPhenomenon(31, "Arbejdshukommelse", "Working memory", PsychArea.Executive, "Gennem hele barndommen og ungdommen", y(2.0), null,
+    PsychPhenomenon(31, "Arbejdshukommelse", "Working memory", PsychArea.Executive, "Gennem hele barndommen og ungdommen, tydeligt fra ca. 2 år", y(2.0), y(12.0),
         "Evnen til at holde og bearbejde information i kort tid.",
         "Digit Span og Corsi Block-Tapping",
         "Barnet gentager en række tal eller positioner, nogle gange baglæns.",
@@ -271,7 +271,7 @@ val psychPhenomena = listOf(
         "Børn fik fordelinger af belønninger mellem sig selv og et andet barn og kunne afvise dem.",
         "Yngre børn reagerer især, når de selv får mindre; at afvise en uretfærdig fordel til sig selv kommer senere og varierer mellem kulturer.",
         "Retfærdighedsforståelse består af flere komponenter, ikke én samlet evne."),
-    PsychPhenomenon(35, "Moralsk ræsonnement", "Moral reasoning", PsychArea.Moral, "Fra førskolealderen ind i voksenalderen", y(3.0), null,
+    PsychPhenomenon(35, "Moralsk ræsonnement", "Moral reasoning", PsychArea.Moral, "Fra førskolealderen ind i voksenalderen", y(3.0), y(12.0),
         "Måden, man begrunder, hvad der er rigtigt og forkert.",
         "Piaget, Kohlberg (Heinz-dilemmaet) og Turiel",
         "Kohlberg brugte dilemmaer, fx en mand der overvejer at stjæle medicin til sin syge hustru, og så på begrundelsen. Turiel lod børn skelne mellem moralske overtrædelser (at slå) og sociale konventioner (påklædningsregler).",
@@ -319,13 +319,13 @@ val psychPhenomena = listOf(
         "Barnet ser en model med tre bjerge og skal vælge det billede, der viser, hvordan modellen ser ud for en anden.",
         "Yngre børn vælger ofte deres eget perspektiv. Med enklere og mere meningsfulde opgaver, som Hughes', klarer yngre børn det tidligere.",
         "Perspektivtagning forbedres gennem barndommen og ses tidligere, end Piagets opgave antydede."),
-    PsychPhenomenon(42, "Social kategorisering og gruppepræferencer", "Social categorisation", PsychArea.Perspective, "Tidlige former i spædbarnsalderen, mere eksplicit fra 3–5 år", y(3.0), null,
+    PsychPhenomenon(42, "Social kategorisering og gruppepræferencer", "Social categorisation", PsychArea.Perspective, "Tidlige former i spædbarnsalderen, mere eksplicit fra 3–5 år", y(3.0), y(8.0),
         "Tendensen til at inddele i grupper og foretrække sin egen.",
         "Tajfel m.fl. (1971), Minimal Group Paradigm",
         "Skolebørn blev tilfældigt delt i grupper efter trivielle kriterier og skulle fordele belønninger.",
         "Selv uden historie eller konflikt foretrak de ofte deres egen gruppe.",
         "Social kategorisering kan være nok til at give gruppefavorisering."),
-    PsychPhenomenon(43, "Social læring og modellering", "Observational learning", PsychArea.Perspective, "Fra spædbarnsalderen, mere komplekst gennem barndommen", 0.0, null,
+    PsychPhenomenon(43, "Social læring og modellering", "Observational learning", PsychArea.Perspective, "Efterligning fra ca. 6–9 måneder, mere komplekst gennem barndommen", 6.0, y(6.0),
         "At lære adfærd ved at iagttage andre.",
         "Banduras Bobo Doll (1961)",
         "Børn så en voksen opføre sig aggressivt over for en oppustelig dukke og fik derefter selv lignende legetøj.",
@@ -384,5 +384,20 @@ val psychSources = listOf(
 )
 
 /** Phenomena that are under way at [months], and those that begin within the next [aheadMonths]. */
-fun psychNow(months: Double) = psychPhenomena.filter { it.isActive(months) }
-fun psychSoon(months: Double, aheadMonths: Double = 3.0) = psychPhenomena.filter { it.fromMonths > months && it.fromMonths <= months + aheadMonths }
+/** In order of when they begin, like the leaps and milestones. */
+val psychTimeline: List<PsychPhenomenon> get() = psychPhenomena.sortedWith(compareBy({ it.fromMonths }, { it.toMonths ?: Double.MAX_VALUE }, { it.number }))
+
+fun psychNow(months: Double) = psychTimeline.filter { it.isActive(months) }
+fun psychSoon(months: Double, aheadMonths: Double = 3.0) = psychTimeline.filter { it.fromMonths > months && it.fromMonths <= months + aheadMonths }
+
+/** The age band a phenomenon begins in, for the timeline under Psykologi. */
+fun psychAgeBand(fromMonths: Double): String = when {
+    fromMonths < 6 -> "0–6 måneder"
+    fromMonths < 12 -> "6–12 måneder"
+    fromMonths < 24 -> "1–2 år"
+    fromMonths < 36 -> "2–3 år"
+    fromMonths < 60 -> "3–5 år"
+    fromMonths < 96 -> "5–8 år"
+    fromMonths < 144 -> "8–12 år"
+    else -> "12 år og op"
+}

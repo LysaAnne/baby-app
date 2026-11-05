@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -91,10 +92,11 @@ internal fun SongbookDialog(data: SongbookData, onUpdate: (SongbookData) -> Unit
                         IconButton(onClick = { importing = true }) { Icon(Icons.Outlined.ContentPaste, "Importér sangtekster") }
                         IconButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, "Tilføj egen sang") }
                     }
+                    // The search stays at the top while the list scrolls.
+                    Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                        RegistrationTextField(query, { query = it }, label = { Text("Søg sang") }, singleLine = true, leadingIcon = { Icon(Icons.Outlined.Search, null) })
+                    }
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item {
-                            RegistrationTextField(query, { query = it }, label = { Text("Søg sang") }, singleLine = true, leadingIcon = { Icon(Icons.Outlined.Search, null) })
-                        }
                         item {
                             ChoiceChips(listOf(FAVORITES to "Favoritter") + SongCategory.entries.map { it.name to it.label }, filter, allowNone = true) { filter = it }
                         }

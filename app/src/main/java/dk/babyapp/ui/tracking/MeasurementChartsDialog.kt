@@ -112,7 +112,8 @@ internal fun MeasurementChartsDialog(events: List<CareEventEntity>, childId: Str
                             }
                         }
                     }
-                    if (showGrowth && child != null) item { GrowthNotice(child, availability) }
+                    // Only where the growth curves are: not under Sundhed, which shows temperature.
+                    if (showGrowth && child != null && types.any { it != MeasurementType.Temperature }) item { GrowthNotice(child, availability) }
                     if (from != null && from > through) item { Text("Fra-dato skal være før eller samme dag som til-dato.", color = MaterialTheme.colorScheme.error) }
                     else items(types) { type ->
                         val points = remember(events, childId, type, from, through) { measurementPoints(events, childId, type, from, through) }

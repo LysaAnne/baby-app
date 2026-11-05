@@ -48,7 +48,8 @@ sealed interface AppDestination {
     }
 
     companion object {
-        val topLevel = listOf(Today, Timeline, Overview, Family, Guide)
+        // Familie is opened from the top of Indstillinger, not the bottom bar.
+        val topLevel = listOf(Today, Timeline, Overview, Guide)
     }
 }
 

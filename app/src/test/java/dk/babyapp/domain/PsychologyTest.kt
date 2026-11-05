@@ -20,4 +20,13 @@ class PsychologyTest {
         assertTrue("Selvgenkendelse i spejlet" !in now)
         assertTrue(psychSoon(10.0).all { it.fromMonths in 10.0..13.0 })
     }
+
+    @Test fun aSevenWeekOldOnlyHasWhatBelongsToTheFirstMonthsAndTheTimelineIsChronological() {
+        val now = psychNow(7 / 4.345).map { it.title }
+        assertTrue("Årsag og virkning" !in now)
+        assertTrue("Følelsesregulering" !in now)
+        assertTrue("Tilknytning" in now)
+        assertEquals(psychTimeline.map { it.fromMonths }.sorted(), psychTimeline.map { it.fromMonths })
+        assertEquals("1–2 år", psychAgeBand(psychPhenomena.first { it.title == "Årsag og virkning" }.fromMonths))
+    }
 }

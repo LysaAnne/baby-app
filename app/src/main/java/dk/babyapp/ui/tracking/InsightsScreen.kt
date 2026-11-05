@@ -281,7 +281,9 @@ private fun GrowthSummary(insights: PeriodInsights) {
 
 /** One bar per day; today, which isn't over yet, is drawn lighter. [upper] stacks on top of [lower]. */
 @Composable
-private fun DayBars(days: List<DayInsight>, color: Color, todayColor: Color, height: Dp, lower: (DayInsight) -> Float, upper: (DayInsight) -> Float = { 0f }, labels: Boolean = true) {
+private fun DayBars(allDays: List<DayInsight>, color: Color, todayColor: Color, height: Dp, lower: (DayInsight) -> Float, upper: (DayInsight) -> Float = { 0f }, labels: Boolean = true) {
+    // A long period starts at the first day with something registered, so it isn't mostly empty. A week stays a week.
+    val days = if (allDays.size <= 7) allDays else allDays.dropWhile { lower(it) + upper(it) <= 0f }.ifEmpty { allDays.takeLast(1) }
     val max = days.maxOfOrNull { lower(it) + upper(it) }?.takeIf { it > 0f } ?: 1f
     val upperColor = todayColor
     Canvas(Modifier.fillMaxWidth().height(height).semantics { contentDescription = "Graf over ${days.size} dage" }) {
