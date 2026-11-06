@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -81,8 +82,8 @@ class MoreScreensTest {
         var checks by mutableStateOf(emptyList<DevelopmentCheck>())
         compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
         compose.onNodeWithText("Uge 18 fra termin").assertExists()
-        compose.onNodeWithText("Spring 4 lige nu").assertExists()
-        compose.onNodeWithText("Milepæle").performClick()
+        compose.onNodeWithText("Spring 4 lige nu", substring = true).assertExists()
+        compose.onAllNodesWithText("Milepæle")[0].performClick() // the tab; the Nu card has the same title
         compose.onAllNodesWithContentDescription("Ikke endnu: Vender sig")[0].performClick()
         compose.runOnIdle { assertEquals(listOf("milestone-roll"), checks.map { it.key }) }
     }
@@ -133,8 +134,8 @@ class MoreScreensTest {
         val child = ChildProfile(id = "c", name = "Freja", birthDate = LocalDate.now().minusMonths(10), dueDate = LocalDate.now().minusMonths(10))
         var checks by mutableStateOf(emptyList<DevelopmentCheck>())
         compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
-        compose.onNodeWithText("Psykologi").performClick()
-        compose.onNodeWithText("Lige nu").assertExists()
+        compose.onAllNodesWithText("Psykologi")[0].performClick() // the tab; the Nu card has the same title
+        compose.onNodeWithText("Lige nu", substring = true).assertExists()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om Fælles opmærksomhed"))
         compose.onAllNodesWithContentDescription("Læs om Fælles opmærksomhed")[0].performClick()
         compose.onAllNodesWithContentDescription("Ikke læst: Fælles opmærksomhed")[0].performClick()
@@ -146,12 +147,15 @@ class MoreScreensTest {
         var checks by mutableStateOf(emptyList<DevelopmentCheck>())
         compose.setContent { BabyAppTheme { DevelopmentDialog(child, checks, { checks = it }) {} } }
         val broccoli = dk.babyapp.domain.homeExperiments.first { it.title == "Broccoli eller kiks" }.let { "${dk.babyapp.domain.experimentOrder.getValue(it.number)}. ${it.title}" }
-        compose.onNodeWithText("Eksperimenter").performClick()
+        compose.onAllNodesWithText("Eksperimenter")[0].performClick() // the tab; the Nu card has the same title
+        compose.onNodeWithText("Om eksperimenter").performClick()
         compose.onNodeWithText("0 af 90 lavet").assertExists()
+        compose.onNodeWithText("Luk").performClick()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasContentDescription("Læs om $broccoli"))
+        // The card opens as a popup, which ticks it off with its own button.
         compose.onNodeWithContentDescription("Læs om $broccoli").performClick()
-        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Du skal bruge"))
-        compose.onNodeWithContentDescription("Ikke lavet: $broccoli").performScrollTo().performClick()
+        compose.onNodeWithText("Du skal bruge").assertExists()
+        compose.onNodeWithText("Markér som lavet").performClick()
         compose.runOnIdle { assertEquals(listOf("exp-26"), checks.map { it.key }) }
     }
 }

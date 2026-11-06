@@ -27,58 +27,41 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import dk.babyapp.data.preferences.DevelopmentCheck
+import dk.babyapp.domain.DevState
 import dk.babyapp.domain.HomeExperiment
-import dk.babyapp.domain.experimentOrder
 import dk.babyapp.domain.experimentIntro
+import dk.babyapp.domain.experimentOrder
 import dk.babyapp.domain.experimentTimeline
-import dk.babyapp.domain.experimentsNow
 import dk.babyapp.domain.homeExperiments
 import dk.babyapp.domain.psychAgeBand
-import dk.babyapp.ui.tracking.WhiteCard
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import dk.babyapp.domain.state
 import java.util.Locale
 
 
 /**
- * Eksperimenter under Udvikling: what fits the child's age now, then every experiment on a timeline by age.
- * Tap the circle to tick one off (the date is kept); tap the card to read how to do it.
+ * Eksperimenter under Udvikling, in the same form as the other tabs: Om eksperimenterne, what fits the child's age
+ * now (and earlier ones not yet done), and the later ones folded away. Tap the circle to tick one off.
  */
-internal fun experimentItems(scope: LazyListScope, months: Double, checks: Map<String, DevelopmentCheck>, accent: Color, onToggle: (String) -> Unit) = with(scope) {
-    item { ExperimentIntroCard(homeExperiments.count { checks[it.key] != null }) }
-    val now = experimentsNow(months)
-    if (now.isNotEmpty()) {
-        item { TabHeading("Lige nu") }
-        now.forEach { item(key = "exp-now-${it.number}") { ExperimentCard(it, true, checks[it.key], accent) { onToggle(it.key) } } }
-    }
-    item { TabHeading("Tidslinje") }
-    experimentTimeline.groupBy { psychAgeBand(it.fromMonths) }.forEach { (band, list) ->
-        item(key = "exp-band-$band") { BandHeading(band, list.any { it.isActive(months) }, accent) }
-        list.forEach { item(key = "exp-${it.number}") { ExperimentCard(it, it.isActive(months), checks[it.key], accent, past = months > it.toMonths) { onToggle(it.key) } } }
-    }
-}
+internal fun experimentItems(scope: LazyListScope, months: Double, nowHeading: String, done: Set<String>, accent: Color, onToggle: (String) -> Unit, folds: DevFolds) =
+    categoryItems(scope, "exp", "Om eksperimenter", { ExperimentAbout(homeExperiments.count { it.key in done }) }, nowHeading,
+        "Ingen eksperimenter passer til alderen lige nu.", "Fremtidige eksperimenter",
+        experimentTimeline.map { item ->
+            val state = item.state(months, done)
+            DevEntry("${item.number}", state, psychAgeBand(item.fromMonths)) { ExperimentCard(item, state, item.key in done, accent) { onToggle(item.key) } }
+        }, folds)
 
 @Composable
-private fun ExperimentIntroCard(done: Int) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    WhiteCard {
-        Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Om eksperimenterne", style = MaterialTheme.typography.titleSmall)
-                Text("$done af ${homeExperiments.size} lavet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Outlined.ExpandMore, if (open) "Skjul" else "Vis", modifier = Modifier.rotate(if (open) 180f else 0f))
-        }
-        if (open) experimentIntro.forEach { DetailBullet(AnnotatedString(it)) }
-    }
+private fun ExperimentAbout(done: Int) {
+    Text("$done af ${homeExperiments.size} lavet", style = MaterialTheme.typography.titleSmall)
+    experimentIntro.forEach { DetailBullet(AnnotatedString(it)) }
+    Text(developmentCaveat, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** One experiment: the circle ticks it off, the arrow opens what you need, the steps and the research. */
 @Composable
-private fun ExperimentCard(item: HomeExperiment, now: Boolean, done: DevelopmentCheck?, accent: Color, past: Boolean = false, onToggle: () -> Unit) {
-    val subtitle = listOfNotNull(item.ageLabel, "nu".takeIf { now }, "tidligere".takeIf { past && done == null }, done?.let { "lavet ${developmentDate(it.date)}" }).joinToString(" · ")
-    DevItemCard("exp-${item.number}", "${experimentOrder.getValue(item.number)}. ${item.title}", subtitle, accent, now, done != null, experimentTick, onToggle) {
+private fun ExperimentCard(item: HomeExperiment, state: DevState, done: Boolean, accent: Color, onToggle: () -> Unit) {
+    val subtitle = listOfNotNull(item.ageLabel, stateLabel(state, "lavet")).joinToString(" · ")
+    DevItemCard("${experimentOrder.getValue(item.number)}. ${item.title}", subtitle, accent, state, done, experimentTick, onToggle) {
         DetailHeading("Hvad undersøger det?")
         Text(item.idea, style = MaterialTheme.typography.bodyMedium)
         DetailHeading("Du skal bruge")
@@ -100,4 +83,4 @@ private fun ExperimentCard(item: HomeExperiment, now: Boolean, done: Development
     }
 }
 
-internal val experimentTick = TickLabels("Lavet", "Ikke lavet")
+internal val experimentTick = TickLabels("Lavet", "Ikke lavet", "Markér som lavet")

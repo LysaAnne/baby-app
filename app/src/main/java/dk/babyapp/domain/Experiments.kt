@@ -35,7 +35,7 @@ val experimentIntro = listOf(
     "De 50 forsøg fra Shaun Gallaghers bog Experimenting with Babies er med. Studiet bag hvert af dem er fundet ud fra bogens titler og er et kvalificeret bud; bogens egen fremgangsmåde kan afvige.",
     "Der er ingen rigtige eller forkerte svar. Et barn, der ‘fejler’, viser præcis det, forskerne fandt, og børn udvikler sig i hvert sit tempo.",
     "Lav kun forsøgene, når barnet er udhvilet og har lyst, og stop, hvis det bliver træt eller ked af det.",
-    "Aldrene regnes fra terminsdatoen og er omtrentlige. Hak et forsøg af, når I har lavet det; datoen bliver gemt.",
+    "Aldrene regnes fra terminsdatoen og er omtrentlige. Hak et forsøg af, når I har lavet det.",
 )
 
 private fun y(years: Double) = years * 12

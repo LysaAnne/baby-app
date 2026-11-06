@@ -34,76 +34,50 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import dk.babyapp.data.preferences.DevelopmentCheck
-import dk.babyapp.domain.PsychArea
+import dk.babyapp.domain.DevState
 import dk.babyapp.domain.PsychDetail
 import dk.babyapp.domain.PsychPhenomenon
-import dk.babyapp.domain.psychIntro
-import dk.babyapp.domain.psychKnowledgeTypes
-import dk.babyapp.domain.psychNow
 import dk.babyapp.domain.psychAgeBand
 import dk.babyapp.domain.psychDetails
-import dk.babyapp.domain.psychTimeline
-import dk.babyapp.domain.psychSoon
+import dk.babyapp.domain.psychIntro
+import dk.babyapp.domain.psychKnowledgeTypes
 import dk.babyapp.domain.psychSources
-import dk.babyapp.ui.tracking.ChoiceChips
-import dk.babyapp.ui.tracking.WhiteCard
+import dk.babyapp.domain.psychTimeline
+import dk.babyapp.domain.state
 
 /**
- * Psykologi under Udvikling, in the same form as the other tabs: what developmental psychology describes at the
- * child's age right now, then every phenomenon on a timeline by age, filterable by area. Read ones are ticked off.
+ * Psykologi under Udvikling, in the same form as the other tabs: Om psykologi, what developmental psychology
+ * describes at the child's age right now, and the later phenomena folded away. Read ones are ticked off.
  */
-internal fun psychologyItems(scope: LazyListScope, months: Double, checks: Map<String, DevelopmentCheck>, accent: Color, onToggle: (String) -> Unit) = with(scope) {
-    item { PsychIntroCard() }
-    val now = psychNow(months)
-    if (now.isNotEmpty()) {
-        item { TabHeading("Lige nu") }
-        now.forEach { item(key = "now-${it.number}") { PsychCard(it, true, checks[it.key], accent) { onToggle(it.key) } } }
-    }
-    item { TabHeading("Tidslinje") }
-    item { ChoiceChips(PsychArea.entries.map { it to it.label }, psychArea.value, allowNone = true) { psychArea.value = it } }
-    psychTimeline.filter { psychArea.value == null || it.area == psychArea.value }.groupBy { psychAgeBand(it.fromMonths) }.forEach { (band, list) ->
-        item(key = "psych-band-$band") { BandHeading(band, list.any { it.isActive(months) }, accent) }
-        list.forEach { item(key = "psych-${it.number}") { PsychCard(it, it.isActive(months), checks[it.key], accent, past = it.toMonths?.let { end -> months > end } == true) { onToggle(it.key) } } }
-    }
-}
+internal fun psychologyItems(scope: LazyListScope, months: Double, nowHeading: String, done: Set<String>, accent: Color, onToggle: (String) -> Unit, folds: DevFolds) =
+    categoryItems(scope, "psych", "Om psykologi", { PsychAbout() }, nowHeading, "Intet at læse om lige nu.", "Fremtidige emner",
+        psychTimeline.map { item ->
+            val state = item.state(months, done)
+            DevEntry("${item.number}", state, psychAgeBand(item.fromMonths)) { PsychCard(item, state, item.key in done, accent) { onToggle(item.key) } }
+        }, folds)
 
-/** The area filter on the timeline, kept while the app is open. */
-private val psychArea = mutableStateOf<PsychArea?>(null)
-
-internal val psychTick = TickLabels("Læst", "Ikke læst")
+internal val psychTick = TickLabels("Læst", "Ikke læst", "Markér som læst")
 
 @Composable
-private fun PsychIntroCard() {
-    var open by rememberSaveable { mutableStateOf(false) }
+private fun PsychAbout() {
     val context = LocalContext.current
-    WhiteCard {
-        Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Om psykologisk udvikling", style = MaterialTheme.typography.titleSmall)
-                Text("Udviklingspsykologiens fænomener, eksperimenterne bag og deres forbehold", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Outlined.ExpandMore, if (open) "Skjul" else "Vis", modifier = Modifier.rotate(if (open) 180f else 0f))
-        }
-        if (open) {
-            psychIntro.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
-            Text("Typer af viden", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 6.dp))
-            psychKnowledgeTypes.forEach { (type, text) -> Text("$type: $text", style = MaterialTheme.typography.bodySmall) }
-            Text("Videre læsning", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 6.dp))
-            psychSources.forEach { (title, url) ->
-                Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }.padding(vertical = 4.dp))
-            }
-            Text("Aldrene regnes fra terminsdatoen, ligesom resten af Udvikling.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+    Text("Udviklingspsykologiens fænomener, eksperimenterne bag og deres forbehold, ordnet efter hvornår de typisk begynder. Kryds et emne af, når du har læst det.")
+    psychIntro.forEach { DetailBullet(AnnotatedString(it)) }
+    DetailHeading("Typer af viden")
+    psychKnowledgeTypes.forEach { (type, text) -> Text("$type: $text", style = MaterialTheme.typography.bodySmall) }
+    DetailHeading("Videre læsning")
+    psychSources.forEach { (title, url) ->
+        Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }.padding(vertical = 4.dp))
     }
+    Text("Aldrene regnes fra terminsdatoen, ligesom resten af Udvikling. $developmentCaveat", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** One phenomenon: the circle marks it read, the arrow opens the theory, the studies and the reservations. */
 @Composable
-private fun PsychCard(item: PsychPhenomenon, now: Boolean, read: DevelopmentCheck?, accent: Color, past: Boolean = false, onToggleRead: () -> Unit) {
-    val subtitle = listOfNotNull(item.ageLabel, "nu".takeIf { now }, "tidligere".takeIf { past && read == null }, read?.let { "læst ${developmentDate(it.date)}" }).joinToString(" · ")
-    DevItemCard("psych-${item.number}", item.title, subtitle, accent, now, read != null, psychTick, onToggleRead) {
+private fun PsychCard(item: PsychPhenomenon, state: DevState, read: Boolean, accent: Color, onToggleRead: () -> Unit) {
+    val subtitle = listOfNotNull(item.ageLabel, stateLabel(state, "læst")).joinToString(" · ")
+    DevItemCard(item.title, subtitle, accent, state, read, psychTick, onToggleRead) {
         Text("${item.english} · ${item.area.label}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val detail = psychDetails[item.number]
         if (detail != null) PsychDetailText(detail, accent) else {

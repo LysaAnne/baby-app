@@ -26,7 +26,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dk.babyapp.data.preferences.DevelopmentCheck
 import dk.babyapp.data.profile.ChildProfile
+import dk.babyapp.domain.DevArea
 import dk.babyapp.domain.LeapPhase
+import dk.babyapp.domain.developmentProgress
 import dk.babyapp.domain.leapPhase
 import dk.babyapp.domain.plusWeekFraction
 import dk.babyapp.domain.weeksFromDue
@@ -65,15 +67,13 @@ internal fun DevelopmentStripCard(child: ChildProfile, checks: List<DevelopmentC
                     }
                 }
                 LeapStrip(weeks, colors.accent, colors.container)
-                val months = weeks * 7 / 30.44
                 val mine = checks.filter { it.childId == child.id }.map { it.key }.toSet()
-                val milestonesNow = dk.babyapp.domain.milestones.filter { it.isNow(months) }
-                val psych = dk.babyapp.domain.psychNow(months).size
-                val experiments = dk.babyapp.domain.experimentsNow(months).count { it.key !in mine }
-                FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (milestonesNow.isNotEmpty()) Chip("Milepæle ${milestonesNow.count { "milestone-${it.key}" in mine }}/${milestonesNow.size}", colors.container, colors.accent)
-                    if (psych > 0) Chip("Psykologi $psych", colors.container, colors.accent)
-                    if (experiments > 0) Chip("Eksperimenter $experiments", colors.container, colors.accent)
+                // Done out of all for what belongs to the age now, for each area; an area that is all done is left out.
+                val counts = listOf(DevArea.Leaps to "Spring", DevArea.Milestones to "Milepæle", DevArea.Psychology to "Psykologi", DevArea.Experiments to "Eksperimenter")
+                    .map { (area, label) -> label to developmentProgress(area, weeks, mine) }
+                    .filter { (_, progress) -> progress.total > 0 && !progress.complete }
+                if (counts.isNotEmpty()) FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    counts.forEach { (label, progress) -> Chip("$label ${progress.done}/${progress.total}", colors.container, colors.accent) }
                 }
             }
         }
